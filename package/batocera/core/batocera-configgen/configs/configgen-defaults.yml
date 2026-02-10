@@ -47,6 +47,9 @@ amigacdtv:
 amstradcpc:
   emulator: libretro
   core:     cap32
+pcw:
+  emulator: libretro
+  core:     mame
 apfm1000:
   emulator: libretro
   core:     mame
@@ -194,6 +197,9 @@ corsixth:
   options:
     hud_support: false
 crvision:
+  emulator: libretro
+  core:     mame
+ctvboy:
   emulator: libretro
   core:     mame
 
