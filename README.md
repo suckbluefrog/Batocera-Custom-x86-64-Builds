@@ -233,6 +233,7 @@ This is an unofficial build.
 Thanks to:
 
 - The Batocera Team for core development
+- Rion for initial draft of gamescope 
 - UUreel
 - Cliffy
 - Contributors from batocera.pro whose work was integrated
