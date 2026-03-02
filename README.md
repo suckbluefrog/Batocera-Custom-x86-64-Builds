@@ -79,6 +79,9 @@ Steam is integrated directly into the base system.
 - Automatically parses Steam games into ES
 - Steam data stored in: `~/steam`
 
+<img width="2256" height="1281" alt="image" src="https://github.com/user-attachments/assets/3b89f7f9-b1cd-445f-9cca-a51ba11a9298" />
+
+
 <img width="1253" height="1377" alt="image" src="https://github.com/user-attachments/assets/0a3bc587-debb-4728-959d-5d31d835075d" />
 
 
