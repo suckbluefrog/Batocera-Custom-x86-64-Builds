@@ -119,6 +119,8 @@ Includes:
 `--no-sandbox` can now be selected directly via Advanced Settings in ES  
 (no custom wrapper scripts required).
 
+<img width="1913" height="1306" alt="image" src="https://github.com/user-attachments/assets/ca2408e1-8410-427c-b6e9-0bb4df0beec7" />
+
 
 
 ---
