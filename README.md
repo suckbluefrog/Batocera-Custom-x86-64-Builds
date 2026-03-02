@@ -178,6 +178,9 @@ Additional developer tools included:
 
 # ROG Ally Enhancements
 
+LED control fixed / added
+*Note: due to 12 range controls, must toggle off/on to change color after setting in ES
+
 Custom command button mappings:
 
 ### Outside Steam
