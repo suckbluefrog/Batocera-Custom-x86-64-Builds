@@ -71,6 +71,7 @@ Steam is integrated directly into the base system.
 - No Flatpak required
 - No container add-ons required
 - Network icon / Wi-Fi detection handled via custom DBus integration
+- Reboot / Shutdown from gamepadui supported
 - Automatically parses Steam games into ES
 - Steam data stored in: `~/steam`
 
