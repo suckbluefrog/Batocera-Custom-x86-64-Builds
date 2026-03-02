@@ -200,6 +200,7 @@ Includes:
 
 - Native Steam + Gamescope integration
 - 32-bit compatibility layer
+- Extra libs for Appimages missing that are common on Desktop Distros
 - Integrated Lutris & Heroic
 - Docker & Sunshine
 - Enhanced ROG Ally mappings
