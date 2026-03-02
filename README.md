@@ -57,7 +57,11 @@ Includes:
   - DOS  
   - Cemu  
   - Ports  
-  - Steam  
+  - Steam
+
+<img width="1923" height="1253" alt="image" src="https://github.com/user-attachments/assets/2409f71f-f340-4f24-8661-7596dfada222" />
+
+
 
 ---
 
@@ -74,6 +78,10 @@ Steam is integrated directly into the base system.
 - Reboot / Shutdown from gamepadui supported
 - Automatically parses Steam games into ES
 - Steam data stored in: `~/steam`
+
+
+<img width="1633" height="1237" alt="image" src="https://github.com/user-attachments/assets/c2ed4df4-eebd-420e-8156-863d85732a4e" />
+
 
 ### Optional
 
@@ -110,6 +118,8 @@ Includes:
 
 `--no-sandbox` can now be selected directly via Advanced Settings in ES  
 (no custom wrapper scripts required).
+
+
 
 ---
 
