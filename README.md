@@ -34,7 +34,8 @@ This improves compatibility with:
 
 - Older Linux applications and games  
 - Legacy audio and middleware dependencies  
-- Lutris-installed Linux titles  
+- Lutris-installed Linux titles
+- Steam integration
 
 **Example:**  
 AM2R (Linux version) via Lutris now works out-of-the-box.
