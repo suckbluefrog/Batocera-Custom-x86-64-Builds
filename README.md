@@ -107,7 +107,7 @@ Integrated:
 - Heroic AppImage
 - ES menu integration
 - Direct launcher access
-
+- Created desktop shortcuts in those apps for es to parse when refreshing gamelist
 ---
 
 ## Improved Flatpak Support
