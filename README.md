@@ -264,6 +264,7 @@ lsblk
 From the directory containing the image:
 
 ```
+e.g. cd ~/
 batocera-install install <drive> <filename.img.gz>
 ```
 
@@ -273,7 +274,7 @@ This will completely erase the target internal drive.
 ### Example
 
 ```
-batocera-install install nvme0n1 filename.img.gz
+batocera-install install nvme0n1 batocera-zen3-x86-64-v3-43-20260302.img.gz
 ```
 
 Make sure you specify the drive (e.g., `nvme0n1`), NOT a partition (e.g., `nvme0n1p1`).
