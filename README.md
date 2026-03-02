@@ -1,4 +1,4 @@
-# Batocera v43 – Zen3 Extended (Beta)
+# Batocera v43 – Zen3 Multilib (Beta)
 ## Zen3 / Wayland Build
 
 > Unofficial community variant built on Batocera v43.  
