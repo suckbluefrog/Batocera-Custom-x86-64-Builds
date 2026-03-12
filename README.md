@@ -224,6 +224,13 @@ Includes:
 - Utility applications
 
 ---
+## Other Additions
+- TouchHLE is added (IOS emulator -- currently up to IOS 3.0)
+- 86box
+- embedded wine tools
+
+---
+
 
 ## Docker
 
