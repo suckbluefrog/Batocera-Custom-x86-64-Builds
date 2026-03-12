@@ -307,6 +307,7 @@ Includes:
 - Extra libs for Appimages missing that are common on Desktop Distros
 - Integrated Lutris & Heroic
 - Docker & Sunshine
+- Waydroid, Virtual Machines, LXC containers
 - Enhanced ROG Ally mappings
 - Expanded system and developer tooling
 
