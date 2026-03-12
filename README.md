@@ -213,7 +213,8 @@ Useful for:
 - Desktop Linux applications
 - Testing software outside the Batocera base system
 
-
+* Note sunshine should be disabled and only 1 desktop service should be run at a time to avoid conflicts
+  
 ---
 ## Built-in Applications
 
