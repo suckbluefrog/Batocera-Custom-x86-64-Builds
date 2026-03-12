@@ -135,6 +135,86 @@ Includes:
 
 ---
 
+
+
+# Waydroid (Android Subsystem)
+
+Waydroid is included with support for **aarch64 Android applications**.
+
+This allows running many Android apps directly on the system with hardware acceleration.
+
+Features:
+
+- Wayland-native integration
+- Controller-friendly launcher support
+- aarch64 Android application compatibility
+
+### Google Play Services
+
+If using a GApps Waydroid image, Google services may report that the device is **not certified**.
+
+You can register the device ID by running:
+
+```waydroid-get-android-id``` in ssh / terminal
+
+
+Run this command over **SSH or terminal**, then register the generated ID with Google.
+
+Alternatively, disable the warning notifications:
+
+Settings  -> apps → Google Play Services → Notifications
+
+Disable the **device certification warning**.
+
+---
+
+# Virtual Machine Manager
+
+Virtualization support is included via:
+
+- **QEMU**
+- **libvirt**
+- **Virtual Machine Manager (virt-manager)**
+
+This allows running full virtual machines directly from the system.
+
+Potential uses include:
+
+- Windows virtual machines
+- Linux testing environments
+- Development systems
+
+
+
+---
+
+# Arch Linux Desktop Containers (LXC)
+
+Optional full Linux desktop environments can be installed inside **isolated LXC containers**.
+
+These desktops run in a **separate TTY session** and do not modify the base Batocera environment.
+
+Installers included:
+
+### KDE Plasma
+```
+install-arch-kde
+```
+### XFCE
+```
+install-arch-xfce
+```
+
+These create a full **Arch Linux user environment** with the `pacman` package manager.
+
+Useful for:
+
+- Development tools
+- Desktop Linux applications
+- Testing software outside the Batocera base system
+
+
+---
 ## Built-in Applications
 
 Includes:
@@ -147,7 +227,7 @@ Includes:
 
 ## Docker
 
-Docker is included.
+Docker and distrobox are included.
 
 Enable via:
 
@@ -187,6 +267,10 @@ Additional developer tools included:
 
 - `strace`
 - `pax-utils`
+- `strings`
+- `xmlstarlet` and more
+- `tree`
+- `file`
 - Low-level debugging utilities
 
 ---
@@ -236,30 +320,7 @@ Not intended for beginners.
 - Approx. 5.5GB compressed image size
 - Uses an 18GB Batocera partition to allow room for future updates
 
----
 
-## Disclaimer
-
-This is an unofficial build.
-
-- Not supported by the Batocera team
-- No warranty provided
-- Use at your own risk
-- Advanced users only
-
----
-
-## Credits
-
-Thanks to:
-
-- The Batocera Team for core development
-- Rion for initial draft of gamescope 
-- UUreel
-- Cliffy
-- Contributors from batocera.pro whose work was integrated
-
----
 
 # Installation (Internal Drive Flashing)
 
@@ -300,3 +361,47 @@ batocera-install install nvme0n1 batocera-zen3-x86-64-v3-43-20260302.img.gz
 ```
 
 Make sure you specify the drive (e.g., `nvme0n1`), NOT a partition (e.g., `nvme0n1p1`).
+
+---
+
+# How to Upgrade
+
+1. Create the upgrade directory: `/userdata/system/upgrade`
+2. put `boot.tar.xz` in it
+3. run `batocera-upgrade manual`
+4. reboot   
+
+If your Batocera partition is too small to upgrade, you may need to resize it.
+
+See the ModHacks guide:
+
+https://www.youtube.com/watch?v=lYOOFJO8y_k
+
+Recommended size:
+
+**At least 15GB Batocera partition**
+
+---
+
+## Disclaimer
+
+This is an unofficial build.
+
+- Not supported by the Batocera team
+- No warranty provided
+- Use at your own risk
+- Advanced users only
+
+---
+
+## Credits
+
+Thanks to:
+
+- The Batocera Team for core development
+- Rion for initial draft of gamescope 
+- UUreel
+- Cliffy
+- Contributors from batocera.pro whose work was integrated
+
+---
