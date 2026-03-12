@@ -69,6 +69,8 @@ Includes:
 
 Steam is integrated directly into the base system.
 
+Note: patched issues since recent runtime update from previous image
+
 - Integrated with EmulationStation (ES)
 - Custom configgens (Advanced ES settings) and launchers
 - Full Gamescope support
