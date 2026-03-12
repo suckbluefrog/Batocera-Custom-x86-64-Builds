@@ -276,10 +276,10 @@ Additional developer tools included:
 - `strace`
 - `pax-utils`
 - `strings`
-- `xmlstarlet` and more
+- `xmlstarlet` 
 - `tree`
 - `file`
-- Low-level debugging utilities
+and more low-level debugging utilities
 
 ---
 
