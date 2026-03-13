@@ -764,7 +764,6 @@ systems = {
     # ---------- Bandai RX-78 ---------- #
     "rx78":   { "name": "Bandai RX-78", "biosFiles":  [ { "md5": "", "file": "bios/rx78.zip"  },
                                                 { "md5": "f613b15c4b965013e4827d2ad79c7080", "zippedFile": "ipl.rom", "file": "bios/rx78.zip"} ] },
-
     # ---------- Casio PV-2000 ---------- #
     "pv2000":   { "name": "Casio PV-2000", "biosFiles":  [ { "md5": "", "file": "bios/pv2000.zip"  } ] },
 
