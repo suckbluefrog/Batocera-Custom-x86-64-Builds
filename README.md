@@ -215,7 +215,7 @@ Useful for:
 - Desktop Linux applications
 - Testing software outside the Batocera base system
 
-* Note Devices with only one display, 1 kb/mouse set (handhelds with multimedia keys can count as 1 set) should be used including sunshine which should be disabled and only 1 desktop service should be run at a time to avoid conflicts
+* Note Devices with only one display, 1 kb/mouse set (handhelds with multimedia keys can count as 1 set), including sunshine which should be disabled and only 1 desktop service should be run at a time to avoid conflicts
   
 ---
 ## Built-in Applications
