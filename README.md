@@ -13,7 +13,7 @@
 
 ## ⚠️ Target Audience
 
-This build is intended for **advanced users** running Zen 3–class AMD/Intel hardware and handheld devices with Wayland support.
+This build is intended for **advanced users** running Zen 3–class  AMD excavator (2015) /Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.
 
 - NVIDIA support is **experimental and untested**
 - May function on **RTX 2000-series (Turing) and newer GPUs**
