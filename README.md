@@ -1,5 +1,5 @@
-# Batocera v43 – Zen3 Multilib (Beta)
-## Zen3 / Wayland Build
+# Batocera v43 –  x86-64-v3 Multilib (Beta) "Zen3"
+## Wayland Build
 
 > Unofficial community variant built on Batocera v43.  
 > Not affiliated with or supported by the Batocera team.
@@ -13,10 +13,10 @@
 
 ## ⚠️ Target Audience
 
-This build is intended for **advanced users** running Zen 3–class  AMD excavator (2015) /Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.
+This build is intended for **advanced users** running 86-64-v3 –class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.
 
 - NVIDIA support is **experimental and untested**
-- May function on **RTX 2000-series (Turing) and newer GPUs**
+- May function on **RTX 2000-series (Turing) and newer GPUs** using NVK drivers. Expect stutter and worse performance than proprietary Nvidia on Xorg/X11
 - Stability is **not guaranteed**
 - No official support is provided
 
