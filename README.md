@@ -1,4 +1,4 @@
-# Batocera v43 –  x86-64-v3 Multilib (Beta) "Zen3"
+# Batocera v43 –  x86-64-v3 Multilib (Beta) 
 ## Wayland Build
 
 > Unofficial community variant built on Batocera v43.  
@@ -19,6 +19,7 @@ This build is intended for **advanced users** running 86-64-v3 –class  AMD exc
 - May function on **RTX 2000-series (Turing) and newer GPUs** using NVK drivers. Expect stutter and worse performance than proprietary Nvidia on Xorg/X11
 - Stability is **not guaranteed**
 - No official support is provided
+- Based on Batocera's "zen3" (a misnomer) build 
 
 This variant includes additional integrated components and tooling beyond the standard distribution and is designed for users comfortable troubleshooting their own systems.
 
