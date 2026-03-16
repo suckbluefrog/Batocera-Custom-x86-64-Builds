@@ -58,7 +58,7 @@ Includes:
   - DOS  
   - Cemu  
   - Ports  
-  - Steam
+  - Steam (Steam runs gamescope direct without nesting)
 
 <img width="1923" height="1253" alt="image" src="https://github.com/user-attachments/assets/2409f71f-f340-4f24-8661-7596dfada222" />
 
