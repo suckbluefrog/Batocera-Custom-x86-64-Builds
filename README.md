@@ -13,7 +13,7 @@
 
 ## ⚠️ Target Audience
 
-This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.  Works Best with AMD GPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer
+This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.  Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer
 
 - NVIDIA support is **experimental and untested**
 - May function on **RTX 2000-series (Turing) and newer GPUs** using NVK drivers. Expect stutter and worse performance than proprietary Nvidia on Xorg/X11
