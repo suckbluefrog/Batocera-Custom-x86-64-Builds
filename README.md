@@ -74,10 +74,10 @@ Note: patched issues since recent runtime update from previous image
 
 - Integrated with EmulationStation (ES)
 - Custom configgens (Advanced ES settings) and launchers
-- Full Gamescope support
+- Full  Gamescope support in steamdeck mode
 - No Flatpak required
 - No container add-ons required
-- Network icon / Wi-Fi detection handled via custom DBus integration
+- Network icon / Wi-Fi detection handled via custom DBus integration in steam deck mode
 - Reboot / Shutdown from gamepadui supported
 - Automatically parses Steam games into ES
 - Steam data stored in: `~/steam`
