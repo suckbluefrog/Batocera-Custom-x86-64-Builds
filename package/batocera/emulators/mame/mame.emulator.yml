@@ -1647,6 +1647,7 @@ systems:
           'On': 1
           'Off': 0
   - tvc
+  - bk
   - pc60
     features:
       - padtokeyboard
