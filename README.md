@@ -296,7 +296,7 @@ LED control fixed / added
 ### Outside Steam
 Command Button → `Alt + F4` (Quick close)
 
-### Inside Steam
+### Inside Steamdeck mode
 Command Button → `Shift + Tab` (Steam overlay/menu)
 
 ### Armory Crate Button
