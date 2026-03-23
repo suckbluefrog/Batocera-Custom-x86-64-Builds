@@ -11,6 +11,22 @@
 
 ---
 
+## 📜 Changelog 23-3-2026
+
+### Latest
+- Added  Xenia-Edge (linux vulkan tuned build), Skyemu with Retroachievemnts, lr-skyemu, Gopher64, Nanoboy-advance, free2jme, lr-Mame2015/0.160 (lr-0139/2010 was already previously added)
+- Restored lr-citra, Future Pinball, 
+- Bumped shadps4 to 0.15 and added more settings/configgen options
+- bumped dolphin to latest and added wii retroachivements
+- more flatpak fixes
+- bumped Wine-tkg-staging-wow64 and added Proton-GE 10-33
+- Added umu-launcher and dgvoodoo2 with settings/configgen options to toggle in ES
+- Bumped dosbox-x
+- Moved ROG ally hotkeys into services to prevent issues with keyboard on other devices.
+---
+
+---
+
 ## ⚠️ Target Audience
 
 This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.  Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer
