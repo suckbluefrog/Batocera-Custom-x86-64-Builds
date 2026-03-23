@@ -207,35 +207,7 @@ Potential uses include:
 
 
 
----
 
-# Arch Linux Desktop Containers (LXC)
-
-Optional full Linux desktop environments can be installed inside **isolated LXC containers**.
-
-These desktops run in a **separate TTY session** and do not modify the base Batocera environment.
-
-Installers included:
-
-### KDE Plasma
-```
-install-arch-kde
-```
-### XFCE
-```
-install-arch-xfce
-```
-
-These create a full **Arch Linux user environment** with the `pacman` package manager.
-
-Useful for:
-
-- Development tools
-- Desktop Linux applications
-- Testing software outside the Batocera base system
-
-* Note Devices with only one display, 1 kb/mouse set (handhelds with multimedia keys can count as 1 set), including sunshine which should be disabled and only 1 desktop service should be run at a time to avoid conflicts
-  
 ---
 ## Built-in Applications
 
