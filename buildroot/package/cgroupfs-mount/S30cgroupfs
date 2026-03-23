@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# Set up cgroupfs mounts.
+#
+
+use_cgroup2() {
+	grep -qw cgroup2 /proc/filesystems || return 1
+	grep -qw "cgroup_no_v1=all" /proc/cmdline || \
+	grep -qw "systemd.unified_cgroup_hierarchy=1" /proc/cmdline
+}
+
+is_cgroup2_mounted() {
+	awk '$2 == "/sys/fs/cgroup" && $3 == "cgroup2" { found=1 } END { exit !found }' /proc/mounts
+}
+
+mount_cgroup2() {
+	mkdir -p /sys/fs/cgroup
+
+	if mountpoint -q /sys/fs/cgroup && ! is_cgroup2_mounted; then
+		umount /sys/fs/cgroup 2>/dev/null || true
+	fi
+
+	if ! mountpoint -q /sys/fs/cgroup; then
+		mount -t cgroup2 none /sys/fs/cgroup
+	fi
+
+	is_cgroup2_mounted
+}
+
+start() {
+	printf "Mounting cgroupfs hierarchy: "
+
+	if use_cgroup2; then
+		mount_cgroup2
+		[ $? = 0 ] && echo "OK (cgroup2)" || echo "FAIL"
+	else
+		/usr/bin/cgroupfs-mount
+		[ $? = 0 ] && echo "OK" || echo "FAIL"
+	fi
+}
+
+stop() {
+	printf "Unmounting cgroupfs hierarchy: "
+
+	if is_cgroup2_mounted; then
+		umount /sys/fs/cgroup
+		[ $? = 0 ] && echo "OK (cgroup2)" || echo "FAIL"
+	else
+		/usr/bin/cgroupfs-umount
+		[ $? = 0 ] && echo "OK" || echo "FAIL"
+	fi
+}
+
+restart() {
+	stop
+	start
+}
+
+case "$1" in
+  start)
+      start
+	;;
+  stop)
+      stop
+	;;
+  restart|reload)
+      restart
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac

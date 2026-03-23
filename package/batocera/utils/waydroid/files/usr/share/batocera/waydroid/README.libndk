@@ -1,0 +1,15 @@
+Vendor the Waydroid ARM translation payload here if you want fresh images to
+seed libndk automatically.
+
+Expected layout:
+
+  /usr/share/batocera/waydroid/libndk/system/...
+  /usr/share/batocera/waydroid/libndk/vendor/...
+
+The helper /usr/bin/batocera-waydroid-arm will copy those files into:
+
+  /var/lib/waydroid/overlay/system
+  /var/lib/waydroid/overlay/vendor
+
+and will update /var/lib/waydroid/waydroid.cfg with the required native bridge
+and ABI properties for arm32 and arm64 app support.

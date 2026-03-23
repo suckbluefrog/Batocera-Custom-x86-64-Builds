@@ -1,0 +1,116 @@
+################################################################################
+#
+# lxc
+#
+################################################################################
+
+LXC_VERSION = 6.0.6
+LXC_SITE = https://linuxcontainers.org/downloads/lxc
+LXC_LICENSE = GPL-2.0 (some tools), LGPL-2.1+
+LXC_LICENSE_FILES = LICENSE.GPL2 LICENSE.LGPL2.1
+LXC_CPE_ID_VENDOR = linuxcontainers
+LXC_DEPENDENCIES = host-pkgconf
+LXC_INSTALL_STAGING = YES
+
+LXC_CONF_OPTS = \
+	-Dexamples=false \
+	-Dman=false
+
+ifeq ($(BR2_PACKAGE_LIBAPPARMOR),y)
+LXC_CONF_OPTS += -Dapparmor=true
+LXC_DEPENDENCIES += libapparmor
+else
+LXC_CONF_OPTS += -Dapparmor=false
+endif
+
+ifeq ($(BR2_PACKAGE_BASH_COMPLETION),y)
+LXC_DEPENDENCIES += bash-completion
+endif
+
+ifeq ($(BR2_PACKAGE_LIBCAP),y)
+LXC_CONF_OPTS += -Dcapabilities=true
+LXC_DEPENDENCIES += libcap
+else
+LXC_CONF_OPTS += -Dcapabilities=false
+endif
+
+ifeq ($(BR2_PACKAGE_LIBSECCOMP),y)
+LXC_CONF_OPTS += -Dseccomp=true
+LXC_DEPENDENCIES += libseccomp
+else
+LXC_CONF_OPTS += -Dseccomp=false
+endif
+
+ifeq ($(BR2_PACKAGE_LIBSELINUX),y)
+LXC_CONF_OPTS += -Dselinux=true
+LXC_DEPENDENCIES += libselinux
+else
+LXC_CONF_OPTS += -Dselinux=false
+endif
+
+ifeq ($(BR2_PACKAGE_LIBURING),y)
+LXC_CONF_OPTS += -Dio-uring-event-loop=true
+LXC_DEPENDENCIES += liburing
+else
+LXC_CONF_OPTS += -Dio-uring-event-loop=false
+endif
+
+ifeq ($(BR2_PACKAGE_LINUX_PAM),y)
+LXC_CONF_OPTS += -Dpam-cgroup=true
+LXC_DEPENDENCIES += linux-pam
+else
+LXC_CONF_OPTS += -Dpam-cgroup=false
+endif
+
+ifeq ($(BR2_PACKAGE_OPENSSL),y)
+LXC_CONF_OPTS += -Dopenssl=true
+LXC_DEPENDENCIES += openssl
+else
+LXC_CONF_OPTS += -Dopenssl=false
+endif
+
+ifeq ($(BR2_PACKAGE_DBUS),y)
+LXC_CONF_OPTS += -Ddbus=true
+LXC_DEPENDENCIES += dbus
+else
+LXC_CONF_OPTS += -Ddbus=false
+endif
+
+ifeq ($(BR2_INIT_SYSTEMD),y)
+LXC_CONF_OPTS += -Dinit-script=systemd
+else ifeq ($(BR2_INIT_SYSV),y)
+LXC_CONF_OPTS += -Dinit-script=sysvinit
+else
+LXC_CONF_OPTS += -Dinit-script=
+endif
+
+define LXC_INSTALL_BATOCERA_LINUX_DESKTOPS
+	rm -f \
+		$(STAGING_DIR)/usr/bin/arch-vt-enter-kde \
+		$(STAGING_DIR)/usr/bin/arch-vt-enter-xfce \
+		$(STAGING_DIR)/usr/bin/arch-vt-return \
+		$(STAGING_DIR)/usr/bin/arch-kde-lxc.sh \
+		$(STAGING_DIR)/usr/bin/install-arch-kde.sh \
+		$(STAGING_DIR)/usr/bin/install-arch-xfce.sh \
+		$(TARGET_DIR)/usr/bin/arch-vt-enter-kde \
+		$(TARGET_DIR)/usr/bin/arch-vt-enter-xfce \
+		$(TARGET_DIR)/usr/bin/arch-vt-return \
+		$(TARGET_DIR)/usr/bin/arch-kde-lxc.sh \
+		$(TARGET_DIR)/usr/bin/install-arch-kde.sh \
+		$(TARGET_DIR)/usr/bin/install-arch-xfce.sh
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-kde-lxc \
+		$(TARGET_DIR)/usr/bin/arch-kde-lxc
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-vt-enter-kde \
+		$(TARGET_DIR)/usr/bin/arch-vt-enter-kde
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-vt-enter-xfce \
+		$(TARGET_DIR)/usr/bin/arch-vt-enter-xfce
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-vt-return \
+		$(TARGET_DIR)/usr/bin/arch-vt-return
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/install-arch-kde \
+		$(TARGET_DIR)/usr/bin/install-arch-kde
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/install-arch-xfce \
+		$(TARGET_DIR)/usr/bin/install-arch-xfce
+endef
+LXC_POST_INSTALL_TARGET_HOOKS += LXC_INSTALL_BATOCERA_LINUX_DESKTOPS
+
+$(eval $(meson-package))

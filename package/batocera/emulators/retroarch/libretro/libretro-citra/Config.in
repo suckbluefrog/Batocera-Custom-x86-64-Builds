@@ -1,0 +1,11 @@
+config BR2_PACKAGE_LIBRETRO_CITRA
+    bool "libretro-citra"
+    depends on BR2_INSTALL_LIBSTDCPP
+    depends on BR2_PACKAGE_HAS_LIBGL
+    help
+      A libretro Nintendo 3DS core.
+
+      https://github.com/libretro/citra
+
+comment "LIBRETRO_CITRA needs a toolchain w/ C++ and OpenGL"
+    depends on !BR2_INSTALL_LIBSTDCPP || !BR2_PACKAGE_HAS_LIBGL

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<gameList>
+  <game>
+    <path>./Steam GamepadUI.steam</path>
+    <name>Steam Deck Mode</name>
+    <image>./images/Steam.png</image>
+  </game>
+  <game>
+    <path>./Steam GamepadUI No Gamescope.steam</path>
+    <name>Steam GamepadUI</name>
+    <image>./images/Steam.png</image>
+  </game>
+  <game>
+    <path>./Steam Desktop.steam</path>
+    <name>Desktop Mode</name>
+    <image>./images/Steam.png</image>
+  </game>
+</gameList>

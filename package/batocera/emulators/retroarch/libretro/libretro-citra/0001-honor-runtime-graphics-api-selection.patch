@@ -1,0 +1,22 @@
+diff --git a/src/citra_libretro/citra_libretro.cpp b/src/citra_libretro/citra_libretro.cpp
+index 6ef51f0..1dd5dfb 100644
+--- a/src/citra_libretro/citra_libretro.cpp
++++ b/src/citra_libretro/citra_libretro.cpp
+@@ -129,7 +129,7 @@ void LibRetro::OnConfigureEnvironment() {
+     }
+ 
+     retro_variable values[] = {
+-        //{"citra_graphics_api", "Graphics API; Auto|Vulkan|OpenGL"},
++        {"citra_graphics_api", "Graphics API; Auto|Vulkan|OpenGL"},
+         {"citra_use_cpu_jit", "Enable CPU JIT; enabled|disabled"},
+         {"citra_cpu_scale", cpuScale.c_str()},
+         {"citra_use_shader_jit", "Enable shader JIT; enabled|disabled"},
+@@ -252,7 +252,7 @@ void UpdateSettings() {
+         Settings::values.cpu_clock_percentage = scale;
+     }
+ 
+-    auto graphicsApi = std::string("OpenGL");//LibRetro::FetchVariable("citra_graphics_api", "Auto");
++    auto graphicsApi = LibRetro::FetchVariable("citra_graphics_api", "Auto");
+     if (graphicsApi == "Auto") {
+         Settings::values.graphics_api = LibRetro::GetPrefferedHWRenderer();
+     } else if (graphicsApi == "Vulkan") {

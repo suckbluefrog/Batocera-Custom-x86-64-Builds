@@ -1,0 +1,4 @@
+mode=steamos
+gamepadui=1
+gamescope=1
+command=/usr/bin/steam-direct-session.sh

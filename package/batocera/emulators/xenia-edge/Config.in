@@ -1,0 +1,9 @@
+config BR2_PACKAGE_XENIA_EDGE
+    bool "xenia-edge"
+    depends on BR2_x86_64
+    select BR2_PACKAGE_PYTHON_TOML
+    help
+      Xenia Edge is an experimental fork of Xenia Canary with Linux and Vulkan
+      enhancements, distributed here as a native Linux AppImage.
+
+      https://github.com/has207/xenia-edge

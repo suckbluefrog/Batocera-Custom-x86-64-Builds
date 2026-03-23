@@ -1,0 +1,34 @@
+#!/bin/bash
+set -eu
+
+USER_DIR="/userdata/system/configs/hotkeygen"
+USER_FILE="${USER_DIR}/common_context.ally.conf"
+SYSTEM_FILE="/usr/share/hotkeygen/common_context.ally.conf"
+
+reload_hotkeys() {
+    /usr/bin/hotkeygen --default-context >/dev/null 2>&1 || true
+    /usr/bin/hotkeygen --reload >/dev/null 2>&1 || true
+}
+
+case "${1:-}" in
+    start)
+        mkdir -p "${USER_DIR}"
+        install -m 0644 "${SYSTEM_FILE}" "${USER_FILE}"
+        reload_hotkeys
+        ;;
+    stop)
+        rm -f "${USER_FILE}"
+        reload_hotkeys
+        ;;
+    status)
+        if [ -f "${USER_FILE}" ]; then
+            echo "allyhotkeys: enabled"
+        else
+            echo "allyhotkeys: disabled"
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status}" >&2
+        exit 1
+        ;;
+esac

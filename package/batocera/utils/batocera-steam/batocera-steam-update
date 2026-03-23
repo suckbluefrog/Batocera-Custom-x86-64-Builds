@@ -1,0 +1,288 @@
+#!/bin/bash
+# SPDX-FileCopyrightText: 2026 suckbluefrog
+set -euo pipefail
+
+log="/userdata/system/logs/steam.log"
+tmp_xml="/tmp/batocera-steam-update.tmp"
+es_server="http://127.0.0.1:1234"
+
+roms_dir="/userdata/roms/steam"
+images_dir="${roms_dir}/images"
+gamelist_xml="${roms_dir}/gamelist.xml"
+steam_home="/userdata/system/steam"
+steamapps_dir="${steam_home}/steamapps"
+generic_image_rel=""
+
+mkdir -p "$(dirname "$log")" "${roms_dir}" "${images_dir}"
+
+xml_escape() {
+    local value="$1"
+    value="${value//&/&amp;}"
+    value="${value//</&lt;}"
+    value="${value//>/&gt;}"
+    value="${value//\"/&quot;}"
+    value="${value//\'/&apos;}"
+    printf '%s' "${value}"
+}
+
+es_add_game_begin() {
+    echo "<gameList>" > "${tmp_xml}"
+}
+
+es_add_game_end() {
+    echo "</gameList>" >> "${tmp_xml}"
+
+    curl -s -X POST \
+        -H "Content-type: application/x-www-form-urlencoded" \
+        -H "Accept: text/plain" \
+        "${es_server}/addgames/steam" \
+        -d @"${tmp_xml}" > /dev/null || true
+
+    # Persist Steam metadata for ES and for startup consistency.
+    # Write after ES API update to avoid stale entries being merged back in.
+    cp -f "${tmp_xml}" "${gamelist_xml}" 2>/dev/null || true
+}
+
+es_add_game() {
+    local game_path="$1"
+    local game_name="$2"
+    local game_image="$3"
+    local game_emulator="${4:-}"
+    local game_core="${5:-}"
+    local emulator_xml=""
+    local core_xml=""
+
+    if [[ -n "${game_emulator}" ]]; then
+        emulator_xml="  <emulator>$(xml_escape "${game_emulator}")</emulator>"
+    fi
+
+    if [[ -n "${game_core}" ]]; then
+        core_xml="  <core>$(xml_escape "${game_core}")</core>"
+    fi
+
+    cat >> "${tmp_xml}" <<EOF
+<game>
+  <path>$(xml_escape "${game_path}")</path>
+  <name>$(xml_escape "${game_name}")</name>
+  <desc></desc>
+  <rating></rating>
+  <releasedate></releasedate>
+  <developer></developer>
+  <publisher></publisher>
+  <genre></genre>
+  <players></players>
+  <image>$(xml_escape "${game_image}")</image>
+${emulator_xml}
+${core_xml}
+  <manual></manual>
+  <video></video>
+</game>
+EOF
+}
+
+read_acf_value() {
+    local file="$1"
+    local key="$2"
+
+    sed -n -E "s/^[[:space:]]*\"${key}\"[[:space:]]*\"(.*)\"[[:space:]]*$/\1/p" "${file}" | head -n 1
+}
+
+discover_libraries() {
+    local -a libraries=()
+    local -a libraryfolders_files=()
+    local -a steam_roots=()
+    local path=""
+    local line
+
+    steam_roots+=("/userdata/system/steam")
+    steam_roots+=("/userdata/system/.steam/steam")
+    steam_roots+=("/userdata/system/.local/share/Steam")
+
+    for root in "${steam_roots[@]}"; do
+        if [[ -d "${root}/steamapps" ]]; then
+            libraries+=("${root}/steamapps")
+        fi
+
+        if [[ -f "${root}/steamapps/libraryfolders.vdf" ]]; then
+            libraryfolders_files+=("${root}/steamapps/libraryfolders.vdf")
+        fi
+    done
+
+    for libraryfolders_file in "${libraryfolders_files[@]}"; do
+        while IFS= read -r line; do
+            if [[ "${line}" =~ ^[[:space:]]*\"path\"[[:space:]]*\"(.*)\"[[:space:]]*$ ]]; then
+                path="${BASH_REMATCH[1]}"
+            elif [[ "${line}" =~ ^[[:space:]]*\"[0-9]+\"[[:space:]]*\"(.*)\"[[:space:]]*$ ]]; then
+                # Legacy format: "1" "/path/to/library"
+                path="${BASH_REMATCH[1]}"
+            else
+                continue
+            fi
+
+            path="${path//\\\\/\\}"
+            path="${path%/}"
+
+            if [[ -d "${path}/steamapps" ]]; then
+                libraries+=("${path}/steamapps")
+            elif [[ -d "${path}" ]]; then
+                libraries+=("${path}")
+            fi
+        done < "${libraryfolders_file}"
+    done
+
+    printf '%s\n' "${libraries[@]}"
+}
+
+ensure_generic_image() {
+    local dst="${images_dir}/Steam.png"
+    local source=""
+
+    if [[ -f "${dst}" ]]; then
+        generic_image_rel="./images/Steam.png"
+        return
+    fi
+
+    for source in \
+        "/usr/share/batocera/datainit/roms/steam/images/Steam.png" \
+        "/usr/share/emulationstation/themes/es-theme-carbon/art/consoles/steam.png" \
+        "/usr/share/icons/hicolor/512x512/apps/steam.png" \
+        "/usr/share/icons/hicolor/256x256/apps/steam.png" \
+        "/usr/share/icons/hicolor/128x128/apps/steam.png"
+    do
+        if [[ -f "${source}" ]]; then
+            cp "${source}" "${dst}"
+            generic_image_rel="./images/Steam.png"
+            return
+        fi
+    done
+
+    generic_image_rel=""
+}
+
+find_grid_image() {
+    local appid="$1"
+    local found=""
+
+    while IFS= read -r -d '' found; do
+        printf '%s\n' "${found}"
+        return 0
+    done < <(find "${steam_home}/userdata" -type f \( \
+        -name "${appid}p.png" -o \
+        -name "${appid}.png" -o \
+        -name "${appid}_library_600x900.jpg" -o \
+        -name "${appid}_library_hero.jpg" -o \
+        -name "${appid}_hero.jpg" -o \
+        -name "${appid}_header.jpg" \
+    \) -print0 2>/dev/null)
+
+    return 1
+}
+
+copy_game_image() {
+    local appid="$1"
+    local grid_image=""
+    local ext=""
+    local dst=""
+
+    if grid_image="$(find_grid_image "${appid}" 2>/dev/null || true)"; [[ -n "${grid_image}" ]]; then
+        ext="${grid_image##*.}"
+        ext="${ext,,}"
+        if [[ "${ext}" != "png" && "${ext}" != "jpg" && "${ext}" != "jpeg" ]]; then
+            ext="png"
+        fi
+        dst="${images_dir}/steam-app-${appid}.${ext}"
+        cp "${grid_image}" "${dst}" 2>/dev/null || true
+        if [[ -f "${dst}" ]]; then
+            printf './images/%s\n' "$(basename "${dst}")"
+            return
+        fi
+    fi
+
+    printf '%s\n' "${generic_image_rel}"
+}
+
+write_base_launchers() {
+    local gamepadui_command=""
+
+    if [[ -x /usr/bin/steam-direct-session.sh ]]; then
+        gamepadui_command=$'command=/usr/bin/steam-direct-session.sh\n'
+    fi
+
+    # Remove legacy ambiguous launcher.
+    rm -f "${roms_dir}/Steam.steam"
+    rm -f "${roms_dir}/Steam.steam.disabled"
+    rm -f "${roms_dir}/Steam (GamepadUI).steam"
+    rm -f "${roms_dir}/Steam (Desktop).steam"
+    rm -f "${roms_dir}/Steam GamepadUI No Gamescope.steam"
+    rm -f "${roms_dir}/ProtonUp-Qt.steam"
+    rm -f "${roms_dir}/Steam ROM Manager.steam"
+
+    cat > "${roms_dir}/Steam GamepadUI.steam" <<EOF
+mode=steamos
+gamepadui=1
+gamescope=1
+EOF
+    if [[ -n "${gamepadui_command}" ]]; then
+        printf '%s' "${gamepadui_command}" >> "${roms_dir}/Steam GamepadUI.steam"
+    fi
+
+    cat > "${roms_dir}/Steam GamepadUI No Gamescope.steam" <<'EOF'
+mode=gamepadui
+gamepadui=1
+gamescope=0
+EOF
+
+    cat > "${roms_dir}/Steam Desktop.steam" <<'EOF'
+mode=desktop
+gamepadui=0
+gamescope=0
+EOF
+}
+
+echo "Updating Steam launchers from app manifests." >> "${log}"
+
+write_base_launchers
+find "${roms_dir}" -maxdepth 1 -type f -name 'steam-app-*.steam' -delete
+
+ensure_generic_image
+
+es_add_game_begin
+es_add_game "./Steam GamepadUI.steam" "Steam Deck Mode" "${generic_image_rel}"
+es_add_game "./Steam GamepadUI No Gamescope.steam" "Steam GamepadUI" "${generic_image_rel}"
+es_add_game "./Steam Desktop.steam" "Desktop Mode" "${generic_image_rel}"
+
+declare -A seen_libraries=()
+declare -A seen_appids=()
+declare -i game_count=0
+
+while IFS= read -r library; do
+    if [[ -z "${library}" || -n "${seen_libraries["${library}"]+x}" ]]; then
+        continue
+    fi
+    seen_libraries["${library}"]=1
+
+    while IFS= read -r -d '' manifest; do
+        appid="$(read_acf_value "${manifest}" "appid" || true)"
+        if [[ ! "${appid}" =~ ^[0-9]+$ ]] || [[ -n "${seen_appids["${appid}"]+x}" ]]; then
+            continue
+        fi
+
+        seen_appids["${appid}"]=1
+        name="$(read_acf_value "${manifest}" "name" || true)"
+        if [[ -z "${name}" ]]; then
+            name="Steam App ${appid}"
+        fi
+
+        launcher_name="steam-app-${appid}.steam"
+        cat > "${roms_dir}/${launcher_name}" <<EOF
+appid=${appid}
+EOF
+
+        image_rel="$(copy_game_image "${appid}")"
+        es_add_game "./${launcher_name}" "${name}" "${image_rel}"
+        game_count+=1
+    done < <(find "${library}" -maxdepth 1 -type f -name 'appmanifest_*.acf' -print0 2>/dev/null)
+done < <(discover_libraries)
+
+echo "Steam launcher update complete: ${game_count} installed game(s) indexed." >> "${log}"
+es_add_game_end

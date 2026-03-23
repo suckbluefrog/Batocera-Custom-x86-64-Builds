@@ -1,0 +1,8 @@
+config BR2_PACKAGE_UMU_LAUNCHER
+	bool "umu-launcher"
+	depends on BR2_x86_64
+	select BR2_PACKAGE_LIBCURL_CURL
+	help
+	  Unified Linux Wine Game Launcher.
+
+	  https://github.com/Open-Wine-Components/umu-launcher

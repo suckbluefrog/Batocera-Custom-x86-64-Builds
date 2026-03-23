@@ -1,0 +1,6 @@
+config BR2_PACKAGE_LIBRETRO_MAME2015
+	bool "libretro-mame2015"
+	help
+	  A port of MAME 0.160-ish to libretro
+
+	  https://github.com/libretro/mame2015-libretro

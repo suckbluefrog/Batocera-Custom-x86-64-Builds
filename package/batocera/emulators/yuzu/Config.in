@@ -1,0 +1,8 @@
+config BR2_PACKAGE_YUZU
+	bool "Yuzu (Nintendo Switch)"
+	depends on BR2_x86_64
+	help
+	  Yuzu Nintendo Switch emulator (AppImage).
+
+	  This package installs the Yuzu AppImage into /usr/share/yuzu
+	  with a wrapper script in /usr/bin/yuzu.

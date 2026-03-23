@@ -1,0 +1,15 @@
+--- a/src/core/hle/service/http/http_c.h
++++ b/src/core/hle/service/http/http_c.h
+@@ -17,6 +17,12 @@
+ #if defined(__ANDROID__)
+ #include <ifaddrs.h>
+ #endif
++#ifndef CPPHTTPLIB_OPENSSL_SUPPORT
++#define CPPHTTPLIB_OPENSSL_SUPPORT
++#endif
++#include <openssl/evp.h>
++#include <openssl/x509.h>
++
+ #include <httplib.h>
+ #include "core/hle/ipc_helpers.h"
+ #include "core/hle/kernel/shared_memory.h"

@@ -1,0 +1,14 @@
+config BR2_PACKAGE_FEX_EMU
+	bool "fex-emu"
+	select BR2_PACKAGE_OPENSSL
+	select BR2_PACKAGE_SQUASHFS
+	select BR2_PACKAGE_LLVM
+	select BR2_PACKAGE_SQUASHFUSE
+	help
+	  FEX-Emu is a fast x86 and x86-64 Linux emulator that allows
+	  running x86/x86_64 applications on AArch64 Linux systems.
+
+	  This enables transparent execution of x86/x86-64 binaries
+	  via Linux binfmt_misc, including support for Steam gaming.
+
+	  https://github.com/FEX-Emu/FEXS
