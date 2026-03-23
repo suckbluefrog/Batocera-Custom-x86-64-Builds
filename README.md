@@ -23,9 +23,9 @@
 - Added umu-launcher and dgvoodoo2 with settings/configgen options to toggle in ES
 - Bumped dosbox-x
 - Moved ROG ally hotkeys into services to prevent issues with keyboard on other devices.
+- Added TDP controls to bactocera-control-center as well as Reboot and Shutdown options
 ---
 
----
 
 ## ⚠️ Target Audience
 
