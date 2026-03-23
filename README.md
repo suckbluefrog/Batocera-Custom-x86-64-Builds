@@ -352,45 +352,6 @@ Not intended for beginners.
 
 
 
-# Installation (Internal Drive Flashing)
-
-### Step 1
-Flash this image to an external bootable USB or SD card first.
-
-### Step 2
-Boot from it, connect to network, configure as usual.
-
-Copy the `.img.gz` file to:
-
-`/userdata/system`  
-or  
-`~/`
-
-### Step 3
-Find your internal drive:
-
-```
-lsblk
-```
-
-### Step 4
-From the directory containing the image:
-
-```
-e.g. cd ~/
-batocera-install install <drive> <filename.img.gz>
-```
-
-⚠️ **WARNING:**  
-This will completely erase the target internal drive.
-
-### Example
-
-```
-batocera-install install nvme0n1 batocera-zen3-x86-64-v3-43-20260302.img.gz
-```
-
-Make sure you specify the drive (e.g., `nvme0n1`), NOT a partition (e.g., `nvme0n1p1`).
 
 ---
 
