@@ -2,6 +2,7 @@
 
 BOOTCONF="/boot/batocera-boot.conf"
 REBOOT_FLAG=/var/run/emulationstation-standalone
+LOCK_FILE=/var/run/emulationstation-standalone.lock
 DOCKED_FLAG="/var/run/batocera-docked"
 log="/userdata/system/logs/display.log"
 
@@ -12,6 +13,15 @@ fi
 # Flag to reboot at each stop
 # ES is stopped : in case of crash, in case of some options are changed (language, video mode)
 touch "${REBOOT_FLAG}" || exit 1
+
+# Ensure there is only one wrapper process at a time. Labwc autostart,
+# service restarts, and recovery paths can otherwise race and stack wrappers.
+exec 9>"${LOCK_FILE}" || exit 1
+if ! flock -n 9; then
+    echo "Standalone: Another wrapper instance is already active; exiting." >> "$log"
+    exit 0
+fi
+
 # Environment
 export HOME=/userdata/system
 

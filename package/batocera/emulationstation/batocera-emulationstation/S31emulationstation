@@ -8,6 +8,18 @@ BOOTCONF="/boot/batocera-boot.conf"
 FIFO_PATH="/tmp/es-resume.fifo"
 SUSPEND_FLAG="/tmp/suspend.please"
 
+frontend_running() {
+	pgrep -f '/usr/bin/emulationstation-standalone' >/dev/null 2>&1 || \
+	pidof /usr/bin/emulationstation >/dev/null 2>&1
+}
+
+compositor_running() {
+	for COMPOSITOR in openbox sway labwc; do
+		pidof "$COMPOSITOR" >/dev/null 2>&1 && return 0
+	done
+	return 1
+}
+
 case "$1" in
 	start)
 		# Clean up any old pipe and create a new one for communication
@@ -17,7 +29,15 @@ case "$1" in
 
 		enabled="$(/usr/bin/batocera-settings-get system.es.atstartup)"
 		if [ "$enabled" != "0" ]; then
-			%BATOCERA_EMULATIONSTATION_CMD% %BATOCERA_EMULATIONSTATION_POSTFIX%
+			if frontend_running; then
+				exit 0
+			fi
+
+			if compositor_running; then
+				emulationstation-standalone &
+			else
+				%BATOCERA_EMULATIONSTATION_CMD% %BATOCERA_EMULATIONSTATION_POSTFIX%
+			fi
 		fi
 		;;
 
@@ -27,6 +47,8 @@ case "$1" in
 		done
 
 		emulationstation-standalone --stop-rebooting 2>/dev/null
+		pkill -TERM -f '/usr/bin/emulationstation-standalone' 2>/dev/null || true
+		pkill -TERM -f 'dbus-run-session -- emulationstation' 2>/dev/null || true
 
 		if [ -n "$COMPOSITOR" ]; then
 			case "$COMPOSITOR" in
@@ -39,6 +61,8 @@ case "$1" in
 		# Send the standard terminate signal (SIGTERM) to other processes.
 		killall touchegg         2>/dev/null
 		killall emulationstation 2>/dev/null
+		pkill -KILL -f '/usr/bin/emulationstation-standalone' 2>/dev/null || true
+		pkill -KILL -f 'dbus-run-session -- emulationstation' 2>/dev/null || true
 
 		# Forcefully kill the compositor if they're still running.
 		if [ -n "$COMPOSITOR" ] && pidof "$COMPOSITOR" >/dev/null; then

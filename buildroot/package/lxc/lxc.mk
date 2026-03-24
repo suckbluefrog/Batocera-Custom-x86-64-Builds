@@ -84,33 +84,4 @@ else
 LXC_CONF_OPTS += -Dinit-script=
 endif
 
-define LXC_INSTALL_BATOCERA_LINUX_DESKTOPS
-	rm -f \
-		$(STAGING_DIR)/usr/bin/arch-vt-enter-kde \
-		$(STAGING_DIR)/usr/bin/arch-vt-enter-xfce \
-		$(STAGING_DIR)/usr/bin/arch-vt-return \
-		$(STAGING_DIR)/usr/bin/arch-kde-lxc.sh \
-		$(STAGING_DIR)/usr/bin/install-arch-kde.sh \
-		$(STAGING_DIR)/usr/bin/install-arch-xfce.sh \
-		$(TARGET_DIR)/usr/bin/arch-vt-enter-kde \
-		$(TARGET_DIR)/usr/bin/arch-vt-enter-xfce \
-		$(TARGET_DIR)/usr/bin/arch-vt-return \
-		$(TARGET_DIR)/usr/bin/arch-kde-lxc.sh \
-		$(TARGET_DIR)/usr/bin/install-arch-kde.sh \
-		$(TARGET_DIR)/usr/bin/install-arch-xfce.sh
-	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-kde-lxc \
-		$(TARGET_DIR)/usr/bin/arch-kde-lxc
-	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-vt-enter-kde \
-		$(TARGET_DIR)/usr/bin/arch-vt-enter-kde
-	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-vt-enter-xfce \
-		$(TARGET_DIR)/usr/bin/arch-vt-enter-xfce
-	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/arch-vt-return \
-		$(TARGET_DIR)/usr/bin/arch-vt-return
-	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/install-arch-kde \
-		$(TARGET_DIR)/usr/bin/install-arch-kde
-	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_BATOCERA_PATH)/archscripts/install-arch-xfce \
-		$(TARGET_DIR)/usr/bin/install-arch-xfce
-endef
-LXC_POST_INSTALL_TARGET_HOOKS += LXC_INSTALL_BATOCERA_LINUX_DESKTOPS
-
 $(eval $(meson-package))
