@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Multilib addition - Copyright (C) 2026-suckbluefrog (suckbluefrog@proton.me)
+
+
 PROJECT_DIR    := $(shell pwd)
 DL_DIR         ?= $(PROJECT_DIR)/dl
 OUTPUT_DIR     ?= $(PROJECT_DIR)/output
@@ -170,7 +174,8 @@ dl-dir:
 	$(if $(PKG),,$(error "PKG not specified!"))
 
 	@$(MAKE) $*-build CMD=$(PKG)
-
+	
+# Multilib added by suckbluefrog@proton.me
 # Build optional 32-bit multilib stacks first (armhf and/or i386),
 # then the normal image target.
 %-multilib: %-supported

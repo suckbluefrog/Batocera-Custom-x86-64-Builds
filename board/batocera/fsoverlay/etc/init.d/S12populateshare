@@ -138,6 +138,7 @@ for FILE in music bios extractions kodi library saves screenshots recordings spl
             system/configs/hotkeygen \
             system/configs/umtool \
             system/configs/theforceengine \
+            system/scripts/50-ally-steam-hotkeys.sh \
             system/batocera.conf \
             system/pacman/hooks/batocera-install.hook \
             system/pacman/hooks/batocera-uninstall.hook \

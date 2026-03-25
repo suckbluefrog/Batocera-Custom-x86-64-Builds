@@ -182,14 +182,14 @@ echo "Generating target2 (${TARGET2_DIR})..."
 mkdir -p "${TARGET2_DIR}" || exit 1
 # Keep each squashfs below FAT32's per-file limit by moving heavy, static assets
 # into the secondary image mounted by initramfs.
-#
-# Do not move /usr/share wholesale: post-image still reads
-# /usr/share/batocera/batocera.version and related metadata from TARGET_DIR.
 for XDIR in \
     lib/firmware \
     lib \
     lib32 \
-    usr/lib/libretro
+    usr/lib/libretro \
+    usr/share/batocera/apps \
+    usr/share/lutris \
+    usr/share/heroic
 do
     echo -n "${XDIR}..."
     if test -e "${TARGET_DIR}/${XDIR}"
@@ -200,58 +200,10 @@ do
 	echo "OK."
     elif test -d "${TARGET2_DIR}/${XDIR}"
     then
-	echo "Already in target2. Continuing..."
+    echo "Already in target2. Continuing..."
     else
 	echo "${TARGET_DIR}/${XDIR} not found."
 	exit 1
-    fi
-done
-
-# Optional large data trees. These vary by target/package selection, so skip
-# missing directories. Keep /usr/share/batocera metadata in TARGET_DIR.
-for XDIR in \
-    usr/share/batocera/apps \
-    usr/share/batocera/datainit \
-    usr/share/batocera/shaders \
-    usr/share/batocera/guns-precalibrations \
-    usr/share/batocera/waydroid \
-    usr/share/batocera/music \
-    usr/share/batocera/splash \
-    usr/share/qemu \
-    usr/share/locale \
-    usr/share/wine \
-    usr/share/emulationstation \
-    usr/share/heroic \
-    usr/share/soundfonts \
-    usr/share/lr-mame \
-    usr/share/kodi \
-    usr/share/scummvm \
-    usr/share/fonts \
-    usr/share/hypseus-singe \
-    usr/share/clc \
-    usr/share/eden \
-    usr/share/yuzu \
-    usr/share/steam \
-    usr/share/ppsspp \
-    usr/share/icons \
-    usr/share/xenia-edge \
-    usr/share/sunshine \
-    usr/share/dosbox-x \
-    usr/share/duckstation \
-    usr/share/libretro
-do
-    echo -n "${XDIR}..."
-    if test -e "${TARGET_DIR}/${XDIR}"
-    then
-	mkdir -p "${TARGET2_DIR}/${XDIR}" || exit 1
-	rsync -a "${TARGET_DIR}/${XDIR}/" "${TARGET2_DIR}/${XDIR}/" || exit 1
-	rm -rf "${TARGET_DIR}/${XDIR}/" || exit 1
-	echo "OK."
-    elif test -d "${TARGET2_DIR}/${XDIR}"
-    then
-	echo "Already in target2. Continuing..."
-    else
-	echo "Skipping."
     fi
 done
 
