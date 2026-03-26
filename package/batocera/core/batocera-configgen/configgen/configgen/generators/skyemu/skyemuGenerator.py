@@ -129,7 +129,7 @@ class SkyEmuGenerator(Generator):
     def getHotkeysContext(self) -> HotkeysContext:
         return {
             "name": "skyemu",
-            "keys": {"exit": ["KEY_LEFTALT", "KEY_F4"]},
+            "keys": {"exit": "batocera-es-swissknife --emukill 0.5"},
         }
 
     def getMouseMode(self, config, rom):
