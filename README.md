@@ -10,6 +10,18 @@
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
+## 📜 Changelog 26-3-2026
+
+### Latest
+- More ES/Configgen options added to Xenia emulators
+- Added Gamescope to Xenia emulators
+- Fixed Skyemu not closing 
+- Enabled Retroachievements to lr-skyemu
+- Pached Dolphin Standalone to play achivement sound (can disable in es options)
+- Testing Achievement sounds on Xenia, RPCS3, Shadps4
+- Extract XISO and Pkg tool added to F1 (experimental -- needs more work)
+  Proton-GE to 10-34
+---
 
 ## 📜 Changelog 23-3-2026
 
