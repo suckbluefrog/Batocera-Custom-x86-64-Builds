@@ -20,7 +20,7 @@
 - Pached Dolphin Standalone to play achivement sound (can disable in es options)
 - Testing Achievement sounds on Xenia, RPCS3, Shadps4
 - Extract XISO and Pkg tool added to F1 (experimental -- needs more work)
-  Proton-GE to 10-34
+- Proton-GE to 10-34
 ---
 
 ## 📜 Changelog 23-3-2026
