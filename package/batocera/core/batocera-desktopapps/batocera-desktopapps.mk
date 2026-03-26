@@ -162,6 +162,12 @@ ifeq ($(BR2_PACKAGE_BATOCERA_WINE),y)
   BATOCERA_DESKTOPAPPS_ICONS   += wine-tools.png
 endif
 
+# console extract tools
+ifneq ($(filter y,$(BR2_PACKAGE_SHADPS4_PKG_EXTRACTOR) $(BR2_PACKAGE_EXTRACT_XISO) $(BR2_PACKAGE_BATOCERA_RPCS3_SYNC)),)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-console-extract-tools
+  BATOCERA_DESKTOPAPPS_APPS    += console-extract-tools.desktop
+endif
+
 # heroic
 ifeq ($(BR2_PACKAGE_HEROIC),y)
   BATOCERA_DESKTOPAPPS_APPS    += heroic.desktop
@@ -260,6 +266,7 @@ endif
 ifeq ($(BR2_PACKAGE_FREEJ2ME),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-freej2me
   BATOCERA_DESKTOPAPPS_APPS    += freej2me-config.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += java.png
 endif
 
 # vita3k

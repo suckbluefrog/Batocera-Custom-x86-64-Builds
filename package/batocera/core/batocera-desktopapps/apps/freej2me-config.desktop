@@ -1,6 +1,6 @@
 [Desktop Entry]
 Version=1.0
-Icon=applications-games
+Icon=/usr/share/icons/batocera/java.png
 Exec=/usr/bin/batocera-config-freej2me
 Terminal=false
 Type=Application

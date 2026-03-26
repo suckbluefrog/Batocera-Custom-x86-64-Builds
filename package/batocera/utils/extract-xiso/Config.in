@@ -1,0 +1,7 @@
+config BR2_PACKAGE_EXTRACT_XISO
+    bool "extract-xiso"
+    depends on BR2_USE_MMU
+    help
+      Xbox ISO creation and extraction utility.
+
+      https://github.com/xboxdev/extract-xiso

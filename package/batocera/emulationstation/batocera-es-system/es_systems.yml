@@ -5816,8 +5816,12 @@ ps4:
 
     For compatibility check: https://shadps4.net/compatibility/
 
-    Before you can play a game you must install the game via the associated .PKG file of your backed-up game using the F1 menu.
-    Then in the new installation directory for the installed game, create a file with a .ps4 extension so EmularionStation will see it.
+    Batocera now uses regular shadPS4, not shadPS4Plus.
+    Extract your backed-up .PKG outside Batocera with the PKG Extractor tool:
+    https://github.com/AzaharPlus/shadPS4Plus/releases/tag/PKG_EXTRACTOR_1_1
+
+    Copy the extracted game folder to /userdata/roms/ps4.
+    Then in the game directory, create a file with a .ps4 extension so EmulationStation will see it.
     i.e. /userdata/roms/ps4/CUSA03173/Bloodborne.ps4
 
     Afterwards you can launch the game from EmulationStation accordingly.

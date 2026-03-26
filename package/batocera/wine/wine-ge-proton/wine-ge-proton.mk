@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-WINE_GE_PROTON_VERSION = GE-Proton10-33
+WINE_GE_PROTON_VERSION = GE-Proton10-34
 WINE_GE_PROTON_SOURCE = $(WINE_GE_PROTON_VERSION).tar.gz
 WINE_GE_PROTON_SITE = https://github.com/GloriousEggroll/proton-ge-custom/releases/download/$(WINE_GE_PROTON_VERSION)
 WINE_GE_PROTON_LICENSE = GPL-3.0+

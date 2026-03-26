@@ -14,7 +14,14 @@ from ...utils import vulkan
 from ...utils.configparser import CaseSensitiveConfigParser
 from ..Generator import Generator
 from . import rpcs3Controllers
-from .rpcs3Paths import RPCS3_BIN, RPCS3_CONFIG, RPCS3_CONFIG_DIR, RPCS3_CURRENT_CONFIG
+from .rpcs3Paths import (
+    RPCS3_BIN,
+    RPCS3_CONFIG,
+    RPCS3_CONFIG_DIR,
+    RPCS3_CURRENT_CONFIG,
+    RPCS3_SOUNDS_DIR,
+    RPCS3_TROPHY_SOUND,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,6 +70,11 @@ class Rpcs3Generator(Generator):
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
 
         rpcs3Controllers.generateControllerConfig(system, playersControllers, rom)
+
+        mkdir_if_not_exists(RPCS3_SOUNDS_DIR)
+        shared_trophy_sound = Path('/usr/share/libretro/assets/sounds/ps3-trophy.wav')
+        if shared_trophy_sound.is_file():
+            shutil.copy2(shared_trophy_sound, RPCS3_TROPHY_SOUND)
 
         # Taking care of the CurrentSettings.ini file
         mkdir_if_not_exists(RPCS3_CURRENT_CONFIG.parent)

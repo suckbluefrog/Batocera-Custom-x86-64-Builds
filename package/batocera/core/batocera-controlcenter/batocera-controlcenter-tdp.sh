@@ -9,7 +9,25 @@ supports_tdp() {
 }
 
 get_current_tdp() {
-    /usr/bin/ryzenadj -i 2>/dev/null | awk '/PPT LIMIT FAST/ {printf "%.0f\n", $6; exit}'
+    local current configured
+
+    current=$(/usr/bin/ryzenadj -i 2>/dev/null | awk '
+        /PPT LIMIT FAST/ {
+            if (match($0, /([0-9]+(\.[0-9]+)?)W/, m)) {
+                printf "%.0f\n", m[1]
+                exit
+            }
+        }
+    ')
+    if [ -n "${current}" ]; then
+        printf "%s\n" "${current}"
+        return 0
+    fi
+
+    configured=$(/usr/bin/batocera-settings-get system.cpu.tdp 2>/dev/null || true)
+    if [ -n "${configured}" ]; then
+        printf "%.0f\n" "${configured}"
+    fi
 }
 
 get_max_tdp() {
@@ -41,7 +59,13 @@ case "${1:-}" in
         supports_tdp || exit 0
         current=$(get_current_tdp)
         max=$(get_max_tdp)
-        [ -n "${current}" ] && [ -n "${max}" ] && echo "${current}W / ${max}W"
+        if [ -n "${current}" ] && [ -n "${max}" ]; then
+            echo "${current}W / ${max}W"
+        elif [ -n "${max}" ]; then
+            echo "-- / ${max}W"
+        elif [ -n "${current}" ]; then
+            echo "${current}W"
+        fi
         ;;
     set)
         supports_tdp || exit 1

@@ -1,0 +1,8 @@
+config BR2_PACKAGE_SHADPS4_PKG_EXTRACTOR
+    bool "shadps4-pkg-extractor"
+    depends on BR2_x86_64
+    help
+      PKG extraction helper for regular shadPS4.
+
+      Ships the upstream Linux PKG extractor AppImage and a Batocera
+      wrapper script.

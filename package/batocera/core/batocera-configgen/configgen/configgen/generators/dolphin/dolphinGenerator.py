@@ -426,7 +426,8 @@ class DolphinGenerator(Generator):
             env={
                 "XDG_CONFIG_HOME": CONFIGS,
                 "XDG_DATA_HOME": SAVES,
-                "XDG_CACHE_HOME": CACHE
+                "XDG_CACHE_HOME": CACHE,
+                "BATOCERA_DOLPHIN_ACHIEVEMENT_SOUND": "1" if system.config.get_bool("dolphin_achievement_sound", True) else "0"
             }
         )
 

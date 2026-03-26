@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+exec env APPIMAGE_EXTRACT_AND_RUN=1 \
+    /usr/share/shadps4-pkg-extractor/pkg_extractor.AppImage "$@"

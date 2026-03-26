@@ -8570,6 +8570,13 @@ dolphin:
       features:
       - cheevos
       cfeatures:
+        dolphin_achievement_sound:
+          submenu: RETROACHIEVEMENTS
+          prompt: ACHIEVEMENT SOUND
+          description: Play the Batocera achievement sound when a Dolphin RetroAchievement unlocks.
+          choices:
+            'Off': false
+            'On': true
         dolphin_aspect_ratio:
           submenu: DISPLAY
           prompt: GAME ASPECT RATIO
@@ -15463,6 +15470,35 @@ xenia-canary:
   - powermode
   - tdp
   - videomode
+  - gamescope
+  - gamescope_output_resolution
+  - gamescope_nested_resolution
+  - gamescope_nested_refresh
+  - gamescope_framerate_limit
+  - gamescope_scaler
+  - gamescope_filter
+  - gamescope_sharpness
+  - gamescope_hdr
+  - gamescope_output_resolution_custom
+  - gamescope_nested_resolution_custom
+  - gamescope_framerate_limit_custom
+  - gamescope_sharpness_custom
+  - gamescope_adaptive_sync
+  - gamescope_disable_damage_tracking
+  - gamescope_disable_hw_composition
+  - gamescope_force_composition_pipeline
+  - gamescope_backend
+  - gamescope_xwayland_count
+  - gamescope_xwayland_count_custom
+  - gamescope_prefer_vk_device
+  - gamescope_mangoapp
+  - gamescope_force_windows_fullscreen
+  - gamescope_nested_unfocused_refresh
+  - gamescope_nested_unfocused_refresh_custom
+  - gamescope_immediate_flips
+  - gamescope_stats_path
+  - gamescope_disable_color_management
+  - gamescope_disable_xres
   cfeatures:
     xenia_license:
       prompt: XBOX LIVE ARCADE
@@ -15518,6 +15554,26 @@ xenia-canary:
         120fps: 120
         144fps: 144
         165fps: 165
+    xenia_framerate_limit:
+      group: ADVANCED OPTIONS
+      prompt: FRAMERATE LIMIT
+      description: Host frame rate limit. 0 is unlimited. This is one of the most common per-game Xenia profile overrides.
+      choices:
+        Unlimited (Default): 0
+        30 FPS: 30
+        50 FPS: 50
+        60 FPS: 60
+        90 FPS: 90
+        120 FPS: 120
+        144 FPS: 144
+        165 FPS: 165
+    xenia_controller_hotkeys:
+      group: ADVANCED OPTIONS
+      prompt: CONTROLLER HOTKEYS
+      description: Enable Xenia's built-in Xbox and PlayStation controller hotkeys.
+      choices:
+        Disabled (Default): false
+        Enabled: true
     xenia_headless:
       prompt: UI PROMPTS
       description: Choose to display UI prompts or accept defaults.
@@ -15824,12 +15880,101 @@ xenia-canary:
       choices:
         Disabled: false
         Enabled: true
+    xenia_achievement_sound:
+      prompt: ACHIEVEMENT SOUND
+      description: Play an Xbox 360 style sound when an achievement notification is shown.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_async_shader_compilation:
+      group: ADVANCED OPTIONS
+      prompt: ASYNC SHADER COMPILATION
+      description: Compile shaders asynchronously to reduce stutter. Some titles prefer this disabled.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_use_dedicated_xma_thread:
+      group: ADVANCED OPTIONS
+      prompt: DEDICATED XMA THREAD
+      description: Decode XMA audio on a dedicated thread. Commonly enabled in optimized Xenia profiles.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_disable_context_promotion:
+      group: ADVANCED OPTIONS
+      prompt: DISABLE CONTEXT PROMOTION
+      description: Disable CPU context promotion. Some game profiles use this for stability.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_protect_zero:
+      group: ADVANCED OPTIONS
+      prompt: PROTECT ZERO PAGE
+      description: Protect the zero page from reads and writes. Commonly left enabled for stability.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_gpu_allow_invalid_fetch_constants:
+      group: ADVANCED OPTIONS
+      prompt: ALLOW INVALID FETCH CONSTANTS
+      description: Relax invalid fetch constant checks for compatibility in some titles.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_query_occlusion_sample_lower_threshold:
+      group: ADVANCED OPTIONS
+      prompt: QUERY OCCLUSION LOWER THRESHOLD
+      description: Lower bound used when estimating occlusion samples.
+      choices:
+        "0": 0
+        "20": 20
+        "40": 40
+        "60": 60
+        80 (Default): 80
+    xenia_query_occlusion_sample_upper_threshold:
+      group: ADVANCED OPTIONS
+      prompt: QUERY OCCLUSION UPPER THRESHOLD
+      description: Upper bound used when estimating occlusion samples.
+      choices:
+        "0": 0
+        "50": 50
+        "75": 75
+        100 (Default): 100
 xenia-edge:
   features: []
   shared:
   - powermode
   - tdp
   - videomode
+  - gamescope
+  - gamescope_output_resolution
+  - gamescope_nested_resolution
+  - gamescope_nested_refresh
+  - gamescope_framerate_limit
+  - gamescope_scaler
+  - gamescope_filter
+  - gamescope_sharpness
+  - gamescope_hdr
+  - gamescope_output_resolution_custom
+  - gamescope_nested_resolution_custom
+  - gamescope_framerate_limit_custom
+  - gamescope_sharpness_custom
+  - gamescope_adaptive_sync
+  - gamescope_disable_damage_tracking
+  - gamescope_disable_hw_composition
+  - gamescope_force_composition_pipeline
+  - gamescope_backend
+  - gamescope_xwayland_count
+  - gamescope_xwayland_count_custom
+  - gamescope_prefer_vk_device
+  - gamescope_mangoapp
+  - gamescope_force_windows_fullscreen
+  - gamescope_nested_unfocused_refresh
+  - gamescope_nested_unfocused_refresh_custom
+  - gamescope_immediate_flips
+  - gamescope_stats_path
+  - gamescope_disable_color_management
+  - gamescope_disable_xres
   cfeatures:
     xenia_license:
       prompt: XBOX LIVE ARCADE
@@ -15883,6 +16028,26 @@ xenia-edge:
         120fps: 120
         144fps: 144
         165fps: 165
+    xenia_framerate_limit:
+      group: ADVANCED OPTIONS
+      prompt: FRAMERATE LIMIT
+      description: Host frame rate limit. 0 is unlimited. This is one of the most common per-game Xenia profile overrides.
+      choices:
+        Unlimited (Default): 0
+        30 FPS: 30
+        50 FPS: 50
+        60 FPS: 60
+        90 FPS: 90
+        120 FPS: 120
+        144 FPS: 144
+        165 FPS: 165
+    xenia_controller_hotkeys:
+      group: ADVANCED OPTIONS
+      prompt: CONTROLLER HOTKEYS
+      description: Enable Xenia's built-in Xbox and PlayStation controller hotkeys.
+      choices:
+        Disabled (Default): false
+        Enabled: true
     xenia_headless:
       prompt: UI PROMPTS
       description: Choose to display UI prompts or accept defaults.
@@ -15923,6 +16088,332 @@ xenia-edge:
         Czech Republic: 23
         Germany: 24
         Denmark: 25
+        Dominican Republic: 26
+        Algeria: 27
+        Ecuador: 28
+        Estonia: 29
+        Egypt: 30
+        Spain: 31
+        Finland: 32
+        Faroe Islands: 33
+        France: 34
+        United Kingdom: 35
+        Georgia: 36
+        Greece: 37
+        Guatemala: 38
+        Hong Kong: 39
+        Honduras: 40
+        Croatia: 41
+        Hungary: 42
+        Indonesia: 43
+        Ireland: 44
+        Israel: 45
+        India: 46
+        Iraq: 47
+        Iran: 48
+        Iceland: 49
+        Italy: 50
+        Jamaica: 51
+        Jordan: 52
+        Japan: 53
+        Kenya: 54
+        Kyrgyzstan: 55
+        South Korea: 56
+        Kuwait: 57
+        Kazakhstan: 58
+        Lebanon: 59
+        Liechtenstein: 60
+        Lithuania: 61
+        Luxembourg: 62
+        Latvia: 63
+        Libya: 64
+        Morocco: 65
+        Monaco: 66
+        North Macedonia: 67
+        Mongolia: 68
+        Macau: 69
+        Maldives: 70
+        Mexico: 71
+        Malaysia: 72
+        Nicaragua: 73
+        Netherlands: 74
+        Norway: 75
+        New Zealand: 76
+        Oman: 77
+        Panama: 78
+        Peru: 79
+        Philippines: 80
+        Pakistan: 81
+        Poland: 82
+        Puerto Rico: 83
+        Portugal: 84
+        Paraguay: 85
+        Qatar: 86
+        Romania: 87
+        Russia: 88
+        Saudi Arabia: 89
+        Sweden: 90
+        Singapore: 91
+        Slovenia: 92
+        Slovakia: 93
+        El Salvador: 95
+        Syria: 96
+        Thailand: 97
+        Tunisia: 98
+        Turkey: 99
+        Trinidad and Tobago: 100
+        Taiwan: 101
+        Ukraine: 102
+        United States: 103
+        Uruguay: 104
+        Uzbekistan: 105
+        Venezuela: 106
+        Vietnam: 107
+        Yemen: 108
+        South Africa: 109
+    xenia_language:
+      prompt: LANGUAGE
+      description: Change the game's language.
+      choices:
+        English (Default): 1
+        Japanese: 2
+        German: 3
+        French: 4
+        Spanish: 5
+        Italian: 6
+        Korean: 7
+        Chinese: 8
+        Portuguese: 9
+        Polish: 11
+        Russian: 12
+        Swedish: 13
+        Turkish: 14
+        Norwegian: 15
+        Dutch: 16
+    xenia_allow_variable_refresh_rate_and_tearing:
+      group: ADVANCED OPTIONS
+      prompt: VARIABLE REFRESH RATE AND TEARING
+      description: Allow VRR and immediate present mode for lower latency. Disable if
+        you get tearing or unstable frame pacing.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_queue_priority:
+      group: ADVANCED OPTIONS
+      prompt: D3D12 QUEUE PRIORITY
+      description: Change the graphics queue scheduling priority.
+      choices:
+        Low: -1
+        Normal (Default): 0
+        High: 1
+    xenia_d3d12_debug:
+      group: ADVANCED OPTIONS
+      prompt: D3D12 DEBUG LAYER
+      description: Enable extra Direct3D12 validation. Useful for troubleshooting but
+        may hurt performance.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_hid:
+      group: ADVANCED OPTIONS
+      prompt: CONTROLLER BACKEND
+      description: Choose the controller API backend.
+      choices:
+        SDL (Default): sdl
+        XInput: xinput
+        DInput: dinput
+        Any: any
+    xenia_video_standard:
+      group: ADVANCED OPTIONS
+      prompt: VIDEO STANDARD
+      description: Override console video standard used by the title.
+      choices:
+        Standard 1 (Default): 1
+        Standard 0: 0
+        Standard 2: 2
+    xenia_avpack:
+      group: ADVANCED OPTIONS
+      prompt: AV PACK
+      description: Override virtual AV pack mode used by the game.
+      choices:
+        AV Pack 8 (Default): 8
+        AV Pack 4: 4
+        AV Pack 0: 0
+    xenia_widescreen:
+      group: ADVANCED OPTIONS
+      prompt: WIDESCREEN
+      description: Force widescreen output mode where supported.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_pal50:
+      group: ADVANCED OPTIONS
+      prompt: USE 50HZ MODE
+      description: Enable PAL 50Hz video timing.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_patches:
+      prompt: GAME PATCHES
+      description: Enable or disable Xenia patches. These patches can fix graphics
+        problems in some games.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_page_state:
+      group: ADVANCED OPTIONS
+      prompt: CLEAR MEMORY PAGE STATE
+      description: Refresh state of memory pages to enable gpu written data. (Use
+        for 'Team Ninja' Games to fix missing character models).
+      choices:
+        Disabled: false
+        Enabled: true
+    xenia_target_path:
+      group: ADVANCED OPTIONS
+      prompt: RENDER TARGET PATH
+      description: Render target emulation path to use on Direct3D 12. Try changing
+        if you have render issues.
+      choices:
+        Any: any
+        RTV (Default): rtv
+        ROV: rov
+    xenia_query_occlusion:
+      group: ADVANCED OPTIONS
+      prompt: QUERY OCCLUSION
+      description: The sample count of every tile will be incremented on every EVENT_WRITE_ZPD
+        by this number. Setting this to 0 means everything is reported as occluded.
+      choices:
+        '0': 0
+        '10': 10
+        '50': 50
+        '100': 100
+        '250': 250
+        '500': 500
+        '750': 750
+        1000 (Default): 1000
+    xenia_readback_resolve:
+      group: ADVANCED OPTIONS
+      prompt: READBACK RESOLVE
+      description: D3D12, read render-to-texture results on the CPU. Needed in some
+        games, but causes mid-frame synchronization, so it has a huge performance
+        impact.
+      choices:
+        Disabled: false
+        Enabled: true
+    xenia_limit_hard:
+      group: ADVANCED OPTIONS
+      prompt: HARD TEXTURE CACHE MEMORY LIMIT
+      description: Maximum host texture memory usage (in megabytes) above which textures
+        will be destroyed as soon as possible.
+      choices:
+        768MB (Default): 768
+        1536MB: 1536
+        2304MB: 2034
+        3072MB: 3072
+        3840MB: 3840
+        4096MB: 4096
+        5120MB: 5120
+        6144MB: 6144
+    xenia_limit_render_to_texture:
+      group: ADVANCED OPTIONS
+      prompt: TEXTURE MEMORY SCALE SIZE
+      description: Part of the host texture memory budget (in megabytes) that will
+        be scaled by the current drawing resolution scale.
+      choices:
+        24MB (Default): 24
+        48MB: 48
+        72MB: 72
+        96MB: 96
+    xenia_limit_soft:
+      group: ADVANCED OPTIONS
+      prompt: SOFT TEXTURE CACHE MEMORY LIMIT
+      description: Maximum host texture memory usage (in megabytes) above which old
+        textures will be destroyed. Set below hard limit.
+      choices:
+        384MB (Default): 384
+        768MB: 768
+        1536MB: 1536
+        2048MB: 2048
+        3072MB: 3072
+        4096MB: 4096
+    xenia_limit_soft_lifetime:
+      group: ADVANCED OPTIONS
+      prompt: SOFT TEXTURE CACHE MEMORY TIMEOUT
+      description: Seconds a texture should be unused to be considered old enough
+        to be deleted if texture memory usage exceeds Soft Texture Cache limit.
+      choices:
+        15s: 15
+        30s (Default): 30
+        45s: 45
+        60s: 60
+    xenia_cache:
+      group: ADVANCED OPTIONS
+      prompt: MOUNT CACHE
+      description: Enable cache mount. Can improve performance and compatibility in
+        some games.
+      choices:
+        Disabled: false
+        Enabled: true
+    xenia_achievement_sound:
+      prompt: ACHIEVEMENT SOUND
+      description: Play an Xbox 360 style sound when an achievement notification is shown.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_async_shader_compilation:
+      group: ADVANCED OPTIONS
+      prompt: ASYNC SHADER COMPILATION
+      description: Compile shaders asynchronously to reduce stutter. Some titles prefer this disabled.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_use_dedicated_xma_thread:
+      group: ADVANCED OPTIONS
+      prompt: DEDICATED XMA THREAD
+      description: Decode XMA audio on a dedicated thread. Commonly enabled in optimized Xenia profiles.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_disable_context_promotion:
+      group: ADVANCED OPTIONS
+      prompt: DISABLE CONTEXT PROMOTION
+      description: Disable CPU context promotion. Some game profiles use this for stability.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_protect_zero:
+      group: ADVANCED OPTIONS
+      prompt: PROTECT ZERO PAGE
+      description: Protect the zero page from reads and writes. Commonly left enabled for stability.
+      choices:
+        Disabled: false
+        Enabled (Default): true
+    xenia_gpu_allow_invalid_fetch_constants:
+      group: ADVANCED OPTIONS
+      prompt: ALLOW INVALID FETCH CONSTANTS
+      description: Relax invalid fetch constant checks for compatibility in some titles.
+      choices:
+        Disabled (Default): false
+        Enabled: true
+    xenia_query_occlusion_sample_lower_threshold:
+      group: ADVANCED OPTIONS
+      prompt: QUERY OCCLUSION LOWER THRESHOLD
+      description: Lower bound used when estimating occlusion samples.
+      choices:
+        "0": 0
+        "20": 20
+        "40": 40
+        "60": 60
+        80 (Default): 80
+    xenia_query_occlusion_sample_upper_threshold:
+      group: ADVANCED OPTIONS
+      prompt: QUERY OCCLUSION UPPER THRESHOLD
+      description: Upper bound used when estimating occlusion samples.
+      choices:
+        "0": 0
+        "50": 50
+        "75": 75
+        100 (Default): 100
 freej2me:
   features: []
   shared:

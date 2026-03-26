@@ -1,0 +1,392 @@
+#!/bin/bash
+set -u -o pipefail
+
+ROOT_PS4_GAMES="/userdata/roms/ps4"
+ROOT_PS4_DLC="/userdata/roms/ps4/DLC"
+ROOT_XBOX="/userdata/roms/xbox"
+ROOT_PS3="/userdata/roms/ps3"
+PS4_EXTRACTOR="/usr/bin/shadps4-pkg-extractor"
+XISO_EXTRACTOR="/usr/bin/extract-xiso"
+RPCS3_SYNC="/usr/bin/batocera-rpcs3-sync"
+
+clear_screen() {
+    clear >/dev/null 2>&1 || true
+}
+
+msg_box() {
+    dialog --msgbox "$1" 14 78 2>&1 >/dev/tty
+    clear_screen
+}
+
+info_box() {
+    dialog --infobox "$1" 6 72 2>&1 >/dev/tty
+}
+
+dialog_capture_stdout() {
+    dialog --stdout "$@" </dev/tty 2>/dev/tty
+}
+
+require_dialog() {
+    if ! command -v dialog >/dev/null 2>&1; then
+        echo "batocera-console-extract-tools requires dialog." >&2
+        exit 1
+    fi
+    if ! [ -t 0 ] && ! [ -t 1 ] && ! [ -t 2 ]; then
+        echo "batocera-console-extract-tools requires an interactive terminal." >&2
+        exit 1
+    fi
+}
+
+show_text_file() {
+    local title="$1"
+    local file="$2"
+    dialog --title "$title" --textbox "$file" 22 100 2>&1 >/dev/tty
+    clear_screen
+}
+
+pick_file() {
+    local title="$1"
+    local initial="$2"
+    dialog_capture_stdout --title "$title" --fselect "$initial" 20 90
+}
+
+pick_dir() {
+    local title="$1"
+    local initial="$2"
+    dialog_capture_stdout --title "$title" --dselect "$initial" 20 90
+}
+
+list_ps4_dirs() {
+    mkdir -p "$ROOT_PS4_GAMES"
+    find "$ROOT_PS4_GAMES" -mindepth 1 -maxdepth 1 -type d -printf '%P\n' | sort
+}
+
+ensure_ps4_marker() {
+    local game_dir="$1"
+    local marker_name
+    if compgen -G "$game_dir/*.ps4" >/dev/null; then
+        return 0
+    fi
+    marker_name="$(basename "$game_dir")"
+    : > "$game_dir/${marker_name}.ps4"
+}
+
+ps4_pkg_type_code() {
+    local pkg="$1"
+    "$PS4_EXTRACTOR" "$pkg" --check-type >/dev/null 2>&1
+    echo $?
+}
+
+ps4_pkg_type_name() {
+    case "$1" in
+        101) echo "Base game" ;;
+        102) echo "Game update" ;;
+        103) echo "DLC" ;;
+        *)   echo "Unknown" ;;
+    esac
+}
+
+ps4_pick_pkg() {
+    mkdir -p "$ROOT_PS4_GAMES"
+    pick_file "Select PS4 PKG" "${ROOT_PS4_GAMES}/"
+}
+
+ps4_check_pkg() {
+    local pkg type_code
+    pkg="$(ps4_pick_pkg)" || return 0
+    [ -f "$pkg" ] || { msg_box "Selected path is not a file."; return 0; }
+    type_code="$(ps4_pkg_type_code "$pkg")"
+    if [ "$type_code" = "101" ] || [ "$type_code" = "102" ] || [ "$type_code" = "103" ]; then
+        msg_box "PKG type: $(ps4_pkg_type_name "$type_code")\n\nFile:\n$pkg"
+    else
+        msg_box "Could not identify PKG type.\n\nFile:\n$pkg"
+    fi
+}
+
+ps4_extract_pkg() {
+    local pkg type_code type_name dest before after new_dir latest_dir
+    local log_file
+
+    if ! [ -x "$PS4_EXTRACTOR" ]; then
+        msg_box "PS4 PKG extractor is not installed."
+        return 0
+    fi
+
+    pkg="$(ps4_pick_pkg)" || return 0
+    [ -f "$pkg" ] || { msg_box "Selected path is not a file."; return 0; }
+
+    mkdir -p "$ROOT_PS4_GAMES" "$ROOT_PS4_DLC"
+    type_code="$(ps4_pkg_type_code "$pkg")"
+    type_name="$(ps4_pkg_type_name "$type_code")"
+    case "$type_code" in
+        101|102) dest="$ROOT_PS4_GAMES" ;;
+        103) dest="$ROOT_PS4_DLC" ;;
+        *)
+            msg_box "Could not identify PKG type.\n\nFile:\n$pkg"
+            return 0
+            ;;
+    esac
+
+    before="$(mktemp)"
+    after="$(mktemp)"
+    log_file="$(mktemp)"
+    list_ps4_dirs > "$before"
+
+    info_box "Extracting ${type_name}..."
+    if "$PS4_EXTRACTOR" "$pkg" "$dest" >"$log_file" 2>&1; then
+        list_ps4_dirs > "$after"
+        if [ "$type_code" != "103" ]; then
+            new_dir="$(comm -13 "$before" "$after" | head -n 1 || true)"
+            if [ -n "$new_dir" ] && [ -d "$ROOT_PS4_GAMES/$new_dir" ]; then
+                ensure_ps4_marker "$ROOT_PS4_GAMES/$new_dir"
+            else
+                latest_dir="$(find "$ROOT_PS4_GAMES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+                if [ -n "${latest_dir:-}" ] && [ -d "$latest_dir" ]; then
+                    ensure_ps4_marker "$latest_dir"
+                fi
+            fi
+        fi
+        clear_screen
+        msg_box "${type_name} extracted successfully.\n\nSource:\n$pkg\n\nDestination:\n$dest"
+    else
+        clear_screen
+        show_text_file "PS4 PKG extraction failed" "$log_file"
+    fi
+
+    rm -f "$before" "$after" "$log_file"
+}
+
+ps4_show_paths() {
+    msg_box "PS4 game extraction target:\n$ROOT_PS4_GAMES\n\nPS4 DLC extraction target:\n$ROOT_PS4_DLC"
+}
+
+ps4_menu() {
+    local choice
+    while true; do
+        choice=$(dialog --clear --backtitle "Batocera Console Extract Tools" \
+            --title "PS4 PKG Tools" \
+            --menu "Choose an action" 20 90 10 \
+            1 "Extract a PS4 PKG" \
+            2 "Check PS4 PKG type" \
+            3 "Show PS4 extraction paths" \
+            4 "Back" 2>&1 >/dev/tty) || {
+                clear_screen
+                return 0
+            }
+        clear_screen
+        case "$choice" in
+            1) ps4_extract_pkg ;;
+            2) ps4_check_pkg ;;
+            3) ps4_show_paths ;;
+            4) return 0 ;;
+        esac
+    done
+}
+
+xiso_pick_iso() {
+    mkdir -p "$ROOT_XBOX"
+    pick_file "Select Xbox ISO" "${ROOT_XBOX}/"
+}
+
+xiso_import_iso() {
+    local iso out_iso log_file
+    if ! [ -x "$XISO_EXTRACTOR" ]; then
+        msg_box "extract-xiso is not installed."
+        return 0
+    fi
+
+    iso="$(xiso_pick_iso)" || return 0
+    [ -f "$iso" ] || { msg_box "Selected path is not a file."; return 0; }
+
+    mkdir -p "$ROOT_XBOX"
+    out_iso="${ROOT_XBOX}/$(basename "$iso")"
+
+    log_file="$(mktemp)"
+    info_box "Converting Xbox ISO into a launchable XISO..."
+    if "$XISO_EXTRACTOR" -r "$iso" -d "$ROOT_XBOX" >"$log_file" 2>&1; then
+        clear_screen
+        msg_box "Xbox XISO created successfully.\n\nSource:\n$iso\n\nOutput:\n$out_iso"
+    else
+        clear_screen
+        show_text_file "Xbox XISO conversion failed" "$log_file"
+    fi
+    rm -f "$log_file"
+}
+
+xiso_extract_iso() {
+    local iso default_dir dest log_file
+    if ! [ -x "$XISO_EXTRACTOR" ]; then
+        msg_box "extract-xiso is not installed."
+        return 0
+    fi
+
+    iso="$(xiso_pick_iso)" || return 0
+    [ -f "$iso" ] || { msg_box "Selected path is not a file."; return 0; }
+
+    default_dir="$(dirname "$iso")/$(basename "${iso%.*}")/"
+    dest="$(pick_dir "Select extraction directory" "$default_dir")" || return 0
+    [ -n "$dest" ] || return 0
+    mkdir -p "$dest"
+
+    log_file="$(mktemp)"
+    info_box "Extracting Xbox ISO..."
+    if "$XISO_EXTRACTOR" "$iso" -d "$dest" >"$log_file" 2>&1; then
+        clear_screen
+        msg_box "Xbox ISO extracted successfully.\n\nSource:\n$iso\n\nDestination:\n$dest"
+    else
+        clear_screen
+        show_text_file "Xbox ISO extraction failed" "$log_file"
+    fi
+    rm -f "$log_file"
+}
+
+xiso_list_iso() {
+    local iso log_file
+    if ! [ -x "$XISO_EXTRACTOR" ]; then
+        msg_box "extract-xiso is not installed."
+        return 0
+    fi
+
+    iso="$(xiso_pick_iso)" || return 0
+    [ -f "$iso" ] || { msg_box "Selected path is not a file."; return 0; }
+
+    log_file="$(mktemp)"
+    if "$XISO_EXTRACTOR" -l "$iso" >"$log_file" 2>&1; then
+        show_text_file "Xbox ISO contents" "$log_file"
+    else
+        show_text_file "Xbox ISO listing failed" "$log_file"
+    fi
+    rm -f "$log_file"
+}
+
+xiso_create_iso() {
+    local src_dir default_iso out_iso log_file
+    if ! [ -x "$XISO_EXTRACTOR" ]; then
+        msg_box "extract-xiso is not installed."
+        return 0
+    fi
+
+    src_dir="$(pick_dir "Select source directory" "${ROOT_XBOX}/")" || return 0
+    [ -d "$src_dir" ] || { msg_box "Selected path is not a directory."; return 0; }
+
+    default_iso="$(dirname "$src_dir")/$(basename "${src_dir%/}").iso"
+    out_iso="$(dialog_capture_stdout --title "Create Xbox ISO" --inputbox "Enter output ISO path" 10 90 "$default_iso")" || return 0
+    [ -n "$out_iso" ] || return 0
+    mkdir -p "$(dirname "$out_iso")"
+
+    log_file="$(mktemp)"
+    info_box "Creating Xbox ISO..."
+    if "$XISO_EXTRACTOR" -c "$src_dir" "$out_iso" >"$log_file" 2>&1; then
+        clear_screen
+        msg_box "Xbox ISO created successfully.\n\nSource:\n$src_dir\n\nOutput:\n$out_iso"
+    else
+        clear_screen
+        show_text_file "Xbox ISO creation failed" "$log_file"
+    fi
+    rm -f "$log_file"
+}
+
+xiso_menu() {
+    local choice
+    while true; do
+        choice=$(dialog --clear --backtitle "Batocera Console Extract Tools" \
+            --title "Xbox XISO Tools" \
+            --menu "Choose an action" 20 90 10 \
+            1 "Convert an Xbox ISO into a launchable XISO" \
+            2 "Extract an Xbox ISO to a custom directory" \
+            3 "List contents of an Xbox ISO" \
+            4 "Create an Xbox ISO from a directory" \
+            5 "Back" 2>&1 >/dev/tty) || {
+                clear_screen
+                return 0
+            }
+        clear_screen
+        case "$choice" in
+            1) xiso_import_iso ;;
+            2) xiso_extract_iso ;;
+            3) xiso_list_iso ;;
+            4) xiso_create_iso ;;
+            5) return 0 ;;
+        esac
+    done
+}
+
+ps3_sync_run() {
+    local log_file
+
+    if ! [ -x "$RPCS3_SYNC" ]; then
+        msg_box "batocera-rpcs3-sync is not installed."
+        return 0
+    fi
+
+    mkdir -p "$ROOT_PS3"
+    log_file="$(mktemp)"
+    info_box "Scanning RPCS3 installed titles..."
+    if "$RPCS3_SYNC" >"$log_file" 2>&1; then
+        clear_screen
+        show_text_file "PS3 PSN Sync" "$log_file"
+    else
+        clear_screen
+        show_text_file "PS3 PSN Sync" "$log_file"
+    fi
+    rm -f "$log_file"
+}
+
+ps3_menu() {
+    local choice
+    while true; do
+        choice=$(dialog --clear --backtitle "Batocera Console Extract Tools" \
+            --title "PS3 Tools" \
+            --menu "Choose an action" 18 90 10 \
+            1 "Sync installed RPCS3 PSN titles to the PS3 rom list" \
+            2 "Show PS3 rom path" \
+            3 "Back" 2>&1 >/dev/tty) || {
+                clear_screen
+                return 0
+            }
+        clear_screen
+        case "$choice" in
+            1) ps3_sync_run ;;
+            2) msg_box "PS3 rom path:\n$ROOT_PS3" ;;
+            3) return 0 ;;
+        esac
+    done
+}
+
+main_menu() {
+    local options=()
+    local choice
+
+    while true; do
+        options=()
+        if [ -x "$PS4_EXTRACTOR" ]; then
+            options+=(1 "PS4 PKG Tools")
+        fi
+        if [ -x "$XISO_EXTRACTOR" ]; then
+            options+=(2 "Xbox XISO Tools")
+        fi
+        if [ -x "$RPCS3_SYNC" ]; then
+            options+=(3 "PS3 PSN Sync")
+        fi
+        options+=(9 "Exit")
+
+        choice=$(dialog --clear --backtitle "Batocera Console Extract Tools" \
+            --title "Console Extract Tools" \
+            --menu "Choose a toolset" 18 90 10 "${options[@]}" 2>&1 >/dev/tty) || {
+                clear_screen
+                return 0
+            }
+        clear_screen
+
+        case "$choice" in
+            1) ps4_menu ;;
+            2) xiso_menu ;;
+            3) ps3_menu ;;
+            9) return 0 ;;
+        esac
+    done
+}
+
+require_dialog
+mkdir -p "$ROOT_PS4_GAMES" "$ROOT_PS4_DLC" "$ROOT_XBOX" "$ROOT_PS3"
+main_menu

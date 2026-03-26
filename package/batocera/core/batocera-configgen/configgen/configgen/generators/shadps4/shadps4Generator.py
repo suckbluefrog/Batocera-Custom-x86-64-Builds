@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+import shutil
 from typing import TYPE_CHECKING
 
 import toml
@@ -45,12 +46,16 @@ class shadPS4Generator(Generator):
         # Set the paths using Path objects
         configPath = CONFIGS / "shadps4"
         userConfigPath = configPath / "user"
+        customTrophyPath = userConfigPath / "custom_trophy"
         toml_file = userConfigPath / "config.toml"
         savesPath = Path("/userdata/saves/shadps4")
         romDir = Path("/userdata/roms/ps4")
         dlcPath = romDir / "DLC"
+        trophySoundSource = Path("/usr/share/libretro/assets/sounds/ps3-trophy.wav")
+        trophySoundTarget = customTrophyPath / "trophy.wav"
 
         mkdir_if_not_exists(userConfigPath)
+        mkdir_if_not_exists(customTrophyPath)
         mkdir_if_not_exists(savesPath)
 
         # Check Vulkan first before doing anything
@@ -225,6 +230,10 @@ class shadPS4Generator(Generator):
         # Create necessary directories if they do not exist
         mkdir_if_not_exists(toml_file.parent)
         mkdir_if_not_exists(configPath / "launcher")
+
+        # Seed the Qt custom trophy sound if the user has not overridden it.
+        if trophySoundSource.is_file() and not trophySoundTarget.exists():
+            shutil.copy2(trophySoundSource, trophySoundTarget)
 
         # Now write the updated toml
         with toml_file.open("w") as f:

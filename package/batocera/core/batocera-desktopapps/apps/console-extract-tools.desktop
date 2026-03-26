@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Icon=applications-utilities
+Exec=xterm -fs 14 -fg white -bg black -fa "Monospace" -en UTF-8 -sb -rightbar -e /usr/bin/batocera-console-extract-tools
+Terminal=false
+Type=Application
+Categories=Game;batocera.linux;
+Name=Console Extract Tools
+GenericName=Batocera Console Extract Tools
+Comment=Extract PS4 PKGs, Xbox XISOs, and sync RPCS3 PSN titles

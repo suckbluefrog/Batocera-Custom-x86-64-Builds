@@ -309,8 +309,20 @@ exit $EXIT_CODE
                 config: dict[str, dict[str, Any]] = toml.load(f)
 
         # [ Now adjust the config file defaults & options we want ]
+        shared_sound_root = Path('/usr/share/libretro/assets/sounds')
+        xenia_achievement_sound = _cfg_get_bool(system, 'xenia_achievement_sound', True)
+        xenia_achievement_sound_path = ''
+        if xenia_achievement_sound and _cfg_get_bool(system, 'xenia_achievement', False):
+            # xenia-edge's current Linux/AppImage build is failing to load the OGG asset
+            # at runtime (logged as "Failed to load achievement sound: -10").
+            # Use the PCM WAV variant for both forks until the upstream decoder path is reliable.
+            xenia_achievement_sound_path = str(shared_sound_root / 'xbox360-achievement.wav')
+
         cpu_cfg = config.setdefault('CPU', {})
         cpu_cfg['break_on_unimplemented_instructions'] = _cfg_get_bool(system, 'break_on_unimplemented_instructions', False)
+        cpu_cfg['disable_context_promotion'] = _cfg_get_bool(
+            system, 'xenia_disable_context_promotion', False, 'disable_context_promotion'
+        )
 
         content_cfg = config.setdefault('Content', {})
         content_cfg['license_mask'] = _cfg_get_int(system, 'license_mask', _cfg_get_int(system, 'xenia_license', 1), 'xenia_license')
@@ -340,7 +352,15 @@ exit $EXIT_CODE
         video_cfg['avpack'] = _cfg_get_int(system, 'xenia_avpack', 8)
         video_cfg['widescreen'] = _cfg_get_bool(system, 'xenia_widescreen', True)
         video_cfg['use_50Hz_mode'] = _cfg_get_bool(system, 'xenia_pal50', False)
-        video_cfg['async_shader_compilation'] = _cfg_get_bool(system, 'async_shader_compilation', False)
+        video_cfg['async_shader_compilation'] = _cfg_get_bool(
+            system, 'xenia_async_shader_compilation', _cfg_get_bool(system, 'async_shader_compilation', False),
+            'async_shader_compilation'
+        )
+
+        apu_cfg = config.setdefault('APU', {})
+        apu_cfg['use_dedicated_xma_thread'] = _cfg_get_bool(
+            system, 'xenia_use_dedicated_xma_thread', True, 'use_dedicated_xma_thread'
+        )
 
         gpu_cfg = config.setdefault('GPU', {})
         gpu_backend = str(_cfg_get(system, 'gpu', _cfg_get(system, 'xenia_api', 'D3D12'), 'xenia_api')).lower()
@@ -350,7 +370,9 @@ exit $EXIT_CODE
         gpu_cfg['vsync'] = _cfg_get_bool(system, 'vsync', _cfg_get_bool(system, 'xenia_vsync', True), 'xenia_vsync')
         gpu_cfg['framerate_limit'] = _cfg_get_int(system, 'xenia_framerate_limit', _cfg_get_int(system, 'xenia_vsync_fps', 0), 'xenia_vsync_fps')
         gpu_cfg['clear_memory_page_state'] = _cfg_get_bool(system, 'xenia_clear_memory_page_state', _cfg_get_bool(system, 'xenia_page_state', False), 'xenia_page_state')
-        gpu_cfg['gpu_allow_invalid_fetch_constants'] = _cfg_get_bool(system, 'gpu_allow_invalid_fetch_constants', False)
+        gpu_cfg['gpu_allow_invalid_fetch_constants'] = _cfg_get_bool(
+            system, 'xenia_gpu_allow_invalid_fetch_constants', False, 'gpu_allow_invalid_fetch_constants'
+        )
 
         render_target_path = str(_cfg_get(system, 'render_target_path', _cfg_get(system, 'xenia_target_path', 'rtv'), 'xenia_target_path'))
         gpu_cfg['render_target_path'] = render_target_path
@@ -367,8 +389,12 @@ exit $EXIT_CODE
                 gpu_cfg['render_target_path_vulkan'] = render_target_path
 
         gpu_cfg['query_occlusion_fake_sample_count'] = _cfg_get_int(system, 'query_occlusion_fake_sample_count', _cfg_get_int(system, 'xenia_query_occlusion', 1000), 'xenia_query_occlusion')
-        gpu_cfg['query_occlusion_sample_lower_threshold'] = _cfg_get_int(system, 'query_occlusion_sample_lower_threshold', 80)
-        gpu_cfg['query_occlusion_sample_upper_threshold'] = _cfg_get_int(system, 'query_occlusion_sample_upper_threshold', 100)
+        gpu_cfg['query_occlusion_sample_lower_threshold'] = _cfg_get_int(
+            system, 'xenia_query_occlusion_sample_lower_threshold', 80, 'query_occlusion_sample_lower_threshold'
+        )
+        gpu_cfg['query_occlusion_sample_upper_threshold'] = _cfg_get_int(
+            system, 'xenia_query_occlusion_sample_upper_threshold', 100, 'query_occlusion_sample_upper_threshold'
+        )
         if gpu_cfg['query_occlusion_sample_upper_threshold'] == 0:
             gpu_cfg['query_occlusion_sample_lower_threshold'] = 0
 
@@ -385,6 +411,7 @@ exit $EXIT_CODE
         general_cfg = config.setdefault('General', {})
         general_cfg['discord'] = _cfg_get_bool(system, 'discord', False)
         general_cfg['apply_patches'] = _cfg_get_bool(system, 'xenia_patches', False)
+        general_cfg['controller_hotkeys'] = _cfg_get_bool(system, 'xenia_controller_hotkeys', False)
 
         hid_cfg = config.setdefault('HID', {})
         hid_cfg['hid'] = str(_cfg_get(system, 'xenia_hid', 'sdl'))
@@ -393,7 +420,7 @@ exit $EXIT_CODE
         logging_cfg['log_level'] = 1
 
         memory_cfg = config.setdefault('Memory', {})
-        memory_cfg['protect_zero'] = _cfg_get_bool(system, 'protect_zero', True)
+        memory_cfg['protect_zero'] = _cfg_get_bool(system, 'xenia_protect_zero', True, 'protect_zero')
         memory_cfg['scribble_heap'] = _cfg_get_bool(system, 'scribble_heap', False)
 
         storage_cfg = config.setdefault('Storage', {})
@@ -406,6 +433,8 @@ exit $EXIT_CODE
         ui_cfg = config.setdefault('UI', {})
         ui_cfg['headless'] = _cfg_get_bool(system, 'xenia_headless', False)
         ui_cfg['show_achievement_notification'] = _cfg_get_bool(system, 'xenia_achievement', False)
+        ui_cfg['notification_sound_path'] = xenia_achievement_sound_path
+        ui_cfg['achievement_sound_path'] = xenia_achievement_sound_path
 
         xconfig_cfg = config.setdefault('XConfig', {})
         xconfig_cfg['user_country'] = _cfg_get_int(system, 'xenia_country', 103)  # 103 = US
