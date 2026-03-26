@@ -25,7 +25,7 @@
 
 ## 📜 Changelog 23-3-2026
 
-### Latest
+
 - Added  Xenia-Edge (linux vulkan tuned build), Skyemu with Retroachievemnts, lr-skyemu, Gopher64, Nanoboy-advance, free2jme, lr-Mame2015/0.160 (lr-Mame2010/0.139 was already previously added)
 - Restored lr-citra, Future Pinball, 
 - Bumped shadps4 to 0.15 and added more settings/configgen options
