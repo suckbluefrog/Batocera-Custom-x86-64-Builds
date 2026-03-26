@@ -233,7 +233,15 @@ Includes:
 ## Other Additions
 - TouchHLE is added (IOS emulator -- currently up to IOS 3.0)
 - 86box
+- Gopher 64
+- Nanoboy Advance
+- Skyemu / lr-skyemu
+- Wine enhancements like UMU-Launcher & Dgvoodoo2
+- FreeJ2ME
+- Extra ES options for various emulators
 - embedded wine tools
+- steam tools like rom manager and proton-up
+  
 
 ---
 
