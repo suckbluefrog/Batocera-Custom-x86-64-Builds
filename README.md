@@ -15,7 +15,7 @@
 ### Latest
 - More ES/Configgen options added to Xenia emulators
 - Added Gamescope to Xenia emulators
-- Fixed Skyemu not closing 
+- Fixed Skyemu Standalone not closing 
 - Enabled Retroachievements to lr-skyemu
 - Pached Dolphin Standalone to play achivement sound (can disable in es options)
 - Testing Achievement sounds on Xenia, RPCS3, Shadps4
