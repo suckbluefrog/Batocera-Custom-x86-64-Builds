@@ -388,9 +388,9 @@ This project focuses on building a modern, feature-rich Batocera variant. The go
 All source code is provided in full compliance with open-source licensing.
 If you would like a feature from this project included upstream:
 
-You are free to submit a PR upstream yourself
-You may reuse or adapt any code from this repository (per license terms)
-You are responsible for meeting upstream requirements, scope, and policies
+- You are free to submit a PR upstream yourself
+- You may reuse or adapt any code from this repository (per license terms)
+- You are responsible for meeting upstream requirements, scope, and policies
 
 Please do not request that features from this project be upstreamed on your behalf.
 
