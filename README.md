@@ -306,7 +306,7 @@ and more low-level debugging utilities
 LED control fixed / added
 *Note: due to 12 range controls, must toggle off/on to change color after setting in ES
 
-### Command button mappings:
+### Command button mappings (enable rogallyhotkeys in services menu):
 
 ### Outside Steam
 Command Button → `Alt + F4` (Quick close)
@@ -379,6 +379,22 @@ This is an unofficial build.
 - No warranty provided
 - Use at your own risk
 - Advanced users only
+
+---
+Upstream Contributions
+
+This project focuses on building a modern, feature-rich Batocera variant. The goal is to deliver working integrations quickly, not to manage upstream contribution workflows.
+
+All source code is provided in full compliance with open-source licensing.
+If you would like a feature from this project included upstream:
+
+You are free to submit a PR upstream yourself
+You may reuse or adapt any code from this repository (per license terms)
+You are responsible for meeting upstream requirements, scope, and policies
+
+Please do not request that features from this project be upstreamed on your behalf.
+
+This project intentionally targets a different scope (modern hardware, newer graphics stack, etc.), and not all features are designed to align with upstream constraints.
 
 ---
 
