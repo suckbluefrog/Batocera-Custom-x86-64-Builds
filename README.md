@@ -17,7 +17,7 @@
 - Added Gamescope to Xenia emulators
 - Fixed Skyemu Standalone not closing 
 - Enabled Retroachievements to lr-skyemu
-- Pached Dolphin Standalone to play achivement sound (can disable in es options)
+- Pached Dolphin Standalone to play achievement sound (can disable in es options)
 - Testing Achievement sounds on Xenia, RPCS3, Shadps4
 - Extract XISO and Pkg tool added to F1 (experimental -- needs more work)
 - Proton-GE to 10-34
@@ -127,8 +127,7 @@ batocera-steam-decky-install
 
 Installs Decky Loader support.
 
-**Note:**  
-Wait 10–20 seconds after exiting Steam before relaunching to avoid race conditions with lingering processes.
+
 
 ---
 
@@ -175,6 +174,10 @@ Includes:
 Waydroid is included with support for **aarch64 Android applications**.
 
 This allows running many Android apps directly on the system with hardware acceleration.
+
+<img width="1409" height="801" alt="image" src="https://github.com/user-attachments/assets/6f967804-b2d7-4c74-b26c-0f202dda613f" />
+
+<img width="1636" height="785" alt="image" src="https://github.com/user-attachments/assets/d7c8cb28-6a93-40a4-a525-38512534eb84" />
 
 Features:
 
