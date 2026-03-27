@@ -381,7 +381,7 @@ This is an unofficial build.
 - Advanced users only
 
 ---
-Upstream Contributions
+# Upstream Contributions
 
 This project focuses on building a modern, feature-rich Batocera variant. The goal is to deliver working integrations quickly, not to manage upstream contribution workflows.
 
