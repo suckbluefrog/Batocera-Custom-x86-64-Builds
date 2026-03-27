@@ -20,7 +20,9 @@
 - Pached Dolphin Standalone to play achievement sound (can disable in es options)
 - Testing Achievement sounds on Xenia, RPCS3, Shadps4
 - Extract XISO and Pkg tool added to F1 (experimental -- needs more work)
+- Fixed Docker
 - Proton-GE to 10-34
+- Kernel to 6.19.10
 ---
 
 ## 📜 Changelog 23-3-2026
