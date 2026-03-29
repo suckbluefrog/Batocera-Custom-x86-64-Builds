@@ -246,6 +246,7 @@ Includes:
 - TouchHLE is added (IOS emulator -- currently up to IOS 3.0)
 - 86box
 - Gopher 64
+- lr-azahar
 - Nanoboy Advance
 - Skyemu / lr-skyemu
 - Wine enhancements like UMU-Launcher & Dgvoodoo2
