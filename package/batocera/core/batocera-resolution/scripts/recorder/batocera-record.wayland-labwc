@@ -2,6 +2,8 @@
 
 ACTION=$1
 
+export XDG_RUNTIME_DIR=/var/run
+
 PRIMARY_DISPLAY=$(batocera-resolution currentOutput)
 ALL_OUTPUTS=$(wf-recorder -L | awk '/Name:/ {print $3}')
 

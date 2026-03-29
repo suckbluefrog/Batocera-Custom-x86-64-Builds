@@ -3,6 +3,8 @@
 ACTION=$1
 OVERRIDE_ENCODER=$2
 
+export XDG_RUNTIME_DIR=/var/run
+
 export DISPLAY=$(getLocalXDisplay)
 
 RESOLUTION=$(batocera-resolution currentResolution)
