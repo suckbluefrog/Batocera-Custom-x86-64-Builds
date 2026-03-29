@@ -142,4 +142,3 @@ def setup_logging() -> Iterator[None]:
         # Restore original stdout/stderr
         sys.stdout = original_stdout
         sys.stderr = original_stderr
-
