@@ -4,6 +4,16 @@ shared_features:
   - rewind
   - autosave
 custom_features:
+  citra_graphics_api:
+    submenu: GRAPHICS
+    prompt: GRAPHICS API
+    description: Choose which renderer lr-azahar should use.
+    choices:
+      Auto: Auto
+      OpenGL: OpenGL
+      Vulkan: Vulkan
+      Software: Software
+    before: citra_resolution_factor
   citra_layout_option:
     prompt: SCREEN LAYOUT
     description: Arrange the dual screen layout.

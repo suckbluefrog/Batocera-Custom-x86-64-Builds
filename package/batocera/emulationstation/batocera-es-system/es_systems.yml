@@ -2242,7 +2242,7 @@ x1:
   extensions: [3ds, cci, cxi, cia, axf, elf, app, squashfs, zcci, zcia, zcxi]
   emulators:
     libretro:
-      citra: { requireAnyOf: [BR2_PACKAGE_LIBRETRO_CITRA] }
+      azahar: { requireAnyOf: [BR2_PACKAGE_LIBRETRO_AZAHAR] }
     azahar:
       azahar: { requireAnyOf: [BR2_PACKAGE_AZAHAR] }
 

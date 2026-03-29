@@ -610,8 +610,10 @@ def _dolphin_options(
 def _citra_options(
     coreSettings: UnixSettings, system: Emulator, rom: Path, guns: Guns, wheels: DeviceInfoMapping, /,
 ) -> None:
-    # Vulkan currently blackscreens with this core on our stack. Keep Citra on OpenGL.
-    _set(coreSettings, 'citra_graphics_api', 'OpenGL')
+    if graphics_api := system.config.get('citra_graphics_api'):
+        _set(coreSettings, 'citra_graphics_api', graphics_api)
+    else:
+        _set(coreSettings, 'citra_graphics_api', 'Vulkan' if system.config.get('gfxbackend') == 'vulkan' else 'OpenGL')
     _set_from_system(coreSettings, 'citra_layout_option', system, default='Default Top-Bottom Screen')
     _set_from_system(coreSettings, 'citra_swap_screen', system, default='Top')
     _set_from_system(coreSettings, 'citra_resolution_factor', system, default='1x (Native)')
@@ -2361,6 +2363,7 @@ _option_functions: dict[str, Callable[[UnixSettings, Emulator, Path, Guns, Devic
     'virtualjaguar': _virtualjaguar_options,
     'handy': _handy_options,
     'citra': _citra_options,
+    'azahar': _citra_options,
     'vice_x64': _vice_x64_options,
     'vice_x64sc': _vice_x64_options,
     'vice_xscpu64': _vice_x64_options,

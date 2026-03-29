@@ -41,7 +41,7 @@ _logger = logging.getLogger(__name__)
 class LibretroGenerator(Generator):
 
     def getMouseMode(self, config, rom):
-        return config.core == "citra" and config.get_bool("citra_mouse_touchscreen", True)
+        return config.core in {"citra", "azahar"} and config.get_bool("citra_mouse_touchscreen", True)
 
     def supportsInternalBezels(self):
         return True
