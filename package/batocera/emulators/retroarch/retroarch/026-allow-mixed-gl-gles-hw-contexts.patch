@@ -1,0 +1,49 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: suckbluefrog@proton.me
+Date: Mon, 30 Mar 2026 09:45:00 +0300
+Subject: [PATCH] allow mixed GL and GLES hw contexts
+
+---
+diff --git a/runloop.c b/runloop.c
+index 30662c2d98..7672ae6f4a 100644
+--- a/runloop.c
++++ b/runloop.c
+@@ -822,13 +822,9 @@
+ #endif
+
+ #endif
+-      case RETRO_HW_CONTEXT_OPENGL:
+-      case RETRO_HW_CONTEXT_OPENGL_CORE:
+-         RARCH_ERR("[HW] Requesting OpenGL context, but RetroArch "
+-               "is compiled against OpenGLES. Cannot use HW context.\n");
+-         return false;
++#endif
+
+-#elif defined(HAVE_OPENGL) || defined(HAVE_OPENGL_CORE)
++#if !defined(HAVE_OPENGLES) && (defined(HAVE_OPENGL) || defined(HAVE_OPENGL_CORE))
+       case RETRO_HW_CONTEXT_OPENGLES2:
+       case RETRO_HW_CONTEXT_OPENGLES3:
+          RARCH_ERR("[HW] Requesting OpenGLES%u context, but RetroArch "
+@@ -841,7 +837,9 @@
+                "is compiled against OpenGL. Cannot use HW context.\n",
+                major, minor);
+          return false;
++#endif
+
++#if defined(HAVE_OPENGL) || defined(HAVE_OPENGL_CORE)
+       case RETRO_HW_CONTEXT_OPENGL:
+          RARCH_LOG("[HW] Requesting OpenGL context.\n");
+          break;
+@@ -852,6 +850,12 @@
+          RARCH_LOG("[HW] Requesting core OpenGL context (%u.%u).\n",
+                major, minor);
+          break;
++#elif defined(HAVE_OPENGLES)
++      case RETRO_HW_CONTEXT_OPENGL:
++      case RETRO_HW_CONTEXT_OPENGL_CORE:
++         RARCH_ERR("[HW] Requesting OpenGL context, but RetroArch "
++               "is compiled against OpenGLES. Cannot use HW context.\n");
++         return false;
+ #endif
+
+ #if defined(HAVE_D3D11)

@@ -1004,7 +1004,18 @@ def _mupen64plus_next_options(
         _set(coreSettings, pak_key, pak_value)
 
     # RDP Plugin
-    _set_from_system(coreSettings, 'mupen64plus-rdp-plugin', system, 'mupen64plus-rdpPlugin', default='gliden64')
+    gfxbackend = system.config.get('gfxbackend')
+    rdp_plugin = system.config.get('mupen64plus-rdpPlugin')
+    if gfxbackend == 'vulkan':
+        if rdp_plugin in (None, '', 'gliden64'):
+            rdp_plugin = 'parallel'
+    elif rdp_plugin == 'parallel':
+        rdp_plugin = 'gliden64'
+
+    if rdp_plugin:
+        _set(coreSettings, 'mupen64plus-rdp-plugin', rdp_plugin)
+    else:
+        _set(coreSettings, 'mupen64plus-rdp-plugin', 'parallel' if gfxbackend == 'vulkan' else 'gliden64')
 
     # RSP Plugin
     _set_from_system(coreSettings, 'mupen64plus-rsp-plugin', system, 'mupen64plus-rspPlugin', default='hle')
@@ -1032,7 +1043,18 @@ def _parallel_n64_options(
     _set(coreSettings, 'parallel-n64-boot-device',   'Default')
 
     # Graphics Plugin
-    _set_from_system(coreSettings, 'parallel-n64-gfxplugin', system, default='parallel' if system.config.get('gfxbackend') == 'vulkan' else 'auto')  # vulkan doesn't work with auto
+    gfxbackend = system.config.get('gfxbackend')
+    gfxplugin = system.config.get('parallel-n64-gfxplugin')
+    if gfxbackend == 'vulkan':
+        if gfxplugin in (None, '', 'auto', 'glide64', 'gln64', 'rice'):
+            gfxplugin = 'parallel'
+    elif gfxplugin == 'parallel':
+        gfxplugin = 'auto'
+
+    if gfxplugin:
+        _set(coreSettings, 'parallel-n64-gfxplugin', gfxplugin)
+    else:
+        _set(coreSettings, 'parallel-n64-gfxplugin', 'parallel' if gfxbackend == 'vulkan' else 'auto')  # vulkan doesn't work with auto
 
     # Video Resolution
     _set_from_system(coreSettings, 'parallel-n64-screensize', system, 'parallel-n64-screensize', default='320x240')
