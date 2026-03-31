@@ -258,7 +258,9 @@ handle_partition_event() {
     android_regex+="mdtp|hyp|connsec|recovery|feat|"    # Recovery & Hypervisor
     android_regex+="imagefv|spunvm|storsec|logdump|"    # Storage Security
     android_regex+="devinfo|nvdata|super|misc|ssd|"     # System Data
-    android_regex+="keystore|qpdata|userdata|reserve|"  # User Data & Keys
+    # "userdata" is too generic for removable disks and causes normal external
+    # NTFS volumes to be skipped from /media automounting.
+    android_regex+="keystore|qpdata|reserve|"           # User Data & Keys
     android_regex+="rawdump|frp|logfs"                  # Debug & Factory Reset
 
     # Get both the Filesystem Label and the Partition Table Label
