@@ -4,8 +4,8 @@
 #
 ################################################################################
 
-MELONDS_VERSION = 1.1
-MELONDS_SITE = https://github.com/Arisotura/melonDS.git
+MELONDS_VERSION = 15074f44466b4a4ff056641d58c118ec614f4ef2
+MELONDS_SITE = https://github.com/suckbluefrog/melonDS.git
 MELONDS_SITE_METHOD=git
 MELONDS_GIT_SUBMODULES=YES
 MELONDS_LICENSE = GPLv2

@@ -136,6 +136,18 @@ class MelonDSGenerator(Generator):
         # OSD
         base_config["Instance0"]["Window0"]["ShowOSD"] = system.config.get("melonds_osd", False)
 
+        retroachievements_enabled = system.config.get_bool("retroachievements")
+        base_config["RA"] = {
+            "Enabled": retroachievements_enabled,
+            "Hardcore": system.config.get_bool("retroachievements.hardcore", False),
+            "Encore": system.config.get_bool("retroachievements.encore", False),
+            "Unofficial": system.config.get_bool("retroachievements.unofficial", False),
+            "Username": system.config.get("retroachievements.username", ""),
+            "Token": system.config.get("retroachievements.token", ""),
+        }
+        if retroachievements_enabled:
+            base_config["Instance0"]["Window0"]["ShowOSD"] = True
+
         # Console
         base_config["Emu"]["ConsoleType"] = system.config.get_int("melonds_console", 0)
         
