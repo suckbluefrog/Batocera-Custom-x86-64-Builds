@@ -6,7 +6,8 @@
 
 ---
 
-**Download:**  
+**Download:** 
+Latest Build: April 6, 2026
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
