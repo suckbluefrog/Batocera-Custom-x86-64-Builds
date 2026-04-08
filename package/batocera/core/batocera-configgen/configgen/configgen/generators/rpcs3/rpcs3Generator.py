@@ -14,14 +14,7 @@ from ...utils import vulkan
 from ...utils.configparser import CaseSensitiveConfigParser
 from ..Generator import Generator
 from . import rpcs3Controllers
-from .rpcs3Paths import (
-    RPCS3_BIN,
-    RPCS3_CONFIG,
-    RPCS3_CONFIG_DIR,
-    RPCS3_CURRENT_CONFIG,
-    RPCS3_SOUNDS_DIR,
-    RPCS3_TROPHY_SOUND,
-)
+from .rpcs3Paths import RPCS3_BIN, RPCS3_CONFIG, RPCS3_CONFIG_DIR, RPCS3_CURRENT_CONFIG
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,35 +22,6 @@ if TYPE_CHECKING:
     from ...types import HotkeysContext, Resolution
 
 _logger = logging.getLogger(__name__)
-
-def _cfg_get(system: Emulator, key: str, default: Any, *aliases: str) -> Any:
-    missing = system.config.MISSING
-    value = system.config.get(key, missing)
-    if value is not missing:
-        return value
-    for alias in aliases:
-        value = system.config.get(alias, missing)
-        if value is not missing:
-            return value
-    return default
-
-def _cfg_get_bool(system: Emulator, key: str, default: bool = False, *aliases: str) -> bool:
-    missing = system.config.MISSING
-    if system.config.get(key, missing) is not missing:
-        return system.config.get_bool(key, default)
-    for alias in aliases:
-        if system.config.get(alias, missing) is not missing:
-            return system.config.get_bool(alias, default)
-    return default
-
-def _cfg_get_int(system: Emulator, key: str, default: int, *aliases: str) -> int:
-    missing = system.config.MISSING
-    if system.config.get(key, missing) is not missing:
-        return system.config.get_int(key, default)
-    for alias in aliases:
-        if system.config.get(alias, missing) is not missing:
-            return system.config.get_int(alias, default)
-    return default
 
 class Rpcs3Generator(Generator):
 
@@ -70,11 +34,6 @@ class Rpcs3Generator(Generator):
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
 
         rpcs3Controllers.generateControllerConfig(system, playersControllers, rom)
-
-        mkdir_if_not_exists(RPCS3_SOUNDS_DIR)
-        shared_trophy_sound = Path('/usr/share/libretro/assets/sounds/ps3-trophy.wav')
-        if shared_trophy_sound.is_file():
-            shutil.copy2(shared_trophy_sound, RPCS3_TROPHY_SOUND)
 
         # Taking care of the CurrentSettings.ini file
         mkdir_if_not_exists(RPCS3_CURRENT_CONFIG.parent)
@@ -92,17 +51,6 @@ class Rpcs3Generator(Generator):
         rpcsCurrentSettings.set("main_window", "confirmationBoxExitGame", "false")
         rpcsCurrentSettings.set("main_window", "infoBoxEnabledInstallPUP","false")
         rpcsCurrentSettings.set("main_window", "infoBoxEnabledWelcome","false")
-        rpcsCurrentSettings.set("main_window", "confirmationBoxBootGame", "false")
-        rpcsCurrentSettings.set("main_window", "infoBoxEnabledInstallPKG", "false")
-
-        if not rpcsCurrentSettings.has_section("Meta"):
-            rpcsCurrentSettings.add_section("Meta")
-        rpcsCurrentSettings.set("Meta", "checkUpdateStart", "false")
-        rpcsCurrentSettings.set("Meta", "useRichPresence", "true" if system.config.get_bool("discord") else "false")
-
-        if not rpcsCurrentSettings.has_section("GSFrame"):
-            rpcsCurrentSettings.add_section("GSFrame")
-        rpcsCurrentSettings.set("GSFrame", "disableMouse", "true")
 
         with RPCS3_CURRENT_CONFIG.open("w") as configfile:
             rpcsCurrentSettings.write(configfile)
@@ -140,32 +88,32 @@ class Rpcs3Generator(Generator):
 
         # -= [Core] =-
         # Set the PPU Decoder based on config
-        rpcs3ymlconfig["Core"]["PPU Decoder"] = _cfg_get(system, "rpcs3_ppudecoder", "Recompiler (LLVM)", "ppudecoder")
+        rpcs3ymlconfig["Core"]["PPU Decoder"] = system.config.get("rpcs3_ppudecoder", "Recompiler (LLVM)")
         # Set the SPU Decoder based on config
-        rpcs3ymlconfig["Core"]["SPU Decoder"] = _cfg_get(system, "rpcs3_spudecoder", "Recompiler (LLVM)", "spudecoder")
+        rpcs3ymlconfig["Core"]["SPU Decoder"] = system.config.get("rpcs3_spudecoder", "Recompiler (LLVM)")
         # Set the SPU XFloat Accuracy based on config
-        rpcs3ymlconfig["Core"]["XFloat Accuracy"] = _cfg_get(system, "rpcs3_spuxfloataccuracy", "Approximate", "rpcs3_xfloat", "xfloat")
+        rpcs3ymlconfig["Core"]["XFloat Accuracy"] = system.config.get("rpcs3_spuxfloataccuracy", "Approximate")
         # Set the Default Core Values we need
         # Force to True for now to account for updates where exiting config file present.
         rpcs3ymlconfig["Core"]["SPU Cache"] = True
         # Preferred SPU Threads
-        rpcs3ymlconfig["Core"]["Preferred SPU Threads"] = _cfg_get_int(system, "rpcs3_sputhreads", 0, "sputhreads")
+        rpcs3ymlconfig["Core"]["Preferred SPU Threads"] = system.config.get_int("rpcs3_sputhreads", 0)
         # SPU Loop Detection
-        rpcs3ymlconfig["Core"]["SPU loop detection"] = _cfg_get_bool(system, "rpcs3_spuloopdetection", False, "spuloopdetect")
+        rpcs3ymlconfig["Core"]["SPU loop detection"] = system.config.get_bool("rpcs3_spuloopdetection")
         # SPU Block Size
-        rpcs3ymlconfig["Core"]["SPU Block Size"] = _cfg_get(system, "rpcs3_spublocksize", "Safe", "spublocksize")
+        rpcs3ymlconfig["Core"]["SPU Block Size"] = system.config.get("rpcs3_spublocksize", "Safe")
         # Max Power Saving CPU-Preemptions
         rpcs3ymlconfig["Core"]["Max CPU Preempt Count"] = system.config.get_int("rpcs3_maxcpu_preemptcount", 0)
         # Sleep Timers Accuracy
-        rpcs3ymlconfig["Core"]["Sleep Timers Accuracy"] = _cfg_get(system, "rpcs3_sleep_timers_accuracy", "As Host", "sleep_timers_accuracy")
+        rpcs3ymlconfig["Core"]["Sleep Timers Accuracy"] = system.config.get("rpcs3_sleep_timers_accuracy", "As Host")
         # RSX FIFO Accuracy
-        rpcs3ymlconfig["Core"]["RSX FIFO Accuracy"] = _cfg_get(system, "rpcs3_rsxfifoaccuracy", "Fast", "rsxfifoaccuracy")
+        rpcs3ymlconfig["Core"]["RSX FIFO Accuracy"] = system.config.get("rpcs3_rsxfifoaccuracy", "Fast")
 
         # -= [Video] =-
         # gfx backend - default to Vulkan
         if vulkan.is_available():
             _logger.debug("Vulkan driver is available on the system.")
-            if _cfg_get(system, "rpcs3_gfxbackend", "", "gfxbackend") == "OpenGL":
+            if system.config.get("rpcs3_gfxbackend") == "OpenGL":
                 _logger.debug("User selected OpenGL")
                 rpcs3ymlconfig["Video"]["Renderer"] = "OpenGL"
             else:
@@ -187,19 +135,19 @@ class Rpcs3Generator(Generator):
         rpcs3ymlconfig["Video"]["Aspect ratio"] = system.config.get("rpcs3_ratio") or Rpcs3Generator.getClosestRatio(gameResolution)
         
         # Shader compilation mode
-        rpcs3ymlconfig["Video"]["Shader Mode"] = _cfg_get(system, "rpcs3_shadermode", "Async Shader Recompiler", "shadermode")
+        rpcs3ymlconfig["Video"]["Shader Mode"] = system.config.get("rpcs3_shadermode", "Async Shader Recompiler")
         
         # Shader quality
-        rpcs3ymlconfig["Video"]["Shader Precision"] = _cfg_get(system, "rpcs3_shader", "High", "shader_quality")
+        rpcs3ymlconfig["Video"]["Shader Precision"] = system.config.get("rpcs3_shader", "High")
         
         # Vsync
-        rpcs3ymlconfig["Video"]["VSync"] = _cfg_get_bool(system, "rpcs3_vsync", False, "vsync")
+        rpcs3ymlconfig["Video"]["VSync"] = system.config.get_bool("rpcs3_vsync")
         
         # Stretch to display area
-        rpcs3ymlconfig["Video"]["Stretch To Display Area"] = _cfg_get_bool(system, "rpcs3_stretchdisplay", False, "stretchtodisplay")
+        rpcs3ymlconfig["Video"]["Stretch To Display Area"] = system.config.get_bool("rpcs3_stretchdisplay")
         
         # Frame Limit
-        match _cfg_get(system, "rpcs3_framelimit", system.config.MISSING, "framelimit"):
+        match system.config.get("rpcs3_framelimit"):
             case system.config.MISSING:
                 rpcs3ymlconfig["Video"]["Frame limit"] = "Auto"
                 rpcs3ymlconfig["Video"]["Second Frame Limit"] = 0
@@ -211,31 +159,31 @@ class Rpcs3Generator(Generator):
                 rpcs3ymlconfig["Video"]["Frame limit"] = "Off"
         
         # Write Color Buffers
-        rpcs3ymlconfig["Video"]["Write Color Buffers"] = _cfg_get_bool(system, "rpcs3_colorbuffers", False, "writecolorbuffers")
+        rpcs3ymlconfig["Video"]["Write Color Buffers"] = system.config.get_bool("rpcs3_colorbuffers")
         
         # Write Depth Buffers
-        rpcs3ymlconfig["Video"]["Write Depth Buffer"] = _cfg_get_bool(system, "rpcs3_write_depth_buffers", False, "writedepthbuffers")
+        rpcs3ymlconfig["Video"]["Write Depth Buffer"] = system.config.get_bool("rpcs3_write_depth_buffers")
         
         # Read Color Buffers
-        rpcs3ymlconfig["Video"]["Read Color Buffers"] = _cfg_get_bool(system, "rpcs3_read_color_buffers", False, "readcolorbuffers")
+        rpcs3ymlconfig["Video"]["Read Color Buffers"] = system.config.get_bool("rpcs3_read_color_buffers")
         
         # Read Depth Buffers
-        rpcs3ymlconfig["Video"]["Read Depth Buffer"] = _cfg_get_bool(system, "rpcs3_read_depth_buffers", False, "readdepthbuffers")
+        rpcs3ymlconfig["Video"]["Read Depth Buffer"] = system.config.get_bool("rpcs3_read_depth_buffers")
         
         # Disable Vertex Cache
-        rpcs3ymlconfig["Video"]["Disable Vertex Cache"] = _cfg_get_bool(system, "rpcs3_vertexcache", False, "disablevertex")
+        rpcs3ymlconfig["Video"]["Disable Vertex Cache"] = system.config.get_bool("rpcs3_vertexcache")
         
         # Strict rendering mode
-        rpcs3ymlconfig["Video"]["Strict Rendering Mode"] = _cfg_get_bool(system, "rpcs3_strict", False, "strict_rendering")
+        rpcs3ymlconfig["Video"]["Strict Rendering Mode"] = system.config.get_bool("rpcs3_strict")
         
         # Anisotropic Filtering
-        rpcs3ymlconfig["Video"]["Anisotropic Filter Override"] = _cfg_get_int(system, "rpcs3_anisotropic", 0, "anisotropicfilter")
+        rpcs3ymlconfig["Video"]["Anisotropic Filter Override"] = system.config.get_int("rpcs3_anisotropic", 0)
         
         # MSAA
         rpcs3ymlconfig["Video"]["MSAA"] = system.config.get("rpcs3_aa", "Auto")
         
         # ZCULL Accuracy
-        match _cfg_get(system, "rpcs3_zcull", "", "zcull_accuracy"):
+        match system.config.get("rpcs3_zcull"):
             case "Approximate":
                 rpcs3ymlconfig["Video"]["Accurate ZCULL stats"] = False
                 rpcs3ymlconfig["Video"]["Relaxed ZCULL Sync"] = False
@@ -250,36 +198,34 @@ class Rpcs3Generator(Generator):
         rpcs3ymlconfig["Video"]["Resolution"] = "1280x720"
         
         # Resolution scaling
-        rpcs3ymlconfig["Video"]["Resolution Scale"] = _cfg_get_int(system, "rpcs3_resolution_scale", 100, "rpcs3_internal_resolution")
+        rpcs3ymlconfig["Video"]["Resolution Scale"] = system.config.get_int("rpcs3_resolution_scale", 100)
         
         # Output Scaling filter
-        rpcs3ymlconfig["Video"]["Output Scaling Mode"] = _cfg_get(system, "rpcs3_scaling", "Bilinear", "rpcs3_scaling_filter")
+        rpcs3ymlconfig["Video"]["Output Scaling Mode"] = system.config.get("rpcs3_scaling", "Bilinear")
         
         # Number of Shader Compilers
         rpcs3ymlconfig["Video"]["Shader Compiler Threads"] = system.config.get_int("rpcs3_num_compilers", 0)
         
         # Multithreaded RSX
-        rpcs3ymlconfig["Video"]["Multithreaded RSX"] = _cfg_get_bool(system, "rpcs3_rsx", False, "multithreadedrsx")
+        rpcs3ymlconfig["Video"]["Multithreaded RSX"] = system.config.get_bool("rpcs3_rsx")
         
         # Async Texture Streaming
-        rpcs3ymlconfig["Video"]["Asynchronous Texture Streaming 2"] = _cfg_get_bool(system, "rpcs3_async_texture", False, "asynctexturestream")
+        rpcs3ymlconfig["Video"]["Asynchronous Texture Streaming 2"] = system.config.get_bool("rpcs3_async_texture")
         
         # Force CPU Blit Emulation
-        rpcs3ymlconfig["Video"]["Force CPU Blit"] = _cfg_get_bool(system, "rpcs3_cpu_blit", False, "cpu_blit")
+        rpcs3ymlconfig["Video"]["Force CPU Blit"] = system.config.get_bool("rpcs3_cpu_blit")
         
         # Disable ZCULL Occlusion Queries
-        rpcs3ymlconfig["Video"]["Disable ZCull Occlusion Queries"] = _cfg_get_bool(system, "rpcs3_disable_zcull_queries", False, "disable_zcull_queries")
+        rpcs3ymlconfig["Video"]["Disable ZCull Occlusion Queries"] = system.config.get_bool("rpcs3_disable_zcull_queries")
         
         # Driver Wake-up Delay
-        rpcs3ymlconfig["Video"]["Driver Wake-Up Delay"] = _cfg_get_int(system, "rpcs3_driver_wake", 1, "driver_wake")
+        rpcs3ymlconfig["Video"]["Driver Wake-Up Delay"] = system.config.get_int("rpcs3_driver_wake", 1)
         
         # 3D mode
-        rpcs3ymlconfig["Video"]["3D Display Mode"] = _cfg_get(system, "rpcs3_3d", "Disabled", "enable3d")
+        rpcs3ymlconfig["Video"]["3D Display Mode"] = system.config.get("rpcs3_3d", "Disabled")
         
         # Fullscreen mode (exclusive vs borderless)
-        fullscreen_mode = _cfg_get(system, "rpcs3_fullscreen_mode", "Automatic")
-        if system.config.get_bool("exclusivefs"):
-            fullscreen_mode = "Enable"
+        fullscreen_mode = system.config.get("rpcs3_fullscreen_mode", "Disable")
         rpcs3ymlconfig["Video"]["Exclusive Fullscreen Mode"] = fullscreen_mode
 
         # -= [Audio] =-
@@ -287,44 +233,33 @@ class Rpcs3Generator(Generator):
         rpcs3ymlconfig["Audio"]["Master Volume"] = 100
         
         # Audio format/channels
-        rpcs3ymlconfig["Audio"]["Audio Format"] = _cfg_get(system, "rpcs3_audio_format", "Stereo", "audiochannels")
+        rpcs3ymlconfig["Audio"]["Audio Format"] = system.config.get("rpcs3_audio_format", "Stereo")
         
         # Convert to 16 bit
         rpcs3ymlconfig["Audio"]["Convert to 16 bit"] = system.config.get_bool("rpcs3_audio_16bit")
         
         # Audio buffering
-        rpcs3ymlconfig["Audio"]["Enable Buffering"] = _cfg_get_bool(system, "rpcs3_audiobuffer", True, "audio_buffering")
+        rpcs3ymlconfig["Audio"]["Enable Buffering"] = system.config.get_bool("rpcs3_audiobuffer", True)
         
         # Audio buffer duration
         rpcs3ymlconfig["Audio"]["Desired Audio Buffer Duration"] = system.config.get_int("rpcs3_audiobuffer_duration", 100)
         
         # Time stretching
-        time_stretch_mode = _cfg_get(system, "time_stretching", "")
         if system.config.get_bool("rpcs3_timestretch"):
-            rpcs3ymlconfig["Audio"]["Enable Time Stretching"] = True
-            rpcs3ymlconfig["Audio"]["Enable Buffering"] = True
-        elif time_stretch_mode in ("low", "medium", "high"):
             rpcs3ymlconfig["Audio"]["Enable Time Stretching"] = True
             rpcs3ymlconfig["Audio"]["Enable Buffering"] = True
         else:
             rpcs3ymlconfig["Audio"]["Enable Time Stretching"] = False
         
         # Time stretching threshold
-        if time_stretch_mode == "low":
-            rpcs3ymlconfig["Audio"]["Time Stretching Threshold"] = 25
-        elif time_stretch_mode == "medium":
-            rpcs3ymlconfig["Audio"]["Time Stretching Threshold"] = 50
-        elif time_stretch_mode == "high":
-            rpcs3ymlconfig["Audio"]["Time Stretching Threshold"] = 75
-        else:
-            rpcs3ymlconfig["Audio"]["Time Stretching Threshold"] = system.config.get_int("rpcs3_timestretch_threshold", 75)
+        rpcs3ymlconfig["Audio"]["Time Stretching Threshold"] = system.config.get_int("rpcs3_timestretch_threshold", 75)
 
         # -= [System] =-
         # System region
-        rpcs3ymlconfig["System"]["License Area"] = _cfg_get(system, "rpcs3_region", "SCEA", "ps3_region")
+        rpcs3ymlconfig["System"]["License Area"] = system.config.get("rpcs3_region", "SCEA")
         
         # System language
-        rpcs3ymlconfig["System"]["Language"] = _cfg_get(system, "rpcs3_language", "English (US)", "ps3_language")
+        rpcs3ymlconfig["System"]["Language"] = system.config.get("rpcs3_language", "English (US)")
 
         # -= [Input/Output] =-
         # Gun stuff
@@ -337,25 +272,22 @@ class Rpcs3Generator(Generator):
         rpcs3ymlconfig["Input/Output"]["Show move cursor"] = system.config.get_bool("rpcs3_crosshairs")
         
         # Keyboard handler
-        rpcs3ymlconfig["Input/Output"]["Keyboard"] = _cfg_get(system, "rpcs3_keyboard", "Null", "keyboard")
+        rpcs3ymlconfig["Input/Output"]["Keyboard"] = system.config.get("rpcs3_keyboard", "Null")
         
         # Mouse handler
-        rpcs3ymlconfig["Input/Output"]["Mouse"] = _cfg_get(system, "rpcs3_mouse", "Null", "mouse")
+        rpcs3ymlconfig["Input/Output"]["Mouse"] = system.config.get("rpcs3_mouse", "Null")
         
         # PS Move handler
-        move_value = _cfg_get(system, "rpcs3_move", "", "move")
-        if move_value:
-            rpcs3ymlconfig["Input/Output"]["Move"] = move_value
+        if system.config.get("rpcs3_move"):
+            rpcs3ymlconfig["Input/Output"]["Move"] = system.config.get("rpcs3_move")
         
         # Camera input
-        camera_value = _cfg_get(system, "rpcs3_camera", "", "camera")
-        if camera_value:
-            rpcs3ymlconfig["Input/Output"]["Camera"] = camera_value
+        if system.config.get("rpcs3_camera"):
+            rpcs3ymlconfig["Input/Output"]["Camera"] = system.config.get("rpcs3_camera")
         
         # Camera type
-        camera_type = _cfg_get(system, "rpcs3_cameraType", "", "cameraType")
-        if camera_type:
-            rpcs3ymlconfig["Input/Output"]["Camera type"] = camera_type
+        if system.config.get("rpcs3_cameraType"):
+            rpcs3ymlconfig["Input/Output"]["Camera type"] = system.config.get("rpcs3_cameraType")
         
         # Gun configuration
         gun_mode = system.config.get("rpcs3_guns", "none")
@@ -368,17 +300,13 @@ class Rpcs3Generator(Generator):
         # -= [Miscellaneous] =-
         rpcs3ymlconfig["Miscellaneous"]["Exit RPCS3 when process finishes"] = True
         rpcs3ymlconfig["Miscellaneous"]["Start games in fullscreen mode"] = True
-        rpcs3ymlconfig["Miscellaneous"]["Automatically start games after boot"] = True
-        rpcs3ymlconfig["Miscellaneous"]["Pause emulation on RPCS3 focus loss"] = True
         rpcs3ymlconfig["Miscellaneous"]["Prevent display sleep while running games"] = True
         
         # Show shader compilation hint
-        hide_hints = _cfg_get_bool(system, "rpcs3_hidehints", False, "hidehints")
-        rpcs3ymlconfig["Miscellaneous"]["Show shader compilation hint"] = not hide_hints
-        rpcs3ymlconfig["Miscellaneous"]["Show PPU compilation hint"] = not hide_hints
+        rpcs3ymlconfig["Miscellaneous"]["Show shader compilation hint"] = not system.config.get_bool("rpcs3_hidehints")
         
         # Show trophy popups
-        rpcs3ymlconfig["Miscellaneous"]["Show trophy popups"] = _cfg_get_bool(system, "rpcs3_show_trophy", False, "show_trophy")
+        rpcs3ymlconfig["Miscellaneous"]["Show trophy popups"] = system.config.get_bool("rpcs3_show_trophy")
 
         with RPCS3_CONFIG.open("w") as file:
             yaml = YAML(pure=True)

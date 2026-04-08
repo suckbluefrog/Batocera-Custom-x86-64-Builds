@@ -50,17 +50,44 @@ SHADPS4_CONF_OPTS += -DVMA_ENABLE_INSTALL=ON
 # Fix MoltenVK submodule bug
 define SHADPS4_FIX_AND_FETCH_SUBMODULES
     flock $(SHADPS4_DL_DIR)/.shadps4.lock -c ' \
-    if [ -f $(SHADPS4_SUBMODULE_STAMP) ]; then \
-        echo "MoltenVK submodule fix already applied. Skipping..."; \
+    set -e; \
+    tar_listing_file="$$(mktemp)"; \
+    cleanup() { rm -f "$$tar_listing_file"; }; \
+    trap cleanup EXIT; \
+    if [ -f $(SHADPS4_SUBMODULE_STAMP) ] && \
+       [ -f $(SHADPS4_DL_DIR)/$(SHADPS4_SOURCE) ] && \
+       tar -tzf $(SHADPS4_DL_DIR)/$(SHADPS4_SOURCE) > "$$tar_listing_file" && \
+       git -C $(SHADPS4_DL_DIR)/git config -f .gitmodules --get-regexp "^submodule\\..*\\.path$$" | \
+       while read -r _ submodule_path; do \
+           grep -Eq "^(\./)?$${submodule_path}/.+" "$$tar_listing_file"; \
+       done; then \
+        echo "shadPS4 source tarball already contains populated submodules. Skipping..."; \
     else \
-        echo "Acquired lock. Fixing MoltenVK submodule issue for shadPS4..."; \
+        echo "Acquired lock. Refreshing shadPS4 submodules..."; \
+        cd $(SHADPS4_DL_DIR)/git && git submodule absorbgitdirs; \
         cd $(SHADPS4_DL_DIR)/git && (git rm --cached -rf externals/MoltenVK || true); \
         cd $(SHADPS4_DL_DIR)/git && (git config --file .gitmodules --remove-section submodule.externals/MoltenVK || true); \
         rm -rf $(SHADPS4_DL_DIR)/git/externals/MoltenVK; \
+        rm -rf $(SHADPS4_DL_DIR)/git/.git/modules/externals/MoltenVK; \
         cd $(SHADPS4_DL_DIR)/git && git submodule sync --recursive; \
-        cd $(SHADPS4_DL_DIR)/git && git submodule update --init --recursive; \
+        cd $(SHADPS4_DL_DIR)/git && git config -f .gitmodules --name-only --get-regexp "^submodule\\..*\\.path$$" | \
+            while read -r submodule_key; do \
+                git config "$${submodule_key%.path}.shallow" false; \
+            done; \
+        cd $(SHADPS4_DL_DIR)/git && git submodule update --init --recursive --checkout; \
+        cd $(SHADPS4_DL_DIR)/git && git submodule foreach --recursive "git checkout -f HEAD >/dev/null"; \
+        cd $(SHADPS4_DL_DIR)/git && git config -f .gitmodules --get-regexp "^submodule\\..*\\.path$$" | \
+            while read -r _ submodule_path; do \
+                find "$${submodule_path}" -mindepth 1 -not -name .git -print -quit | grep -q .; \
+            done; \
         echo "Creating source tarball..."; \
+        rm -f $(SHADPS4_DL_DIR)/$(SHADPS4_SOURCE); \
         tar --exclude=.git -czf $(SHADPS4_DL_DIR)/$(SHADPS4_SOURCE) -C $(SHADPS4_DL_DIR)/git .; \
+        tar -tzf $(SHADPS4_DL_DIR)/$(SHADPS4_SOURCE) > "$$tar_listing_file"; \
+        git -C $(SHADPS4_DL_DIR)/git config -f .gitmodules --get-regexp "^submodule\\..*\\.path$$" | \
+            while read -r _ submodule_path; do \
+                grep -Eq "^(\./)?$${submodule_path}/.+" "$$tar_listing_file"; \
+            done; \
         touch $(SHADPS4_SUBMODULE_STAMP); \
     fi'
 endef
