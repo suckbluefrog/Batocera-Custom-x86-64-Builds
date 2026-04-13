@@ -1,17 +1,10 @@
 diff --git a/rpcs3/Input/sdl_camera_handler.cpp b/rpcs3/Input/sdl_camera_handler.cpp
 --- a/rpcs3/Input/sdl_camera_handler.cpp
 +++ b/rpcs3/Input/sdl_camera_handler.cpp
-@@ -10,13 +10,14 @@
+@@ -9,6 +9,16 @@
  
  LOG_CHANNEL(camera_log, "Camera");
  
--#if !(SDL_VERSION_ATLEAST(3, 4, 0))
--namespace SDL_CameraPermissionState
--{
--	constexpr int SDL_CAMERA_PERMISSION_STATE_DENIED = -1;
--	constexpr int SDL_CAMERA_PERMISSION_STATE_PENDING = 0;
--	constexpr int SDL_CAMERA_PERMISSION_STATE_APPROVED = 1;
--}
 +#ifndef SDL_CAMERA_PERMISSION_STATE_DENIED
 +#define SDL_CAMERA_PERMISSION_STATE_DENIED -1
 +#endif
@@ -20,10 +13,12 @@ diff --git a/rpcs3/Input/sdl_camera_handler.cpp b/rpcs3/Input/sdl_camera_handler
 +#endif
 +#ifndef SDL_CAMERA_PERMISSION_STATE_APPROVED
 +#define SDL_CAMERA_PERMISSION_STATE_APPROVED 1
- #endif
- 
++#endif
++
  template <>
-@@ -367,15 +368,15 @@
+ void fmt_class_string<SDL_CameraSpec>::format(std::string& out, u64 arg)
+ {
+@@ -358,15 +368,15 @@ void sdl_camera_handler::start_camera()
  	const auto camera_permission = SDL_GetCameraPermissionState(m_camera);
  	switch (camera_permission)
  	{
