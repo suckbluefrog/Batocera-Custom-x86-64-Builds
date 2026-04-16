@@ -9839,9 +9839,16 @@ melonds:
       prompt: GRAPHICS API
       description: Choose which graphics API library to use.
       choices:
-        Software: 0
         OpenGL (Classic): 1
         OpenGL (Compute shader): 2
+        Software: 0
+    melonds_retroachievements:
+      group: ADVANCED OPTIONS
+      prompt: ENABLE RETROACHIEVEMENTS
+      description: Enable RetroAchievements for melonDS when global RetroAchievements are enabled.
+      choices:
+        On (Default): true
+        'Off': false
     melonds_vsync:
       prompt: VSYNC
       description: Fix screen tearing. CPU heavy.

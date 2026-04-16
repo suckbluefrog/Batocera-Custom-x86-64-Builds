@@ -140,7 +140,7 @@ class MelonDSGenerator(Generator):
         base_config["Emu"]["ConsoleType"] = system.config.get_int("melonds_console", 0)
 
         # RetroAchievements
-        retroachievements_enabled = system.config.get_bool("retroachievements")
+        retroachievements_enabled = system.config.get_bool("retroachievements") and system.config.get_bool("melonds_retroachievements", True)
         retroachievements_poll_divider = max(1, min(system.config.get_int("melonds_ra_poll_divider", 1), 4))
         base_config["RA"] = {
             "Enabled": retroachievements_enabled,
