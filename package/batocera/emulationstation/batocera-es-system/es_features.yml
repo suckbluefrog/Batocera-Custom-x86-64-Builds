@@ -9845,7 +9845,7 @@ melonds:
     melonds_retroachievements:
       group: ADVANCED OPTIONS
       prompt: ENABLE RETROACHIEVEMENTS
-      description: Enable RetroAchievements for melonDS when global RetroAchievements are enabled.
+      description: Enable RetroAchievements for melonDS when global RetroAchievements are enabled. Disabling this can improve performance.
       choices:
         On (Default): true
         'Off': false
