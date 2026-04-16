@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-MELONDS_VERSION = 11c33294b190ada3b87d49e799303c709cae39b3
+MELONDS_VERSION = 85c7c7823d38b828cfe54a467b5db5a178de4fac
 MELONDS_SITE = https://github.com/suckbluefrog/melonDS.git
 MELONDS_SITE_METHOD=git
 MELONDS_GIT_SUBMODULES=YES

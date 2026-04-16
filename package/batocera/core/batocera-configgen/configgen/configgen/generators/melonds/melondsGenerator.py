@@ -141,6 +141,7 @@ class MelonDSGenerator(Generator):
 
         # RetroAchievements
         retroachievements_enabled = system.config.get_bool("retroachievements")
+        retroachievements_poll_divider = max(1, min(system.config.get_int("melonds_ra_poll_divider", 1), 4))
         base_config["RA"] = {
             "Enabled": retroachievements_enabled,
             "Username": system.config.get("retroachievements.username", ""),
@@ -148,6 +149,7 @@ class MelonDSGenerator(Generator):
             "Hardcore": system.config.get("retroachievements.hardcore", False),
             "Encore": system.config.get("retroachievements.encore", False),
             "Unofficial": system.config.get("retroachievements.unofficial", False),
+            "PollDivider": retroachievements_poll_divider,
         }
         
         # Check if dual screen mode is enabled
