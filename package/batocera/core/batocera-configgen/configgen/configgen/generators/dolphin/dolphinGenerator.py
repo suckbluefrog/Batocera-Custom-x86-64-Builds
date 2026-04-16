@@ -421,13 +421,17 @@ class DolphinGenerator(Generator):
         if state_filename := system.config.get('state_filename'):
             commandArray.extend(["--save_state", state_filename])
 
+        achievement_sound = "none"
+        if system.config.get_bool("dolphin_achievement_sound", True):
+            achievement_sound = system.config.get("retroachievements.sound", "mario-1up")
+
         return Command.Command(
             array=commandArray,
             env={
                 "XDG_CONFIG_HOME": CONFIGS,
                 "XDG_DATA_HOME": SAVES,
                 "XDG_CACHE_HOME": CACHE,
-                "BATOCERA_DOLPHIN_ACHIEVEMENT_SOUND": "1" if system.config.get_bool("dolphin_achievement_sound", True) else "0"
+                "BATOCERA_DOLPHIN_ACHIEVEMENT_SOUND": achievement_sound,
             }
         )
 

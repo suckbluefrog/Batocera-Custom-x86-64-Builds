@@ -134,10 +134,21 @@ class MelonDSGenerator(Generator):
             base_config["3D"]["GL"]["BetterPolygons"] = polygons
 
         # OSD
-        base_config["Instance0"]["Window0"]["ShowOSD"] = system.config.get("melonds_osd", False)
+        base_config["Instance0"]["Window0"]["ShowOSD"] = system.config.get("melonds_osd", True)
 
         # Console
         base_config["Emu"]["ConsoleType"] = system.config.get_int("melonds_console", 0)
+
+        # RetroAchievements
+        retroachievements_enabled = system.config.get_bool("retroachievements")
+        base_config["RA"] = {
+            "Enabled": retroachievements_enabled,
+            "Username": system.config.get("retroachievements.username", ""),
+            "Token": system.config.get("retroachievements.token", ""),
+            "Hardcore": system.config.get("retroachievements.hardcore", False),
+            "Encore": system.config.get("retroachievements.encore", False),
+            "Unofficial": system.config.get("retroachievements.unofficial", False),
+        }
         
         # Check if dual screen mode is enabled
         is_dual_screen_enabled = system.config.get("melonds_dual_screen", False)
@@ -214,11 +225,17 @@ class MelonDSGenerator(Generator):
         with configFileName.open("w") as toml_file:
             toml.dump(config, toml_file)
 
+        achievement_sound = "none"
+        if retroachievements_enabled:
+            achievement_sound = system.config.get("retroachievements.sound", "mario-1up")
+
         commandArray = ["/usr/bin/melonDS", "-f", rom]
         return Command.Command(
             array=commandArray,
             env={
+                "QT_QPA_PLATFORM": "xcb",
                 "XDG_CONFIG_HOME": CONFIGS,
-                "XDG_DATA_HOME": SAVES
+                "XDG_DATA_HOME": SAVES,
+                "BATOCERA_MELONDS_ACHIEVEMENT_SOUND": achievement_sound,
             }
         )

@@ -4,12 +4,12 @@
 #
 ################################################################################
 
-MELONDS_VERSION = 1.1
-MELONDS_SITE = https://github.com/Arisotura/melonDS.git
+MELONDS_VERSION = 11c33294b190ada3b87d49e799303c709cae39b3
+MELONDS_SITE = https://github.com/suckbluefrog/melonDS.git
 MELONDS_SITE_METHOD=git
 MELONDS_GIT_SUBMODULES=YES
 MELONDS_LICENSE = GPLv2
-MELONDS_DEPENDENCIES += ecm sdl2 slirp libepoxy libarchive libenet
+MELONDS_DEPENDENCIES += ecm sdl2 slirp libepoxy libarchive libenet libpcap zstd faad2
 MELONDS_DEPENDENCIES += qt6base qt6svg qt6multimedia 
 
 MELONDS_SUPPORTS_IN_SOURCE_BUILD = NO
