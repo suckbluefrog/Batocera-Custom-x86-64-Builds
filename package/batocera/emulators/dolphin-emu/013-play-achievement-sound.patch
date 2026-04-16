@@ -18,14 +18,14 @@ RetroAchievements build nag while preserving normal achievement popups.
  #include "Core/AchievementManager.h"
  
 +#include <cstdlib>
-+#include <memory>
+ #include <memory>
 +#include <optional>
 +#include <string>
 +#include <thread>
  
  #include <fmt/format.h>
  
-@@ -54,6 +58,56 @@
+@@ -54,6 +58,60 @@
      {"User-Agent", Common::GetUserAgentStr()}};
  #endif  // ANDROID
  

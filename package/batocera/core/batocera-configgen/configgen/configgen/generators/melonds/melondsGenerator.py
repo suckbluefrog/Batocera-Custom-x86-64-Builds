@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from typing import TYPE_CHECKING, Any, Final
 
 import toml
@@ -16,6 +17,26 @@ _MELONDS_SAVES: Final = SAVES / "nds"
 _MELONDS_ROMS: Final = ROMS / "nds"
 _MELONDS_CHEATS: Final = CHEATS / "melonDS"
 _MELONDS_CONFIG: Final = CONFIGS / "melonDS"
+
+
+def _is_dual_screen_handheld() -> bool:
+    try:
+        secondary_output = subprocess.run(
+            ["/usr/bin/batocera-settings-get-master", "global.videooutput2"],
+            check=False,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        display_position = subprocess.run(
+            ["/usr/bin/batocera-settings-get-master", "display.position"],
+            check=False,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except Exception:
+        return False
+
+    return bool(secondary_output) and display_position == "top-bottom"
 
 class MelonDSGenerator(Generator):
 
@@ -80,6 +101,7 @@ class MelonDSGenerator(Generator):
             "Instance0": {
                 "Joystick": {},
                 "Window0": {
+                    "Enabled": True,
                     "ScreenRotation": 0,
                     "ScreenSwap": False,
                     "ScreenLayout": 0,
@@ -104,6 +126,7 @@ class MelonDSGenerator(Generator):
                 }
             },
             "Screen": {
+                "UseGL": True,
                 "VSync": False
             }
         }
@@ -146,36 +169,40 @@ class MelonDSGenerator(Generator):
             "Enabled": retroachievements_enabled,
             "Username": system.config.get("retroachievements.username", ""),
             "Token": system.config.get("retroachievements.token", ""),
-            "Hardcore": system.config.get("retroachievements.hardcore", False),
-            "Encore": system.config.get("retroachievements.encore", False),
-            "Unofficial": system.config.get("retroachievements.unofficial", False),
+            "Hardcore": system.config.get_bool("retroachievements.hardcore", False),
+            "Encore": system.config.get_bool("retroachievements.encore", False),
+            "Unofficial": system.config.get_bool("retroachievements.unofficial", False),
             "PollDivider": retroachievements_poll_divider,
         }
         
-        # Check if dual screen mode is enabled
-        is_dual_screen_enabled = system.config.get("melonds_dual_screen", False)
+        is_dual_screen_handheld = _is_dual_screen_handheld()
+        is_dual_screen_enabled = True if is_dual_screen_handheld else system.config.get_bool("melonds_dual_screen", False)
+
+        renderer = system.config.get_int("melonds_renderer", 1)
+        base_config["3D"]["Renderer"] = renderer
+        base_config["Screen"]["UseGL"] = renderer != 0
 
         if is_dual_screen_enabled:
-            # Force specific settings for dual screen mode for optimal layout
-            # Window0 (Top Screen)
+            base_config["3D"]["GL"]["ScaleFactor"] = 1
+            base_config["3D"]["GL"]["HiresCoordinates"] = False
+
+            base_config["Instance0"]["Window0"]["Enabled"] = True
             base_config["Instance0"]["Window0"]["ScreenRotation"] = 0
             base_config["Instance0"]["Window0"]["ScreenSwap"] = False
-            base_config["Instance0"]["Window0"]["ScreenLayout"] = 0
+            base_config["Instance0"]["Window0"]["ScreenLayout"] = 2
             base_config["Instance0"]["Window0"]["ScreenSizing"] = 4
-            
-            # Window1 (Bottom Screen)
+
             base_config["Instance0"]["Window1"]["Enabled"] = True
             base_config["Instance0"]["Window1"]["ScreenRotation"] = 0
             base_config["Instance0"]["Window1"]["ScreenSwap"] = False
-            base_config["Instance0"]["Window1"]["ScreenLayout"] = 0
+            base_config["Instance0"]["Window1"]["ScreenLayout"] = 2
             base_config["Instance0"]["Window1"]["ScreenSizing"] = 5
-            
-            # Sync IntegerScaling from Window0 to Window1
+
             window0_scaling = system.config.get("melonds_scaling", 0)
             base_config["Instance0"]["Window0"]["IntegerScaling"] = window0_scaling
             base_config["Instance0"]["Window1"]["IntegerScaling"] = window0_scaling
         else:
-            # Apply standard user settings if dual screen is off
+            base_config["Instance0"]["Window0"]["Enabled"] = True
             base_config["Instance0"]["Window1"]["Enabled"] = False
             base_config["Instance0"]["Window0"]["ScreenRotation"] = system.config.get_int("melonds_rotation", 0)
             base_config["Instance0"]["Window0"]["ScreenSwap"] = system.config.get("melonds_screenswap", False)
@@ -231,13 +258,21 @@ class MelonDSGenerator(Generator):
         if retroachievements_enabled:
             achievement_sound = system.config.get("retroachievements.sound", "mario-1up")
 
-        commandArray = ["/usr/bin/melonDS", "-f", rom]
+        env = {
+            "XDG_CONFIG_HOME": CONFIGS,
+            "XDG_DATA_HOME": SAVES,
+            "BATOCERA_MELONDS_ACHIEVEMENT_SOUND": achievement_sound,
+        }
+        if is_dual_screen_handheld and is_dual_screen_enabled:
+            env["QT_QPA_PLATFORM"] = "xcb"
+            env["DISPLAY"] = ":0"
+            env["XDG_SESSION_TYPE"] = "x11"
+            env["WAYLAND_DISPLAY"] = ""
+
+        commandArray = ["/usr/bin/melonDS", rom]
+        if not (is_dual_screen_handheld and is_dual_screen_enabled):
+            commandArray.insert(1, "-f")
         return Command.Command(
             array=commandArray,
-            env={
-                "QT_QPA_PLATFORM": "xcb",
-                "XDG_CONFIG_HOME": CONFIGS,
-                "XDG_DATA_HOME": SAVES,
-                "BATOCERA_MELONDS_ACHIEVEMENT_SOUND": achievement_sound,
-            }
+            env=env
         )
