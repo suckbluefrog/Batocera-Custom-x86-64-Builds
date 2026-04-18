@@ -7,8 +7,17 @@
 ---
 
 **Download:** 
-Latest Build: April 6, 2026
+Latest Build: April 14, 2026
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
+
+---
+## 📜 Changelog 14-4-2026
+
+### Latest
+- Bump RPCS3
+- Add Retroachivements to MelonDS
+- Fixed N64 Launch issues
+---
 
 ---
 ## 📜 Changelog 29-3-2026
