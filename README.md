@@ -389,14 +389,21 @@ Recommended size:
 
 ---
 
-## Disclaimer
+
+
+## ⚠️ Unofficial Build Notice
 
 This is an unofficial build.
 
-- Not supported by the Batocera team
-- No warranty provided
-- Use at your own risk
-- Advanced users only
+- Not supported by the Batocera team  - Don't ask on their discord or reddit for support.
+- No warranty provided — use at your own risk  
+- Built for power users — not for hand-holding  
+
+This project is developed for fun and released *as-is*, with no guarantees of functionality, compatibility, or support.
+
+Community help may be available through various channels, but support is not provided. If something breaks, you are expected to investigate, troubleshoot, and fix it yourself.
+
+**Advanced users only — self-sufficiency required.**
 
 ---
 # Upstream Contributions
