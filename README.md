@@ -361,7 +361,6 @@ Not intended for beginners.
 
 ## Notes
 
-- Due to recent API limitations, the GamesDB scraper is not included.
 - Approx. 5.5GB compressed image size
 - Uses an 18GB Batocera partition to allow room for future updates
 
