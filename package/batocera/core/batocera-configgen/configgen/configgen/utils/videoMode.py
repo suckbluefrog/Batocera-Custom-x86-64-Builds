@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -20,6 +21,40 @@ _logger = logging.getLogger(__name__)
 
 _ROTATION_FILE: Final = Path("/var/run/rk-rotation")
 _GLXINFO_BIN: Final = Path("/usr/bin/glxinfo")
+_DEFAULT_RESOLUTION: Final[Resolution] = { "width": 1920, "height": 1080 }
+_RESOLUTION_ENV_FALLBACKS: Final = (
+    "BATOCERA_STEAM_GS_OUTPUT_RES",
+    "BATOCERA_STEAM_GS_NESTED_RES",
+    "BATOCERA_STEAM_GS_DEFAULT_RES",
+)
+
+def _parseResolution(value: str) -> Resolution | None:
+    match = re.search(r"(?P<width>[0-9]+)x(?P<height>[0-9]+)", value)
+    if match is None:
+        return None
+
+    width = int(match.group("width"))
+    height = int(match.group("height"))
+    if width <= 0 or height <= 0:
+        return None
+
+    return { "width": width, "height": height }
+
+def _getFallbackResolution(name: str | None = None) -> Resolution:
+    if name is None:
+        current_mode = getCurrentMode()
+        if current_mode and (resolution := _parseResolution(current_mode)):
+            _logger.warning("falling back to current mode for resolution: %s", current_mode)
+            return resolution
+
+        for env_name in _RESOLUTION_ENV_FALLBACKS:
+            env_value = os.environ.get(env_name)
+            if env_value and (resolution := _parseResolution(env_value)):
+                _logger.warning("falling back to %s for resolution: %s", env_name, env_value)
+                return resolution
+
+    _logger.warning("falling back to default resolution: %sx%s", _DEFAULT_RESOLUTION["width"], _DEFAULT_RESOLUTION["height"])
+    return dict(_DEFAULT_RESOLUTION)
 
 # Set a specific video mode
 def changeMode(videomode: str) -> None:
@@ -136,8 +171,12 @@ def getCurrentResolution(name: str | None = None) -> Resolution:
         proc = subprocess.Popen([f"batocera-resolution --screen {name} currentResolution"], stdout=subprocess.PIPE, shell=True)
 
     (out, _) = proc.communicate()
-    vals = out.decode().split("x")
-    return { "width": int(vals[0]), "height": int(vals[1]) }
+    decoded = out.decode(errors="ignore").strip()
+    if resolution := _parseResolution(decoded):
+        return resolution
+
+    _logger.warning("invalid current resolution from batocera-resolution: %r", decoded)
+    return _getFallbackResolution(name)
 
 def getCurrentOutput() -> str:
     proc = subprocess.Popen(["batocera-resolution currentOutput"], stdout=subprocess.PIPE, shell=True)

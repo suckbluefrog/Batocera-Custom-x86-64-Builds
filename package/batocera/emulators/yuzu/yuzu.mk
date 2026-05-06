@@ -32,13 +32,9 @@ define YUZU_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/yuzu/yuzu.AppImage
 
 	# Wrapper (exec-time chmod avoids fix-rpath)
-	mkdir -p $(TARGET_DIR)/usr/bin
-	printf '%s\n' \
-		'#!/bin/sh' \
-		'chmod +x /usr/share/yuzu/yuzu.AppImage 2>/dev/null' \
-		'exec /usr/share/yuzu/yuzu.AppImage "$$@"' \
-		> $(TARGET_DIR)/usr/bin/yuzu
-	chmod 0755 $(TARGET_DIR)/usr/bin/yuzu
+	$(INSTALL) -D -m 0755 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulators/yuzu/yuzu \
+		$(TARGET_DIR)/usr/bin/yuzu
 endef
 
 $(eval $(generic-package))

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# MangoApp segfaults under Gamescope's Wayland child display on this build.
+# XWayland stays alive and still lets Steam's QAM update the MangoApp config.
+unset WAYLAND_DISPLAY
+unset GAMESCOPE_WAYLAND_DISPLAY
+
+exec /usr/bin/mangoapp.real "$@"

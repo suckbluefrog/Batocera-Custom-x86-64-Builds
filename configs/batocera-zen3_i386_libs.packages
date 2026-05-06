@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 suckbluefrog
+# SPDX-FileCopyrightText: Added/modified by suckbluefrog
 # batocera-zen3_i386_libs.packages
 # Phase 5a: steam-core i386 runtime set (no Wine32 payload yet)
 
@@ -20,6 +20,7 @@ BR2_PACKAGE_MESA3D_VULKAN_DRIVER_INTEL=y
 BR2_PACKAGE_MESA3D_VULKAN_DRIVER_HASWELL=y
 BR2_PACKAGE_MESA3D_VULKAN_DRIVER_AMD=y
 BR2_PACKAGE_VULKAN_TOOLS=y
+BR2_PACKAGE_MANGOHUD=y
 
 # Lutris native-title i386 baseline extras (beyond steam requirements)
 BR2_PACKAGE_ALSA_LIB=y

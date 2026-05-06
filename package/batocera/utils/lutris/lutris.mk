@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 suckbluefrog
+# SPDX-FileCopyrightText: Added/modified by suckbluefrog
 ################################################################################
 #
 # lutris
@@ -16,8 +16,11 @@ LUTRIS_DEPENDENCIES = \
 	adwaita-icon-theme \
 	dbus-python \
 	font-awesome \
+	gdk-pixbuf \
 	hicolor-icon-theme \
+	jpeg \
 	libgtk3 \
+	librsvg \
 	openal \
 	python-distro \
 	python-evdev \

@@ -65,6 +65,9 @@ define BATOCERA_STEAM_INSTALL_TARGET_CMDS
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-uimode-watch \
 	    $(TARGET_DIR)/usr/bin/
 	install -m 0755 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-nightmode-watch \
+	    $(TARGET_DIR)/usr/bin/
+	install -m 0755 \
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/steam-direct-session.sh \
 	    $(TARGET_DIR)/usr/bin/
 	install -m 0755 \
@@ -74,11 +77,29 @@ define BATOCERA_STEAM_INSTALL_TARGET_CMDS
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-decky-install \
 	    $(TARGET_DIR)/usr/bin/
 	install -m 0755 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-decky-tdp \
+	    $(TARGET_DIR)/usr/bin/
+	install -m 0755 \
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-update \
 	    $(TARGET_DIR)/usr/bin/
 	install -m 0755 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/hhd.steamos \
+	    $(TARGET_DIR)/usr/bin/
+	install -m 0755 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steamos-manager \
+	    $(TARGET_DIR)/usr/bin/
+	mkdir -p $(TARGET_DIR)/usr/bin/steamos-polkit-helpers
+	install -m 0755 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/steamos-priv-write \
+	    $(TARGET_DIR)/usr/bin/steamos-polkit-helpers/
+	install -m 0755 \
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/S92steam-hotkeys-reset \
 	    $(TARGET_DIR)/etc/init.d/S92steam-hotkeys-reset
+
+	mkdir -p $(TARGET_DIR)/usr/share/batocera/steam/looks
+	install -m 0644 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/night-mode-warm.cube \
+	    $(TARGET_DIR)/usr/share/batocera/steam/looks/
 
 	mkdir -p $(TARGET_DIR)/etc/dbus-1/system.d
 	install -m 0644 \

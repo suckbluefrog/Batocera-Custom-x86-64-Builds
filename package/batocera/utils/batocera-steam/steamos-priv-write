@@ -1,0 +1,81 @@
+#!/bin/bash
+# SteamOS priv-write compatibility helper. Batocera maps TDP powercap writes to
+# RyzenAdj and allows a small set of safe sysfs writes Steam may request.
+
+set -u
+
+log="/userdata/system/logs/steam-tdp.log"
+write_path="${1:-${WRITE_PATH:-}}"
+write_value="${2:-${WRITE_VALUE:-}}"
+
+mkdir -p "$(dirname "$log")" 2>/dev/null || true
+
+log_msg() {
+    echo "steamos-priv-write: $*" >> "$log"
+}
+
+as_watts() {
+    local value="$1"
+
+    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    if [ "$value" -gt 1000 ]; then
+        awk -v microwatts="$value" 'BEGIN { printf "%.0f\n", microwatts / 1000000 }'
+    else
+        printf '%s\n' "$value"
+    fi
+}
+
+write_file() {
+    local path="$1"
+    local value="$2"
+
+    if [ -z "$path" ]; then
+        echo "No write path supplied" >&2
+        return 1
+    fi
+
+    if [ ! -e "$path" ]; then
+        echo "Write path does not exist: $path" >&2
+        return 1
+    fi
+
+    if [ -n "$value" ]; then
+        printf '%s' "$value" > "$path"
+        log_msg "wrote $value to $path"
+    else
+        chmod a+w "$path"
+        log_msg "made $path writable"
+    fi
+}
+
+case "$write_path" in
+    /sys/class/hwmon/hwmon*/power*_cap|/sys/devices/*/hwmon/hwmon*/power*_cap)
+        watts="$(as_watts "$write_value" 2>/dev/null || true)"
+        if [ -z "$watts" ]; then
+            echo "Invalid TDP powercap value: $write_value" >&2
+            exit 1
+        fi
+
+        if /usr/bin/hhd.steamos steamos-tdp "$watts"; then
+            log_msg "mapped $write_path=$write_value to ${watts}W RyzenAdj TDP"
+            exit 0
+        fi
+
+        echo "Failed to map powercap write to RyzenAdj TDP" >&2
+        exit 1
+        ;;
+esac
+
+case "$write_path" in
+    /sys/class/backlight/*/brightness|/sys/class/drm/card*/device/power_dpm_force_performance_level|/sys/class/drm/card*/device/pp_od_clk_voltage)
+        write_file "$write_path" "$write_value"
+        exit $?
+        ;;
+esac
+
+echo "Unsupported privileged write path: $write_path" >&2
+log_msg "unsupported path $write_path"
+exit 1

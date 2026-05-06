@@ -117,14 +117,14 @@ msgstr "Accès rapide"
 msgid "Quit game"
 msgstr "Quitter"
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr "Enregistrer"
 
 msgid "Record All Screens"
 msgstr "Enregistrer tous les écrans"
+
+msgid "Recording in progress"
+msgstr "Enregistrement en cours"
 
 msgid "Resolution:"
 msgstr "Résoluition:"
@@ -135,18 +135,6 @@ msgstr "Économe"
 msgid "Select"
 msgstr "Sélectionner"
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr "Démarrer l'enregistrement"
-
-msgid "Status"
-msgstr "Statut"
-
-msgid "Stop Recording"
-msgstr "Arrêter l'enregistrement"
-
 msgid "Stuck emulator?"
 msgstr "Émulateur bloqué ?"
 
@@ -155,15 +143,6 @@ msgstr "Système"
 
 msgid "System (Default)"
 msgstr "Système (par défaut)"
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
-msgstr ""
 
 msgid "Temp:"
 msgstr "Temp:"
@@ -182,6 +161,15 @@ msgstr "Vol +"
 
 msgid "Vol -"
 msgstr "Vol -"
+
+#~ msgid "Start Recording"
+#~ msgstr "Démarrer l'enregistrement"
+
+#~ msgid "Status"
+#~ msgstr "Statut"
+
+#~ msgid "Stop Recording"
+#~ msgstr "Arrêter l'enregistrement"
 
 #~ msgid "Sound & Power"
 #~ msgstr "Son et Puissance"

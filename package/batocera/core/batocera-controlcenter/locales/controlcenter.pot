@@ -112,13 +112,13 @@ msgstr ""
 msgid "Quit game"
 msgstr ""
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr ""
 
 msgid "Record All Screens"
+msgstr ""
+
+msgid "Recording in progress"
 msgstr ""
 
 msgid "Resolution:"
@@ -130,18 +130,6 @@ msgstr ""
 msgid "Select"
 msgstr ""
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr ""
-
-msgid "Status"
-msgstr ""
-
-msgid "Stop Recording"
-msgstr ""
-
 msgid "Stuck emulator?"
 msgstr ""
 
@@ -149,15 +137,6 @@ msgid "System"
 msgstr ""
 
 msgid "System (Default)"
-msgstr ""
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
 msgstr ""
 
 msgid "Temp:"

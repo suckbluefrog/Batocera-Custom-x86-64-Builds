@@ -1,0 +1,142 @@
+#!/bin/bash
+# Minimal HHD SteamOS compatibility shim for Batocera Steam Gaming Mode.
+# Steam-side tools can use the HHD v4 steamos-tdp command shape while Batocera
+# applies the value through its RyzenAdj wrapper.
+
+set -u
+
+log="/userdata/system/logs/steam-tdp.log"
+state_file="/var/run/batocera-steam-tdp"
+fallback=0
+args=()
+
+mkdir -p "$(dirname "$log")" 2>/dev/null || true
+
+for arg in "$@"; do
+    case "$arg" in
+        --fallback) fallback=1 ;;
+        *) args+=("$arg") ;;
+    esac
+done
+
+cmd="${args[0]:-}"
+
+fallback_exit() {
+    if [ "$fallback" -eq 1 ]; then
+        exit 20
+    fi
+    exit 0
+}
+
+tdp_available() {
+    [ -x /usr/bin/batocera-amd-tdp ] && [ -x /usr/bin/ryzenadj ]
+}
+
+tdp_limits() {
+    /usr/bin/batocera-amd-tdp --limits 2>/dev/null
+}
+
+tdp_current() {
+    /usr/bin/batocera-amd-tdp --current 2>/dev/null
+}
+
+set_tdp() {
+    local watts="$1"
+
+    if ! tdp_available; then
+        echo "TDP management disabled. Fallback to steamos manager." >&2
+        return 1
+    fi
+
+    if ! [[ "$watts" =~ ^[0-9]+$ ]]; then
+        echo "Invalid TDP value: $watts" >&2
+        return 3
+    fi
+
+    if /usr/bin/batocera-amd-tdp "$watts"; then
+        echo "$watts" > "$state_file" 2>/dev/null || true
+        /usr/bin/batocera-settings-set steam.tdp "$watts" >/dev/null 2>&1 || true
+        echo "Steam requested TDP ${watts}W" >> "$log"
+        return 0
+    fi
+
+    echo "Failed to set TDP to ${watts}W" >&2
+    return 3
+}
+
+steamos_tdp() {
+    local opt="${args[1]:-}"
+
+    if ! tdp_available; then
+        echo "TDP management disabled. Fallback to steamos manager." >&2
+        return 1
+    fi
+
+    case "$opt" in
+        get)
+            tdp_limits || return 1
+            ;;
+        current)
+            tdp_current || return 1
+            ;;
+        status)
+            /usr/bin/batocera-amd-tdp --status || return 1
+            ;;
+        "")
+            echo "Either provide a TDP value, or use 'get' for current limits." >&2
+            return 1
+            ;;
+        *)
+            set_tdp "$opt"
+            ;;
+    esac
+}
+
+steamos_gpu() {
+    local opt="${args[1]:-}"
+
+    case "$opt" in
+        get|clear|[0-9]*)
+            echo "GPU management disabled. Fallback to steamos manager." >&2
+            return 1
+            ;;
+        *)
+            echo "Either provide a GPU value, or use 'get' for current limits." >&2
+            return 1
+            ;;
+    esac
+}
+
+usage() {
+    cat <<'USAGE'
+hhd.steamos {steamos-tdp,steamos-gpu,steamos-select-branch,steamos-update} [args]
+
+Batocera implements steamos-tdp as a RyzenAdj bridge:
+  hhd.steamos steamos-tdp get      prints: min max default
+  hhd.steamos steamos-tdp current  prints the current fast PPT limit
+  hhd.steamos steamos-tdp status   prints key=value details
+  hhd.steamos steamos-tdp 15       applies 15W through batocera-amd-tdp
+USAGE
+}
+
+case "$cmd" in
+    steamos-tdp)
+        steamos_tdp
+        exit $?
+        ;;
+    steamos-gpu)
+        steamos_gpu
+        exit $?
+        ;;
+    steamos-select-branch|steamos-branch-select|steamos-update)
+        fallback_exit
+        ;;
+    -h|--help|help|"")
+        usage
+        exit 0
+        ;;
+    *)
+        echo "Invalid command: '$cmd'" >&2
+        exit 1
+        ;;
+esac

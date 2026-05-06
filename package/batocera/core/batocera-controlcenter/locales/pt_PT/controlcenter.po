@@ -112,14 +112,14 @@ msgstr "Acesso rápido"
 msgid "Quit game"
 msgstr "Sair do jogo"
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr "Gravar"
 
 msgid "Record All Screens"
 msgstr "Gravar todos os ecrãs"
+
+msgid "Recording in progress"
+msgstr "Gravação em curso"
 
 msgid "Resolution:"
 msgstr "Resolução:"
@@ -130,18 +130,6 @@ msgstr "Economizador"
 msgid "Select"
 msgstr "Selecionar"
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr "Iniciar gravação"
-
-msgid "Status"
-msgstr "Estado"
-
-msgid "Stop Recording"
-msgstr "Parar gravação"
-
 msgid "Stuck emulator?"
 msgstr "Emulador bloqueado?"
 
@@ -150,15 +138,6 @@ msgstr "Sistema"
 
 msgid "System (Default)"
 msgstr "Sistema (Padrão)"
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
-msgstr ""
 
 msgid "Temp:"
 msgstr "Temperatura:"
@@ -177,6 +156,15 @@ msgstr "Volume +"
 
 msgid "Vol -"
 msgstr "Volume -"
+
+#~ msgid "Start Recording"
+#~ msgstr "Iniciar gravação"
+
+#~ msgid "Status"
+#~ msgstr "Estado"
+
+#~ msgid "Stop Recording"
+#~ msgstr "Parar gravação"
 
 #~ msgid "/usr/share/batocera/controlcenter/bato-record.gif"
 #~ msgstr "/usr/share/batocera/controlcenter/bato-record.gif"

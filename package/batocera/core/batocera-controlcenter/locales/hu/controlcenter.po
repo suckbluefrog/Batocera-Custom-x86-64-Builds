@@ -117,14 +117,14 @@ msgstr "Gyors hozzáférés"
 msgid "Quit game"
 msgstr "Kilépés a játékból"
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr "Rekord"
 
 msgid "Record All Screens"
 msgstr "Minden képernyő rögzítése"
+
+msgid "Recording in progress"
+msgstr ""
 
 msgid "Resolution:"
 msgstr "Felbontás:"
@@ -135,18 +135,6 @@ msgstr "Lementés"
 msgid "Select"
 msgstr "Kiválaszt"
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr "Felvétel Indítása"
-
-msgid "Status"
-msgstr "Állapot"
-
-msgid "Stop Recording"
-msgstr "Felvétel Leállítása"
-
 msgid "Stuck emulator?"
 msgstr "Elakadt emulátor?"
 
@@ -155,15 +143,6 @@ msgstr "Rendszer"
 
 msgid "System (Default)"
 msgstr "Rendszer (alapértelmezett)"
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
-msgstr ""
 
 msgid "Temp:"
 msgstr "Hőmérséklet:"
@@ -182,6 +161,15 @@ msgstr "Hang +"
 
 msgid "Vol -"
 msgstr "Hang -"
+
+#~ msgid "Start Recording"
+#~ msgstr "Felvétel Indítása"
+
+#~ msgid "Status"
+#~ msgstr "Állapot"
+
+#~ msgid "Stop Recording"
+#~ msgstr "Felvétel Leállítása"
 
 #~ msgid "/usr/share/batocera/controlcenter/bato-record.gif"
 #~ msgstr "/usr/share/batocera/controlcenter/bato-record.gif"

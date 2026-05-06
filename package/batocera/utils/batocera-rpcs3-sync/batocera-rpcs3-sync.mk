@@ -13,6 +13,12 @@ define BATOCERA_RPCS3_SYNC_INSTALL_TARGET_CMDS
 	install -m 0755 \
 		$(BR2_EXTERNAL_BATOCERA_PATH)/batocera-rpcs3-sync \
 		$(TARGET_DIR)/usr/bin/batocera-rpcs3-sync
+	install -m 0755 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-rpcs3-sync/batocera-rpcs3-sync-onchange \
+		$(TARGET_DIR)/usr/bin/batocera-rpcs3-sync-onchange
+	mkdir -p $(TARGET_DIR)/usr/share/emulationstation/hooks
+	ln -sf /usr/bin/batocera-rpcs3-sync-onchange \
+		$(TARGET_DIR)/usr/share/emulationstation/hooks/preupdate-gamelists-rpcs3
 endef
 
 $(eval $(generic-package))

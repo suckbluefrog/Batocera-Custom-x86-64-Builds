@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: controlcenter\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-01-02 21:32+0000\n"
-"PO-Revision-Date: 2026-02-10 17:44+0000\n"
+"PO-Revision-Date: 2026-02-21 10:46+0000\n"
 "Last-Translator: \n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -120,14 +120,14 @@ msgstr "Schnellzugriff"
 msgid "Quit game"
 msgstr "Spiel beenden"
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr "Aufnehmen"
 
 msgid "Record All Screens"
 msgstr "Alle Bildschirme aufnehmen"
+
+msgid "Recording in progress"
+msgstr "Aufnahme läuft"
 
 msgid "Resolution:"
 msgstr "Auflösung:"
@@ -138,18 +138,6 @@ msgstr "Sparmodus"
 msgid "Select"
 msgstr "Auswählen"
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr "Aufnahme starten"
-
-msgid "Status"
-msgstr "Status"
-
-msgid "Stop Recording"
-msgstr "Aufnahme stoppen"
-
 msgid "Stuck emulator?"
 msgstr "Emulator hängt?"
 
@@ -158,15 +146,6 @@ msgstr "System"
 
 msgid "System (Default)"
 msgstr "System (Standard)"
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
-msgstr ""
 
 msgid "Temp:"
 msgstr "Temp:"
@@ -185,6 +164,3 @@ msgstr "Vol +"
 
 msgid "Vol -"
 msgstr "Vol -"
-
-#~ msgid "/usr/share/batocera/controlcenter/bato-record.gif"
-#~ msgstr "/usr/share/batocera/controlcenter/bato-record.gif"

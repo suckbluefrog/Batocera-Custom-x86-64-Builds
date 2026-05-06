@@ -104,6 +104,22 @@ wait_for_frontend_stop() {
     return 1
 }
 
+clear_frontend_restore_env() {
+    local name
+
+    for name in "${!BATOCERA_STEAM_@}"; do
+        unset "${name}"
+    done
+
+    unset STEAM_DECK
+    unset STEAMOS
+    unset STEAM_GAMEPADUI
+    unset STEAM_FORCE_DESKTOPUI
+    unset GAMESCOPE_DISPLAY
+    unset GAMESCOPE_WAYLAND_DISPLAY
+    unset GAMESCOPE_SESSION
+}
+
 restore_frontend() {
     if frontend_running; then
         log "frontend already running after Steam exit"
@@ -112,6 +128,7 @@ restore_frontend() {
 
     if [[ -x "${ES_SERVICE}" ]]; then
         log "starting EmulationStation service after Steam exit"
+        clear_frontend_restore_env
         "${ES_SERVICE}" start >/dev/null 2>&1 || "${ES_SERVICE}" restart >/dev/null 2>&1 || true
     fi
 }

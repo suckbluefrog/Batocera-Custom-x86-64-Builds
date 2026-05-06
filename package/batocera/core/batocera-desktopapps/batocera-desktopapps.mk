@@ -103,13 +103,6 @@ ifeq ($(BR2_PACKAGE_CEMU),y)
   BATOCERA_DESKTOPAPPS_ICONS   += cemu.png
 endif
 
-# fpinball
-ifeq ($(BR2_PACKAGE_FPINBALL),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-fpinball
-  BATOCERA_DESKTOPAPPS_APPS    += fpinball-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += fpinball.png
-endif
-
 # model2emu
 ifeq ($(BR2_PACKAGE_MODEL2EMU),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-model2emu
@@ -128,56 +121,10 @@ ifeq ($(BR2_PACKAGE_BATOCERA_STEAM),y)
   BATOCERA_DESKTOPAPPS_ICONS   += steam.png
 endif
 
-# waydroid
-ifeq ($(BR2_PACKAGE_WAYDROID),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += Waydroid.sh
-  BATOCERA_DESKTOPAPPS_APPS    += waydroid.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += waydroid.png
-endif
-
-# virt-manager
-ifeq ($(BR2_PACKAGE_VIRT_MANAGER),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += VirtManager.sh
-  BATOCERA_DESKTOPAPPS_APPS    += virt-manager.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += virt-manager.png
-endif
-
-# 86box
-ifeq ($(BR2_PACKAGE_86BOX),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += 86Box.sh
-  BATOCERA_DESKTOPAPPS_APPS    += 86box.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += 86box.png
-endif
-
-# touchHLE
-ifeq ($(BR2_PACKAGE_TOUCHHLE),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += touchHLE.sh
-  BATOCERA_DESKTOPAPPS_APPS    += touchhle.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += touchhle.png
-endif
-
-# batocera-wine-tools
-ifeq ($(BR2_PACKAGE_BATOCERA_WINE),y)
-  BATOCERA_DESKTOPAPPS_APPS    += wine-tools.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += wine-tools.png
-endif
-
-# console extract tools
-ifneq ($(filter y,$(BR2_PACKAGE_SHADPS4_PKG_EXTRACTOR) $(BR2_PACKAGE_EXTRACT_XISO) $(BR2_PACKAGE_BATOCERA_RPCS3_SYNC)),)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-console-extract-tools
-  BATOCERA_DESKTOPAPPS_APPS    += console-extract-tools.desktop
-endif
-
 # heroic
 ifeq ($(BR2_PACKAGE_HEROIC),y)
   BATOCERA_DESKTOPAPPS_APPS    += heroic.desktop
   BATOCERA_DESKTOPAPPS_ICONS   += heroic.png
-endif
-
-# lutris
-ifneq ($(filter y,$(BR2_PACKAGE_LUTRIS) $(BR2_PACKAGE_LUTRIS_APPIMAGE)),)
-  BATOCERA_DESKTOPAPPS_APPS    += lutris.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += lutris.png
 endif
 
 # bundled desktop apps
@@ -206,6 +153,13 @@ ifeq ($(BR2_PACKAGE_BATOCERA_APPS),y)
   BATOCERA_DESKTOPAPPS_ICONS   += steam-rom-manager.png
 endif
 
+# citron
+ifeq ($(BR2_PACKAGE_CITRON),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-citron
+  BATOCERA_DESKTOPAPPS_APPS    += citron-config.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += citron.png
+endif
+
 # eden
 ifeq ($(BR2_PACKAGE_EDEN),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-eden
@@ -213,18 +167,24 @@ ifeq ($(BR2_PACKAGE_EDEN),y)
   BATOCERA_DESKTOPAPPS_ICONS   += eden.png
 endif
 
-# ryujinx
-ifeq ($(BR2_PACKAGE_RYUJINX),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-ryujinx
-  BATOCERA_DESKTOPAPPS_APPS    += ryujinx-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += ryujinx.png
+# xenia-edge
+ifeq ($(BR2_PACKAGE_XENIA_EDGE),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-xenia-edge
+  BATOCERA_DESKTOPAPPS_APPS    += xenia-edge-config.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += xenia-edge.png
 endif
 
-# yuzu
-ifeq ($(BR2_PACKAGE_YUZU),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-yuzu
-  BATOCERA_DESKTOPAPPS_APPS    += yuzu-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += yuzu.png
+# touchHLE
+ifeq ($(BR2_PACKAGE_TOUCHHLE),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += touchHLE.sh
+  BATOCERA_DESKTOPAPPS_APPS    += touchhle.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += touchhle.png
+endif
+
+# batocera-wine-tools
+ifeq ($(BR2_PACKAGE_BATOCERA_WINE),y)
+  BATOCERA_DESKTOPAPPS_APPS    += wine-tools.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += wine-tools.png
 endif
 
 # melonds
@@ -248,27 +208,6 @@ ifeq ($(BR2_PACKAGE_XENIA_CANARY),y)
   BATOCERA_DESKTOPAPPS_ICONS   += xenia-canary.png
 endif
 
-# xenia-edge
-ifeq ($(BR2_PACKAGE_XENIA_EDGE),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-xenia-edge
-  BATOCERA_DESKTOPAPPS_APPS    += xenia-edge-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += xenia-canary.png
-endif
-
-# gopher64
-ifeq ($(BR2_PACKAGE_GOPHER64),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-gopher64
-  BATOCERA_DESKTOPAPPS_APPS    += gopher64-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += gopher64.png
-endif
-
-# freej2me
-ifeq ($(BR2_PACKAGE_FREEJ2ME),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-freej2me
-  BATOCERA_DESKTOPAPPS_APPS    += freej2me-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += java.png
-endif
-
 # vita3k
 ifeq ($(BR2_PACKAGE_VITA3K),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-vita3k
@@ -288,20 +227,6 @@ ifeq ($(BR2_PACKAGE_SHADPS4),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-shadps4
   BATOCERA_DESKTOPAPPS_APPS    += shadps4-config.desktop
   BATOCERA_DESKTOPAPPS_ICONS   += shadps4.png
-endif
-
-# nanoboyadvance
-ifeq ($(BR2_PACKAGE_NANOBOYADVANCE),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-nanoboyadvance
-  BATOCERA_DESKTOPAPPS_APPS    += nanoboyadvance-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += nanoboyadvance.png
-endif
-
-# skyemu
-ifeq ($(BR2_PACKAGE_SKYEMU),y)
-  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-skyemu
-  BATOCERA_DESKTOPAPPS_APPS    += skyemu-config.desktop
-  BATOCERA_DESKTOPAPPS_ICONS   += skyemu.png
 endif
 
 # lindbergh loader

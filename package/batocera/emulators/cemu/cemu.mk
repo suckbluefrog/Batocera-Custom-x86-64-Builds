@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-CEMU_VERSION = 0ff7d6ef0c0a4e13217f7b35abe226785735c604
+CEMU_VERSION = a8bd6f84f79e82ab9830c777376a38bd138660da
 CEMU_SITE = https://github.com/cemu-project/Cemu
 CEMU_LICENSE = GPLv2
 CEMU_SITE_METHOD=git

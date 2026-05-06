@@ -1,0 +1,170 @@
+#!/bin/bash
+# Install or update the SimpleDeckyTDP Decky plugin for Steam GamepadUI.
+set -euo pipefail
+
+repo="aarron-lee/SimpleDeckyTDP"
+repo_api="https://api.github.com/repos/${repo}/releases/latest"
+fallback_url="https://github.com/${repo}/releases/latest/download/SimpleDeckyTDP.zip"
+
+home="/userdata/system"
+plugins_dir="${home}/homebrew/plugins"
+plugin_dir="${plugins_dir}/SimpleDeckyTDP"
+decky_bin="${home}/homebrew/services/PluginLoader"
+log="/userdata/system/logs/steam-tdp.log"
+
+mkdir -p "$(dirname "${log}")"
+
+log_msg() {
+    echo "batocera-steam-decky-tdp: $*" | tee -a "${log}"
+}
+
+setup_cef_remote_debugging() {
+    local marker
+    local -a candidates=(
+        "${home}/steam/.cef-enable-remote-debugging"
+        "${home}/.steam/steam/.cef-enable-remote-debugging"
+        "${home}/.local/share/Steam/.cef-enable-remote-debugging"
+    )
+
+    for marker in "${candidates[@]}"; do
+        mkdir -p "$(dirname "${marker}")"
+        touch "${marker}"
+    done
+}
+
+resolve_zip_url() {
+    local requested="${1:-latest}"
+    local api
+    local url
+
+    case "${requested}" in
+        http://*|https://*)
+            printf '%s\n' "${requested}"
+            return 0
+            ;;
+        latest|"")
+            api="$(curl -fsSL "${repo_api}" || true)"
+            url="$(printf '%s\n' "${api}" \
+                | sed -n -E 's/^[[:space:]]*"browser_download_url":[[:space:]]*"([^"]*SimpleDeckyTDP[^"]*\.zip)".*/\1/p' \
+                | head -n 1)"
+            if [[ -n "${url}" ]]; then
+                printf '%s\n' "${url}"
+                return 0
+            fi
+            printf '%s\n' "${fallback_url}"
+            return 0
+            ;;
+        v*|[0-9]*)
+            printf 'https://github.com/%s/releases/download/%s/SimpleDeckyTDP.zip\n' "${repo}" "${requested}"
+            return 0
+            ;;
+    esac
+
+    echo "Usage: batocera-steam-decky-tdp [latest|tag|zip-url|--remove]" >&2
+    return 2
+}
+
+extract_zip() {
+    local zip="$1"
+    local out="$2"
+
+    if command -v unzip >/dev/null 2>&1; then
+        unzip -q "${zip}" -d "${out}"
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 - "${zip}" "${out}" <<'PY'
+import sys
+import zipfile
+
+zip_path, out_dir = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(zip_path) as archive:
+    archive.extractall(out_dir)
+PY
+    else
+        echo "ERROR: unzip or python3 is required to extract SimpleDeckyTDP." >&2
+        return 1
+    fi
+}
+
+find_plugin_root() {
+    local extracted="$1"
+    local manifest
+
+    manifest="$(find "${extracted}" -maxdepth 4 -type f -name plugin.json | head -n 1)"
+    if [[ -n "${manifest}" ]]; then
+        dirname "${manifest}"
+        return 0
+    fi
+
+    if [[ -d "${extracted}/SimpleDeckyTDP" ]]; then
+        printf '%s\n' "${extracted}/SimpleDeckyTDP"
+        return 0
+    fi
+
+    echo "ERROR: SimpleDeckyTDP plugin root was not found in archive." >&2
+    return 1
+}
+
+restart_decky_loader() {
+    setup_cef_remote_debugging
+
+    if pgrep -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1; then
+        pkill -TERM -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1 || true
+        sleep 1
+    fi
+
+    if [[ -x "${decky_bin}" ]]; then
+        nohup "${decky_bin}" >> /userdata/system/logs/decky-loader.log 2>&1 &
+        log_msg "Decky Loader restarted."
+    else
+        log_msg "Decky Loader is not installed. Run batocera-steam-decky-install before launching Steam."
+    fi
+}
+
+install_plugin() {
+    local requested="${1:-latest}"
+    local url
+    local tmp
+    local zip
+    local extracted
+    local root
+
+    url="$(resolve_zip_url "${requested}")"
+    tmp="$(mktemp -d)"
+    zip="${tmp}/SimpleDeckyTDP.zip"
+    extracted="${tmp}/extract"
+    mkdir -p "${extracted}" "${plugins_dir}"
+
+    log_msg "Downloading SimpleDeckyTDP from ${url}"
+    curl -fL --retry 3 --retry-delay 2 -o "${zip}" "${url}"
+    extract_zip "${zip}" "${extracted}"
+    root="$(find_plugin_root "${extracted}")"
+
+    rm -rf "${plugin_dir}.new" "${plugin_dir}.old"
+    mkdir -p "${plugin_dir}.new"
+    cp -a "${root}/." "${plugin_dir}.new/"
+
+    find "${plugin_dir}.new" -type f \( -name '*.sh' -o -path '*/bin/*' \) -exec chmod 0755 {} + 2>/dev/null || true
+    if [[ -d "${plugin_dir}" ]]; then
+        mv "${plugin_dir}" "${plugin_dir}.old"
+    fi
+    mv "${plugin_dir}.new" "${plugin_dir}"
+    rm -rf "${plugin_dir}.old" "${tmp}"
+
+    log_msg "Installed SimpleDeckyTDP to ${plugin_dir}"
+    restart_decky_loader
+}
+
+remove_plugin() {
+    rm -rf "${plugin_dir}"
+    log_msg "Removed ${plugin_dir}"
+    restart_decky_loader
+}
+
+case "${1:-latest}" in
+    --remove|remove|uninstall)
+        remove_plugin
+        ;;
+    *)
+        install_plugin "${1:-latest}"
+        ;;
+esac

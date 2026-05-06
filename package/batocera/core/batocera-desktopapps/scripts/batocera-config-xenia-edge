@@ -5,6 +5,9 @@ then
 	export DISPLAY=$(getLocalXDisplay)
 fi
 
-emulatorlauncher -system xbox360 -emulator xenia-edge -core xenia-edge -rom config
+/usr/xenia_edge/xenia_edge \
+    --storage_root=/userdata/system/configs/xenia_edge \
+    --content_root=/userdata/saves/xbox360 \
+    --cache_root=/userdata/system/cache/xenia_edge
 
 exit 0

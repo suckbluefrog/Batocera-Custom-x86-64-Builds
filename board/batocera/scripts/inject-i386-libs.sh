@@ -1,7 +1,5 @@
 #!/bin/bash -e
-# SPDX-License-Identifier: GPL-2.0-only
-# Copyright (C) 2026-suckbluefrog (suckbluefrog@proton.me)
-
+# SPDX-FileCopyrightText: Added/modified by suckbluefrog
 
 # Usage:
 #   inject-i386-libs.sh <target_name_uppercase> <target_dir> <external_dir>
@@ -172,7 +170,7 @@ copy_vulkan_json_dir() {
             -e 's@/usr/lib/@/lib32/@g' \
             "${dst_dir}/${base}" || exit 1
         printf '%s\n' "${dst_dir#${TARGET_DIR}}/${base}" >> "${manifest_tmp}"
-    done < <(find "${src_dir}" -maxdepth 1 -type f -name '*.json' | grep -E '(i686|32)\.json$' || true)
+    done < <(find "${src_dir}" -maxdepth 1 -type f -name '*.json' | grep -E '(i686|x86|32)\.json$' || true)
 }
 
 copy_vulkan_json_dir "${I386_ICD_DIR}" "${TARGET_DIR}/usr/share/vulkan/icd.d"

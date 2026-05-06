@@ -1,0 +1,34 @@
+From: Batocera Linux Team <batocera@batocera.linux>
+Date: Fri, 2 May 2026 00:00:00 +0000
+Subject: [PATCH 3/3] fix: use injected class names for template constructors
+
+GCC 13 in C++20 mode rejects constructor declarations written with an
+explicit template-id, such as CommandVar<T>(...). Use the injected class
+name form instead.
+
+Signed-off-by: Batocera Linux Team <batocera@batocera.linux>
+---
+ src/xenia/base/cvar.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/xenia/base/cvar.h b/src/xenia/base/cvar.h
+--- a/src/xenia/base/cvar.h
++++ b/src/xenia/base/cvar.h
+@@ -66,7 +66,7 @@
+ template <class T>
+ class CommandVar : virtual public ICommandVar {
+  public:
+-  CommandVar<T>(const char* name, T* default_value, const char* description);
++  CommandVar(const char* name, T* default_value, const char* description);
+   const std::string& name() const override;
+   const std::string& description() const override;
+   void AddToLaunchOptions(cxxopts::Options* options) override;
+@@ -90,7 +90,7 @@
+ template <class T>
+ class ConfigVar : public CommandVar<T>, virtual public IConfigVar {
+  public:
+-  ConfigVar<T>(const char* name, T* default_value, const char* description,
++  ConfigVar(const char* name, T* default_value, const char* description,
+                const char* display_name, const char* category, bool is_advanced,
+                bool is_transient);
+   std::string config_value() const override;

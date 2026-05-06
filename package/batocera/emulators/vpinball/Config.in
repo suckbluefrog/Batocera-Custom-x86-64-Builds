@@ -1,15 +1,21 @@
 config BR2_PACKAGE_VPINBALL
     bool "vpinball"
+    depends on !BR2_STATIC_LIBS
+    depends on BR2_PACKAGE_XORG7 || BR2_PACKAGE_WAYLAND
     select BR2_PACKAGE_LIBFREEIMAGE
     select BR2_PACKAGE_LIBPINMAME
     select BR2_PACKAGE_LIBALTSOUND
     select BR2_PACKAGE_LIBDMDUTIL
     select BR2_PACKAGE_LIBDOF
-    select BR2_PACKAGE_SDL2
-    select BR2_PACKAGE_SDL2_IMAGE
-    select BR2_PACKAGE_SDL2_TTF
+    select BR2_PACKAGE_LIBWINEVBS
+    select BR2_PACKAGE_SDL3
+    select BR2_PACKAGE_SDL3_IMAGE
+    select BR2_PACKAGE_SDL3_TTF
     select BR2_PACKAGE_FFMPEG
     help
       Visual Pinball.
       
       www.vpforums.org
+
+comment "vpinball needs X11 or Wayland and a toolchain w/ dynamic library"
+    depends on BR2_STATIC_LIBS || !(BR2_PACKAGE_XORG7 || BR2_PACKAGE_WAYLAND)

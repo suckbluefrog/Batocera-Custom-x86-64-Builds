@@ -364,7 +364,7 @@ build_steam_args() {
     out_args=()
 
     if steam_gamepadui_enabled; then
-        out_args+=(-gamepadui)
+        out_args+=(-steamdeck -steamos3 -gamepadui)
     fi
 
     if [[ -n "${BATOCERA_STEAM_EXTRA_ARGS:-}" ]]; then
@@ -433,6 +433,8 @@ launch_steamos() {
 seed_steam_tree
 patch_root_guard
 ensure_local_share_steam_compat
+BATOCERA_STEAM_HOME="${STEAM_HOME}" /usr/bin/batocera-steam-users defaults >> "${log}" 2>&1 || \
+    echo "Steam defaults apply failed" >> "${log}"
 apply_steam_user_selection "${BATOCERA_STEAM_USER:-auto}"
 
 GAME_TARGET="$(normalize_game_target "${GAME_ID}")"

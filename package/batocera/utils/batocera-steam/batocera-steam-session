@@ -27,6 +27,8 @@ export XDG_CACHE_HOME="${HOME}/.cache"
 STEAM_FIRST_RUN_PENDING_STAMP="/userdata/system/.steam-first-run-pending"
 STEAM_FIRST_RUN_WIFI_STAMP="/userdata/system/.steam-first-run-wifi-pending"
 STEAM_FIRST_RUN_PENDING=0
+STEAM_INSTALL_CALLOUT_PID=""
+STEAMOS_MANAGER_PID=""
 ALLY_HOTKEY_DIR="/userdata/system/configs/hotkeygen"
 ALLY_ACTIVE_MAP="${ALLY_HOTKEY_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 ALLY_COMMON_CONTEXT="${ALLY_HOTKEY_DIR}/common_context.ally.conf"
@@ -156,9 +158,93 @@ reassert_ally_steam_hotkeys_later() {
     ) &
 }
 
+flash_msg() {
+    local seconds="$1"
+    local message="$2"
+    local size="${3:-20}"
+
+    if command -v batocera-flash-screen >/dev/null 2>&1; then
+        /usr/bin/batocera-flash-screen "${seconds}" "#ffffff" "${message}" "${size}" >/dev/null 2>&1 || true
+    fi
+}
+
+start_steam_install_callouts() {
+    if [[ "${STEAM_FIRST_RUN_PENDING}" != "1" || "${BATOCERA_STEAM_INSTALL_CALLOUTS:-1}" == "0" ]]; then
+        return
+    fi
+
+    (
+        sleep "${BATOCERA_STEAM_INSTALL_CALLOUT_FIRST_SECS:-45}"
+        while true; do
+            flash_msg 5 "Steam setup is still running..." 20
+            sleep "${BATOCERA_STEAM_INSTALL_CALLOUT_SECS:-120}"
+            flash_msg 6 "Do not power off. You may need to relaunch Steam when complete." 18
+            sleep "${BATOCERA_STEAM_INSTALL_CALLOUT_SECS:-120}"
+        done
+    ) &
+    STEAM_INSTALL_CALLOUT_PID="$!"
+}
+
+stop_steam_install_callouts() {
+    if [[ -n "${STEAM_INSTALL_CALLOUT_PID}" ]]; then
+        kill "${STEAM_INSTALL_CALLOUT_PID}" 2>/dev/null || true
+        wait "${STEAM_INSTALL_CALLOUT_PID}" 2>/dev/null || true
+        STEAM_INSTALL_CALLOUT_PID=""
+    fi
+}
+
+start_steamos_manager_shim() {
+    if [[ "${BATOCERA_STEAM_STEAMOS_MANAGER:-1}" == "0" ]]; then
+        return
+    fi
+
+    if [[ ! -x /usr/bin/batocera-steamos-manager ]]; then
+        return
+    fi
+
+    if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+        echo "SteamOS Manager shim: no session bus available" >> "${log}"
+        return
+    fi
+
+    if command -v dbus-send >/dev/null 2>&1; then
+        if dbus-send --session --print-reply \
+            --dest=com.steampowered.SteamOSManager1 \
+            /com/steampowered/SteamOSManager1 \
+            org.freedesktop.DBus.Properties.Get \
+            string:com.steampowered.SteamOSManager1.TdpLimit1 \
+            string:TdpLimitMin >/dev/null 2>&1; then
+            echo "SteamOS Manager shim: existing TDP provider detected" >> "${log}"
+            return
+        fi
+    fi
+
+    nohup /usr/bin/batocera-steamos-manager >> "${log}" 2>&1 &
+    STEAMOS_MANAGER_PID="$!"
+    sleep 0.4
+
+    if ! kill -0 "${STEAMOS_MANAGER_PID}" 2>/dev/null; then
+        echo "SteamOS Manager shim: not started; TDP backend unavailable" >> "${log}"
+        STEAMOS_MANAGER_PID=""
+        return
+    fi
+
+    echo "SteamOS Manager shim: started for QAM TDP controls" >> "${log}"
+}
+
+stop_steamos_manager_shim() {
+    if [[ -n "${STEAMOS_MANAGER_PID}" ]]; then
+        kill "${STEAMOS_MANAGER_PID}" 2>/dev/null || true
+        wait "${STEAMOS_MANAGER_PID}" 2>/dev/null || true
+        STEAMOS_MANAGER_PID=""
+    fi
+}
+
 cleanup_hotkeys_on_exit() {
     # "Switch to Desktop" kills the original session outside configgen's normal cleanup path.
     # Restore an explicit default context and ES profile when that happens.
+    stop_steam_install_callouts
+    stop_steamos_manager_shim
     run_ally_hotkey_hook gameStop || true
     if command -v hotkeygen >/dev/null 2>&1; then
         if ! hotkeygen_permanent_running && [ -x /etc/init.d/S90hotkeygen ]; then
@@ -209,11 +295,11 @@ if [[ "${BATOCERA_STEAM_REQUIRE_NETWORK:-1}" == "1" ]] && [[ "${STEAM_HAS_NETWOR
 
     if command -v batocera-flash-screen >/dev/null 2>&1; then
         if [[ "${STEAM_FIRST_RUN_PENDING}" == "1" ]]; then
-            /usr/bin/batocera-flash-screen 6 "#ffffff" "No network connected." 22 >/dev/null 2>&1 || true
-            /usr/bin/batocera-flash-screen 6 "#ffffff" "Please connect to Wi-Fi / internet and retry Steam." 18 >/dev/null 2>&1 || true
+            flash_msg 6 "Steam first setup needs Wi-Fi." 22
+            flash_msg 6 "Please connect to Wi-Fi / internet and retry Steam." 18
         else
-            /usr/bin/batocera-flash-screen 6 "#ffffff" "No internet connection." 22 >/dev/null 2>&1 || true
-            /usr/bin/batocera-flash-screen 6 "#ffffff" "Please connect to the internet and launch Steam again." 20 >/dev/null 2>&1 || true
+            flash_msg 6 "No internet connection." 22
+            flash_msg 6 "Please connect to the internet and launch Steam again." 20
         fi
     fi
 
@@ -442,11 +528,6 @@ detect_refresh_rate() {
 
 if [[ "${STEAM_FIRST_RUN_PENDING}" == "1" ]] && [[ "${STEAM_HAS_NETWORK}" == "1" ]]; then
     rm -f "${STEAM_FIRST_RUN_WIFI_STAMP}"
-fi
-
-if [[ "${STEAM_FIRST_RUN_PENDING}" == "1" ]] && [[ "${STEAM_HAS_NETWORK}" == "1" ]] && command -v batocera-flash-screen >/dev/null 2>&1; then
-    /usr/bin/batocera-flash-screen 6 "#ffffff" "Downloading Steam runtime components." 22 >/dev/null 2>&1 || true
-    /usr/bin/batocera-flash-screen "${BATOCERA_STEAM_FIRST_RUN_WAIT_SECS:-18}" "#ffffff" "This will take a while. Please wait..." 20 >/dev/null 2>&1 || true
 fi
 
 finalize_first_run_state() {
@@ -684,13 +765,26 @@ start_consolekit_stub() {
     fi
 }
 
-start_decky_loader
 ensure_system_bus_address
+start_steamos_manager_shim
+start_decky_loader
 start_networkmanager_stub
 start_login1_stub
 start_consolekit_stub
 start_displaymanager_stub
 start_uimode_watch
+
+start_nightmode_watch() {
+    if ! command -v batocera-steam-nightmode-watch >/dev/null 2>&1; then
+        return
+    fi
+
+    if pgrep -f '/usr/bin/batocera-steam-nightmode-watch' >/dev/null 2>&1; then
+        return
+    fi
+
+    nohup /usr/bin/batocera-steam-nightmode-watch >> "${log}" 2>&1 &
+}
 
 if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1}" != "0" ]]; then
     read -r out_w out_h <<< "$(detect_output_resolution)"
@@ -729,7 +823,7 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
         append_gamescope_flag "--force-composition-pipeline" "--force-composition"
     fi
 
-    if [[ "${BATOCERA_STEAM_GS_MANGOAPP:-0}" != "0" ]]; then
+    if [[ "${BATOCERA_STEAM_GS_MANGOAPP:-0}" != "0" || -n "${MANGOHUD_CONFIGFILE:-}" || "${MANGOHUD:-0}" == "1" ]]; then
         append_gamescope_flag "--mangoapp"
     fi
 
@@ -779,6 +873,12 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
     fi
 
     echo "Steam gamescope args: ${gs_args[*]}" >> "${log}"
+    if [[ "${STEAM_FIRST_RUN_PENDING}" == "1" ]] && [[ "${STEAM_HAS_NETWORK}" == "1" ]]; then
+        flash_msg 6 "Steam first launch: preparing and downloading updates..." 22
+        flash_msg "${BATOCERA_STEAM_FIRST_RUN_WAIT_SECS:-18}" "Steam is installing updates. This may take a few minutes. Please wait..." 20
+    fi
+    start_steam_install_callouts
+    start_nightmode_watch
     set +e
     gamescope "${gs_args[@]}" -- "$@"
     session_rc=$?

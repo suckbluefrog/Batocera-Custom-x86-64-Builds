@@ -32,6 +32,9 @@ class WineGenerator(Generator):
 
         if system.name == "windows":
             commandArray = ["batocera-wine", "windows", "play", rom]
+            hud = system.config.get("hud", "none")
+            if hud and hud != "none":
+                commandArray.insert(0, "mangohud")
 
             environment: dict[str, str | Path] = {}
 
@@ -101,6 +104,9 @@ class WineGenerator(Generator):
             )
 
         raise BatoceraException("Invalid system: " + system.name)
+
+    def hasInternalMangoHUDCall(self):
+        return True
 
     def getMouseMode(self, config, rom):
         return config.get_bool("force_mouse")

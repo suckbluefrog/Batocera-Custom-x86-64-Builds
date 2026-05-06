@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-HEROIC_VERSION = 2.20.0
+HEROIC_VERSION = 2.21.0
 HEROIC_LICENSE = GPL-3.0
 HEROIC_STRIP = NO
 HEROIC_TOOLCHAIN = manual
@@ -83,6 +83,7 @@ define HEROIC_INSTALL_TARGET_CMDS
 		'fi' \
 		'if [ -d "$${py_overrides}" ]; then export PYTHONPATH="$${py_overrides}$${PYTHONPATH:+:$${PYTHONPATH}}"; fi' \
 		'if [ ! -x "$${app}" ] && [ -f "$${src}" ]; then cp -f "$${src}" "$${local_app}" && chmod 0755 "$${local_app}" 2>/dev/null || true; app="$${local_app}"; fi' \
+		'if [ "$${BATOCERA_HEROIC_MODE:-regular}" = "console" ]; then set -- --console --fullscreen "$$@"; fi' \
 		'need_no_sandbox=0' \
 		'if [ "$${BATOCERA_HEROIC_NO_SANDBOX:-0}" = "1" ] || [ "$${BATOCERA_HEROIC_NO_SANDBOX:-false}" = "true" ]; then need_no_sandbox=1; elif [ "$$(id -u)" = "0" ]; then need_no_sandbox=1; fi' \
 		'run_uid="$${BATOCERA_HEROIC_UID:-1000}"' \
@@ -110,6 +111,7 @@ define HEROIC_INSTALL_TARGET_CMDS
 		"trap 'batocera-mouse hide' EXIT" \
 		'extra_args=()' \
 		'if [[ -n "$${BATOCERA_HEROIC_EXTRA_ARGS:-}" ]]; then read -r -a extra_args <<< "$${BATOCERA_HEROIC_EXTRA_ARGS}"; fi' \
+		'if [[ "$${BATOCERA_HEROIC_MODE:-regular}" == "console" ]]; then extra_args=(--console --fullscreen "$${extra_args[@]}"); fi' \
 		'export HOME="/userdata/saves/heroic"' \
 		'export XDG_CONFIG_HOME="$${HOME}/.config"' \
 		'export XDG_DATA_HOME="$${HOME}/.local/share"' \

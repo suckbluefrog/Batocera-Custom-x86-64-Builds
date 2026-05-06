@@ -3,8 +3,8 @@
 # MAME (GroovyMAME)
 #
 ################################################################################
-# Version: MAME 0.286
-MAME_VERSION = mame0286
+# Version: MAME 0.287
+MAME_VERSION = mame0287
 MAME_SITE = $(call github,mamedev,mame,$(MAME_VERSION))
 MAME_DEPENDENCIES += alsa-lib expat flac fontconfig glm jpeg libpng lua
 MAME_DEPENDENCIES += pulseaudio rapidjson sdl2 sdl2_ttf sqlite zlib
@@ -17,12 +17,8 @@ MAME_LICENSE = MAME
 
 MAME_CROSS_ARCH = unknown
 MAME_CROSS_OPTS = PRECOMPILE=0 NO_USE_PULSEAUDIO=1
-MAME_CFLAGS =
+MAME_CFLAGS = -Wno-error=unknown-pragmas
 MAME_LDFLAGS =
-
-# mame0286 triggers GCC unknown pragma warnings (e.g. STDC FENV_ACCESS),
-# and MAME builds with -Werror by default.
-MAME_CFLAGS += -Wno-error=unknown-pragmas
 
 # Limit number of jobs not to eat too much RAM....
 total_memory_kb := $(shell grep MemTotal /proc/meminfo | awk '{print $$2}')

@@ -82,12 +82,12 @@ emulators:
     hud_support: false
 heroic:
   emulator: heroic
-  core:     heroic
+  core:     regular
   options:
     hud_support: false
 lutris:
   emulator: lutris
-  core:     lutris
+  core:     regular
   options:
     hud_support: false
 apple2:
@@ -465,8 +465,8 @@ naomi2:
   emulator: libretro
   core:     flycast
 nds:
-  emulator: libretro
-  core:     desmume
+  emulator: melonds
+  core:     melonds
 neogeo:
   emulator: libretro
   core:     fbneo
@@ -551,8 +551,8 @@ prboom:
   emulator: libretro
   core:     prboom
 ps2:
-  emulator: pcsx2
-  core:     pcsx2
+  emulator: aethersx2
+  core:     aethersx2
   options:
     fullboot: true
     hud_support: false
@@ -690,8 +690,8 @@ supervision:
   emulator: libretro
   core:     potator
 switch:
-  emulator: eden
-  core:     eden
+  emulator: citron
+  core:     citron
   options:
     hud_support: false
 systemsp:
@@ -778,7 +778,7 @@ windows:
   emulator: wine
   core:     wine-tkg
   options:
-    hud_support: false
+    hud_support: true
     wine-launcher: direct
     dgvoodoo2: 0
 windows_installers:

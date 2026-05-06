@@ -180,7 +180,13 @@ def start_rom(args: argparse.Namespace, maxnbplayers: int, rom: Path, original_r
                         with hud_config_file.open('w') as f:
                             f.write(hudconfig)
                         cmd.env["MANGOHUD_CONFIGFILE"] = hud_config_file
-                        if not generator.hasInternalMangoHUDCall():
+                        steam_gamescope_mangoapp = (
+                            args.systemname == "steam"
+                            and cmd.env.get("BATOCERA_STEAM_USE_GAMESCOPE") == "1"
+                        )
+                        if steam_gamescope_mangoapp:
+                            cmd.env["BATOCERA_STEAM_GS_MANGOAPP"] = "1"
+                        elif not generator.hasInternalMangoHUDCall():
                             cmd.array.insert(0, "mangohud")
 
                 add_gamescope_arguments(cmd, system, gameResolution)

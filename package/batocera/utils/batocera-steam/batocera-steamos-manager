@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+# Minimal SteamOS Manager session-bus shim for Batocera Steam Gaming Mode.
+# It exposes the TdpLimit1 interface Steam checks for QAM TDP controls and
+# routes writes through /usr/bin/batocera-amd-tdp.
+
+import os
+import signal
+import subprocess
+import sys
+from pathlib import Path
+
+import dbus
+import dbus.exceptions
+import dbus.service
+import dbus.mainloop.glib
+from gi.repository import GLib
+
+BUS_NAME = "com.steampowered.SteamOSManager1"
+OBJECT_PATH = "/com/steampowered/SteamOSManager1"
+TDP_IFACE = "com.steampowered.SteamOSManager1.TdpLimit1"
+MANAGER_IFACE = "com.steampowered.SteamOSManager1.Manager2"
+REMOTE_IFACE = "com.steampowered.SteamOSManager1.RemoteInterface1"
+PROPERTIES_IFACE = "org.freedesktop.DBus.Properties"
+INTROSPECT_IFACE = "org.freedesktop.DBus.Introspectable"
+LOG = Path("/userdata/system/logs/steam-tdp.log")
+STATE_FILE = Path("/var/run/batocera-steam-tdp")
+AMD_TDP = "/usr/bin/batocera-amd-tdp"
+SETTINGS_GET = "/usr/bin/batocera-settings-get"
+
+INTROSPECTION_XML = """<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/com/steampowered/SteamOSManager1">
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg name="xml_data" type="s" direction="out"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Properties">
+    <method name="Get">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="property_name" type="s" direction="in"/>
+      <arg name="value" type="v" direction="out"/>
+    </method>
+    <method name="Set">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="property_name" type="s" direction="in"/>
+      <arg name="value" type="v" direction="in"/>
+    </method>
+    <method name="GetAll">
+      <arg name="interface_name" type="s" direction="in"/>
+      <arg name="props" type="a{sv}" direction="out"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg name="interface_name" type="s"/>
+      <arg name="changed_properties" type="a{sv}"/>
+      <arg name="invalidated_properties" type="as"/>
+    </signal>
+  </interface>
+  <interface name="com.steampowered.SteamOSManager1.Manager2">
+    <method name="ReloadConfig"/>
+    <property name="DeviceModel" type="(ss)" access="read"/>
+  </interface>
+  <interface name="com.steampowered.SteamOSManager1.RemoteInterface1">
+    <property name="RemoteInterfaces" type="as" access="read"/>
+  </interface>
+  <interface name="com.steampowered.SteamOSManager1.TdpLimit1">
+    <property name="TdpLimit" type="u" access="readwrite"/>
+    <property name="TdpLimitMin" type="u" access="read"/>
+    <property name="TdpLimitMax" type="u" access="read"/>
+  </interface>
+</node>
+"""
+
+
+def log(message):
+    try:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        with LOG.open("a", encoding="utf-8") as handle:
+            handle.write(f"batocera-steamos-manager: {message}\n")
+    except OSError:
+        pass
+
+
+def run_command(args):
+    proc = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"{args[0]} failed")
+    return proc.stdout.strip()
+
+
+def invalid_args(message):
+    return dbus.exceptions.DBusException(message, name="org.freedesktop.DBus.Error.InvalidArgs")
+
+
+class TdpBackend:
+    def __init__(self):
+        self.min_watts, self.max_watts, self.default_watts = self._read_limits()
+
+    def _read_limits(self):
+        output = run_command([AMD_TDP, "--limits"])
+        parts = output.split()
+        if len(parts) < 3:
+            raise RuntimeError(f"invalid TDP limits: {output}")
+        limits = tuple(int(part) for part in parts[:3])
+        if limits[0] <= 0 or limits[1] <= 0 or limits[0] > limits[1]:
+            raise RuntimeError(f"invalid TDP limit range: {output}")
+        return limits
+
+    def current(self):
+        for source in (self._current_from_ryzenadj, self._current_from_state, self._current_from_settings):
+            value = source()
+            if value is not None:
+                return value
+        return self.default_watts
+
+    def _current_from_ryzenadj(self):
+        try:
+            return int(run_command([AMD_TDP, "--current"]))
+        except Exception:
+            return None
+
+    def _current_from_state(self):
+        try:
+            value = int(STATE_FILE.read_text(encoding="utf-8").strip())
+            return value if value > 0 else None
+        except Exception:
+            return None
+
+    def _current_from_settings(self):
+        try:
+            value = int(run_command([SETTINGS_GET, "steam.tdp"]))
+            return value if value > 0 else None
+        except Exception:
+            return None
+
+    def set(self, value):
+        watts = int(value)
+        if watts < self.min_watts or watts > self.max_watts:
+            raise ValueError(f"TDP {watts}W outside range {self.min_watts}-{self.max_watts}W")
+        run_command([AMD_TDP, str(watts)])
+        try:
+            STATE_FILE.write_text(f"{watts}\n", encoding="utf-8")
+        except OSError:
+            pass
+        log(f"SteamOS Manager set TDP to {watts}W")
+        return watts
+
+
+class SteamOSManager(dbus.service.Object):
+    def __init__(self, bus, backend):
+        super().__init__(bus, OBJECT_PATH)
+        self.backend = backend
+
+    def _device_model(self):
+        model = "unknown"
+        try:
+            model = run_command(["/usr/bin/batocera-model"]) or "unknown"
+        except Exception:
+            pass
+        return dbus.Struct((model, "batocera"), signature="ss")
+
+    def _tdp_props(self):
+        return {
+            "TdpLimit": dbus.UInt32(self.backend.current()),
+            "TdpLimitMin": dbus.UInt32(self.backend.min_watts),
+            "TdpLimitMax": dbus.UInt32(self.backend.max_watts),
+        }
+
+    def _manager_props(self):
+        return {"DeviceModel": self._device_model()}
+
+    def _remote_props(self):
+        return {"RemoteInterfaces": dbus.Array([], signature="s")}
+
+    def _props_for(self, interface_name):
+        if interface_name == TDP_IFACE:
+            return self._tdp_props()
+        if interface_name == MANAGER_IFACE:
+            return self._manager_props()
+        if interface_name == REMOTE_IFACE:
+            return self._remote_props()
+        raise invalid_args(f"unsupported interface: {interface_name}")
+
+    @dbus.service.method(INTROSPECT_IFACE, in_signature="", out_signature="s")
+    def Introspect(self):
+        return INTROSPECTION_XML
+
+    @dbus.service.method(PROPERTIES_IFACE, in_signature="ss", out_signature="v")
+    def Get(self, interface_name, property_name):
+        props = self._props_for(interface_name)
+        if property_name not in props:
+            raise invalid_args(f"unsupported property: {interface_name}.{property_name}")
+        return props[property_name]
+
+    @dbus.service.method(PROPERTIES_IFACE, in_signature="s", out_signature="a{sv}")
+    def GetAll(self, interface_name):
+        return self._props_for(interface_name)
+
+    @dbus.service.method(PROPERTIES_IFACE, in_signature="ssv", out_signature="")
+    def Set(self, interface_name, property_name, value):
+        if interface_name != TDP_IFACE or property_name != "TdpLimit":
+            raise invalid_args(f"property is not writable: {interface_name}.{property_name}")
+        try:
+            watts = self.backend.set(int(value))
+        except Exception as exc:
+            log(f"failed to set TDP: {exc}")
+            raise dbus.exceptions.DBusException(str(exc), name="org.freedesktop.DBus.Error.Failed")
+        self.PropertiesChanged(TDP_IFACE, {"TdpLimit": dbus.UInt32(watts)}, dbus.Array([], signature="s"))
+
+    @dbus.service.signal(PROPERTIES_IFACE, signature="sa{sv}as")
+    def PropertiesChanged(self, interface_name, changed_properties, invalidated_properties):
+        pass
+
+    @dbus.service.method(MANAGER_IFACE, in_signature="", out_signature="")
+    def ReloadConfig(self):
+        self.backend.min_watts, self.backend.max_watts, self.backend.default_watts = self.backend._read_limits()
+        self.PropertiesChanged(
+            TDP_IFACE,
+            {
+                "TdpLimit": dbus.UInt32(self.backend.current()),
+                "TdpLimitMin": dbus.UInt32(self.backend.min_watts),
+                "TdpLimitMax": dbus.UInt32(self.backend.max_watts),
+            },
+            dbus.Array([], signature="s"),
+        )
+
+
+def main():
+    if not os.path.exists(AMD_TDP):
+        log("batocera-amd-tdp missing; not starting")
+        return 1
+
+    try:
+        backend = TdpBackend()
+    except Exception as exc:
+        log(f"TDP backend unavailable; not starting: {exc}")
+        return 1
+
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    try:
+        bus_name = dbus.service.BusName(BUS_NAME, bus, do_not_queue=True)
+    except dbus.exceptions.NameExistsException:
+        log("session bus name already owned; leaving existing SteamOS manager active")
+        return 0
+
+    manager = SteamOSManager(bus, backend)
+    loop = GLib.MainLoop()
+
+    def stop(_signum, _frame):
+        loop.quit()
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    _keep_alive = (bus_name, manager)
+    log(f"started with TDP range {backend.min_watts}-{backend.max_watts}W default {backend.default_watts}W")
+    loop.run()
+    log("stopped")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

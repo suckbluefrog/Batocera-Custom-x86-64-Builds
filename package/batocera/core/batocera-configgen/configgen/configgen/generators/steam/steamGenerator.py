@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ... import Command
+from ...utils import lsfg
 from ..Generator import Generator
 
 if TYPE_CHECKING:
@@ -253,6 +254,8 @@ class SteamGenerator(Generator):
             env["BATOCERA_STEAM_GS_FRAMERATE_LIMIT"] = str(framerate_limit)
         if gameResolution and "width" in gameResolution and "height" in gameResolution:
             env["BATOCERA_STEAM_GS_DEFAULT_RES"] = f"{gameResolution['width']}x{gameResolution['height']}"
+
+        lsfg.apply_lsfg_vk(system, env, process_name="steam", use_wine_layer=True)
 
         return Command.Command(array=commandArray, env=env)
 

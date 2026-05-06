@@ -18,7 +18,10 @@
 # It allows a TDPWatt input and implicitly handles overclocking up to a safe ceiling.
 
 log="/userdata/system/logs/amd-tdp.log"
-TDP_INPUT="$1"
+TDP_INPUT="${1:-}"
+STATE_FILE="/var/run/amd-tdp.current"
+
+mkdir -p "$(dirname "$log")" 2>/dev/null || true
 
 # --- Sanity Checks ---
 if [[ "$(/usr/bin/ryzenadj -i)" =~ "unsupported model" ]]; then
@@ -65,6 +68,36 @@ else
     fi
 fi
 
+DEFAULT_TDP="$BASE_TDP_MAX"
+
+get_current_tdp() {
+    /usr/bin/ryzenadj -i | awk '/PPT LIMIT FAST/ {printf "%.0f\n", $6; found=1; exit} END {if (!found) exit 1}'
+}
+
+case "$TDP_INPUT" in
+    --limits|get-limits|limits)
+        printf '%s %s %s\n' "$TDP_MIN" "$BASE_TDP_MAX" "$DEFAULT_TDP"
+        exit 0
+        ;;
+    --current|current|get)
+        get_current_tdp
+        exit $?
+        ;;
+    --status|status)
+        CURRENT_TDP="$(get_current_tdp 2>/dev/null || true)"
+        printf 'min=%s\n' "$TDP_MIN"
+        printf 'max=%s\n' "$BASE_TDP_MAX"
+        printf 'default=%s\n' "$DEFAULT_TDP"
+        [ -n "$CURRENT_TDP" ] && printf 'current=%s\n' "$CURRENT_TDP"
+        [ -f "$STATE_FILE" ] && printf 'requested=%s\n' "$(cat "$STATE_FILE")"
+        exit 0
+        ;;
+    --help|-h|help|"")
+        echo "Usage: batocera-amd-tdp <watts>|--limits|--current|--status"
+        exit 0
+        ;;
+esac
+
 # --- TDP Calculation & Clamping ---
 
 # Calculate the absolute overclocking ceiling (+20%)
@@ -106,6 +139,7 @@ fi
 
 if "${cmd[@]}"; then
     echo "Successfully set TDP to ${TDP}W." >> "$log"
+    echo "$TDP" > "$STATE_FILE" 2>/dev/null || true
 else
     echo "ERROR: ryzenadj command failed. Power limits may not have been applied." >> "$log"
     exit 1

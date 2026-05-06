@@ -1,0 +1,45 @@
+#!/bin/sh
+
+RPCS3_SYNC="/usr/bin/batocera-rpcs3-sync"
+RPCS3_GAME_DIR="/userdata/system/configs/rpcs3/dev_hdd0/game"
+STATE_DIR="/userdata/system/configs/rpcs3"
+STATE_FILE="${STATE_DIR}/.batocera-rpcs3-sync.state"
+LOG_DIR="/userdata/system/logs"
+LOG_FILE="${LOG_DIR}/batocera-rpcs3-sync.log"
+
+mkdir -p "${STATE_DIR}" "${LOG_DIR}"
+
+tmp_state="$(mktemp)"
+trap 'rm -f "${tmp_state}"' EXIT
+
+if [ -d "${RPCS3_GAME_DIR}" ]; then
+	find "${RPCS3_GAME_DIR}" -mindepth 1 -maxdepth 1 -type d -printf '%f %T@\n' 2>/dev/null | sort > "${tmp_state}"
+else
+	: > "${tmp_state}"
+fi
+
+if [ ! -s "${STATE_FILE}" ]; then
+	cp "${tmp_state}" "${STATE_FILE}"
+	if [ ! -s "${tmp_state}" ]; then
+		exit 0
+	fi
+	echo "Initial RPCS3 PSN install state detected; running sync." > "${LOG_FILE}"
+	exec "${RPCS3_SYNC}" >> "${LOG_FILE}" 2>&1
+fi
+
+if cmp -s "${STATE_FILE}" "${tmp_state}"; then
+	exit 0
+fi
+
+{
+	echo "RPCS3 PSN install state changed; running sync."
+	echo "Changed at: $(date -Iseconds)"
+	echo "Previous state:"
+	cat "${STATE_FILE}"
+	echo "Current state:"
+	cat "${tmp_state}"
+	echo
+} > "${LOG_FILE}"
+
+cp "${tmp_state}" "${STATE_FILE}"
+exec "${RPCS3_SYNC}" >> "${LOG_FILE}" 2>&1

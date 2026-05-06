@@ -13,7 +13,7 @@ BR2_TARGET_GENERIC_GETTY_BAUDRATE_115200=y
 BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/patches $(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/x86/patches"
 
 # Keep ABI in sync with zen3 base image
-BR2_KERNEL_HEADERS_6_19=y
+BR2_KERNEL_HEADERS_7_0=y
 BR2_INSTALL_LIBSTDCPP=y
 
 include batocera-zen3_i386_libs.packages

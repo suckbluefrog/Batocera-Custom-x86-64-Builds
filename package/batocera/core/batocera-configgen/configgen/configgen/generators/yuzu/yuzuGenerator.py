@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ... import Command
 from ...batoceraPaths import BIOS, mkdir_if_not_exists, ensure_parents_and_open
 from ...controller import generate_sdl_game_controller_config
-from ...utils import vulkan
+from ...utils import lsfg, vulkan
 from ...utils.configparser import CaseSensitiveRawConfigParser
 from ..Generator import Generator
 from .yuzuController import set_yuzu_controllers
@@ -207,6 +207,8 @@ class YuzuGenerator(Generator):
                 command_array = ["/usr/bin/yuzu", "-qlaunch"]
             else:
                 command_array = ["/usr/bin/yuzu", "-f", "-g", str(rom)]
+
+        lsfg.apply_lsfg_vk(system, env, backend_key="yuzu_backend", process_name="yuzu")
 
         return Command.Command(
             array=command_array,

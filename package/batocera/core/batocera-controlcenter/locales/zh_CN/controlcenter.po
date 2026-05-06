@@ -117,14 +117,14 @@ msgstr "快速访问"
 msgid "Quit game"
 msgstr "退出游戏"
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr "录制"
 
 msgid "Record All Screens"
 msgstr "录制所有屏幕"
+
+msgid "Recording in progress"
+msgstr "正在录制"
 
 msgid "Resolution:"
 msgstr "分辨率:"
@@ -135,18 +135,6 @@ msgstr "保存器"
 msgid "Select"
 msgstr "选择"
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr "开始录制"
-
-msgid "Status"
-msgstr "状态"
-
-msgid "Stop Recording"
-msgstr "停止录制"
-
 msgid "Stuck emulator?"
 msgstr "模拟器卡住了?"
 
@@ -155,15 +143,6 @@ msgstr "系统"
 
 msgid "System (Default)"
 msgstr "系统 (默认)"
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
-msgstr ""
 
 msgid "Temp:"
 msgstr "温度:"
@@ -182,6 +161,15 @@ msgstr "音量 +"
 
 msgid "Vol -"
 msgstr "音量 -"
+
+#~ msgid "Start Recording"
+#~ msgstr "开始录制"
+
+#~ msgid "Status"
+#~ msgstr "状态"
+
+#~ msgid "Stop Recording"
+#~ msgstr "停止录制"
 
 #~ msgid "/usr/share/batocera/controlcenter/bato-record.gif"
 #~ msgstr "/usr/share/batocera/controlcenter/bato-record.gif"

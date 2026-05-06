@@ -32,11 +32,15 @@ config BR2_PACKAGE_LUTRIS
 	select BR2_PACKAGE_PYTHON_PROTOBUF
 	select BR2_PACKAGE_DBUS
 	select BR2_PACKAGE_DBUS_PYTHON
+	select BR2_PACKAGE_GDK_PIXBUF
+	select BR2_PACKAGE_JPEG
 	select BR2_PACKAGE_LIBGTK3
+	select BR2_PACKAGE_LIBRSVG
 	select BR2_PACKAGE_FONT_AWESOME
 	select BR2_PACKAGE_WEBKITGTK
+	select BR2_PACKAGE_LUTRISVIEW
 	help
 	  Lutris built natively from source.
 
-comment "lutris needs an x86_64 target"
+comment "lutris is currently x86_64-only on this tree"
 	depends on !BR2_x86_64

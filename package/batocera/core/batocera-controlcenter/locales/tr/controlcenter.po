@@ -117,13 +117,13 @@ msgstr "Hızlı Erişim"
 msgid "Quit game"
 msgstr "Oyundan çık"
 
-msgid "Reboot"
-msgstr ""
-
 msgid "Record"
 msgstr ""
 
 msgid "Record All Screens"
+msgstr ""
+
+msgid "Recording in progress"
 msgstr ""
 
 msgid "Resolution:"
@@ -135,18 +135,6 @@ msgstr "Tasarruf"
 msgid "Select"
 msgstr "Seç"
 
-msgid "Shutdown"
-msgstr ""
-
-msgid "Start Recording"
-msgstr ""
-
-msgid "Status"
-msgstr ""
-
-msgid "Stop Recording"
-msgstr ""
-
 msgid "Stuck emulator?"
 msgstr "Emülatör takıldı mı?"
 
@@ -154,15 +142,6 @@ msgid "System"
 msgstr "Sistem"
 
 msgid "System (Default)"
-msgstr ""
-
-msgid "TDP"
-msgstr ""
-
-msgid "TDP +"
-msgstr ""
-
-msgid "TDP -"
 msgstr ""
 
 msgid "Temp:"
