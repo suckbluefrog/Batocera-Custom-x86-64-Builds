@@ -1,4 +1,4 @@
-# Batocera v43 –  x86-64-v3 Multilib (Beta) 
+# Batocera v44 –  x86-64-v3 Multilib (Beta) 
 ## Wayland Build
 
 > Unofficial community variant built on Batocera v43.  
