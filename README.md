@@ -57,7 +57,6 @@ Latest Build:May 17, 2026
   parsing and launcher support.
   - Updated Gamescope handling, recording scripts, and fake-output support for
   Wayland/labwc workflows.
-  -
   - Bumped or repaired Azahar, Cemu, MAME/libretro MAME, RPCS3, ShadPS4,
   VPinball, Xenia Edge, and related dependency packages.
   - Added and updated VPinball support libraries including libwinevbs, libvni,
