@@ -20,7 +20,7 @@ Latest Build:May 17, 2026
   alternate artwork selection, logo support, and hero artwork handling through
   marquee assets.
   - Added Manual IP configuration option in Emulationsation Settings
-  - Added Game Launch videos in emulationstationoption per-system or per-game
+  - Added Game Launch videos in emulationstation option per-system or per-game
   for splash launch videos 
   - Added user-provided API key support for SteamGridDB and TheGamesDB, with
   keys usable from ES or from system text files.
