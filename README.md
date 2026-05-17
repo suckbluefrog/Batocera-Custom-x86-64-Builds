@@ -12,7 +12,6 @@ Latest Build:May 17, 2026
 
 ---
 
-README.md.
 
   ## 📜 Changelog 17-5-2026
 
