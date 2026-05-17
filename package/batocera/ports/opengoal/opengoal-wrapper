@@ -1,0 +1,104 @@
+#!/bin/sh
+
+set -eu
+
+OPENGOAL_VERSION="v0.3.3"
+OPENGOAL_ROOT="/usr/lib/opengoal"
+STATE_ROOT="/userdata/saves/opengoal"
+PROJECT_DIR="${STATE_ROOT}/project"
+ROMS_DIR="/userdata/roms/opengoal"
+GAME="auto"
+REBUILD="0"
+ROM=""
+GK_ARGS=""
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		--game)
+			GAME="${2:-auto}"
+			shift 2
+			;;
+		--rebuild)
+			REBUILD="1"
+			shift
+			;;
+		--no-avx2)
+			GK_ARGS="${GK_ARGS} --no-avx2"
+			shift
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			if [ -z "${ROM}" ]; then
+				ROM="$1"
+			fi
+			shift
+			;;
+	esac
+done
+
+detect_game() {
+	local name
+	name="$(basename "${ROM:-}" | tr '[:upper:]' '[:lower:]')"
+
+	case "${name}" in
+		*jak3*|*jak\ 3*)
+			echo "jak3"
+			;;
+		*jak2*|*jak\ 2*|*jak\ ii*)
+			echo "jak2"
+			;;
+		*)
+			echo "jak1"
+			;;
+	esac
+}
+
+if [ "${GAME}" = "auto" ]; then
+	GAME="$(detect_game)"
+fi
+
+case "${GAME}" in
+	jak1|jak2|jak3)
+		;;
+	*)
+		echo "Unsupported OpenGOAL game '${GAME}'." >&2
+		exit 1
+		;;
+esac
+
+if [ -z "${ROM}" ]; then
+	case "${GAME}" in
+		jak1) ROM="${ROMS_DIR}/Jak and Daxter.iso" ;;
+		jak2) ROM="${ROMS_DIR}/Jak II.iso" ;;
+		jak3) ROM="${ROMS_DIR}/Jak 3.iso" ;;
+	esac
+fi
+
+mkdir -p "${STATE_ROOT}" "${PROJECT_DIR}" "${PROJECT_DIR}/iso_data" \
+	"${PROJECT_DIR}/decompiler_out" "${PROJECT_DIR}/out" "${PROJECT_DIR}/log"
+
+for dir in goal_src custom_assets decompiler game launcher; do
+	ln -sfn "${OPENGOAL_ROOT}/data/${dir}" "${PROJECT_DIR}/${dir}"
+done
+
+STAMP="${PROJECT_DIR}/.${GAME}.${OPENGOAL_VERSION}.ready"
+if [ "${REBUILD}" = "1" ] || [ ! -e "${STAMP}" ]; then
+	if [ ! -e "${ROM}" ]; then
+		echo "Missing OpenGOAL ISO: ${ROM}" >&2
+		echo "Place your own game dump in ${ROMS_DIR}, or select it in EmulationStation." >&2
+		exit 1
+	fi
+
+	rm -f "${STAMP}"
+	"${OPENGOAL_ROOT}/extractor" --disable-ansi --proj-path "${PROJECT_DIR}" \
+		--extract-path "${PROJECT_DIR}/iso_data" -g "${GAME}" -e "${ROM}"
+	"${OPENGOAL_ROOT}/extractor" --disable-ansi --proj-path "${PROJECT_DIR}" \
+		-g "${GAME}" -d -c "${ROM}"
+	touch "${STAMP}"
+fi
+
+exec "${OPENGOAL_ROOT}/gk" --disable-ansi --proj-path "${PROJECT_DIR}" \
+	--config-path "${STATE_ROOT}/config/${GAME}" -g "${GAME}" ${GK_ARGS} -- -boot -fakeiso

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<gameList>
+  <game>
+    <path>./Jak and Daxter.iso</path>
+    <name>OpenGOAL - Jak and Daxter</name>
+    <desc>Native OpenGOAL port. Place your own clean PS2 Jak and Daxter ISO in this folder.</desc>
+    <lang>en</lang>
+  </game>
+  <game>
+    <path>./Jak II.iso</path>
+    <name>OpenGOAL - Jak II</name>
+    <desc>Native OpenGOAL port. Place your own clean PS2 Jak II ISO in this folder.</desc>
+    <lang>en</lang>
+  </game>
+  <game>
+    <path>./Jak 3.iso</path>
+    <name>OpenGOAL - Jak 3</name>
+    <desc>Native OpenGOAL port. Place your own clean PS2 Jak 3 ISO in this folder.</desc>
+    <lang>en</lang>
+  </game>
+</gameList>

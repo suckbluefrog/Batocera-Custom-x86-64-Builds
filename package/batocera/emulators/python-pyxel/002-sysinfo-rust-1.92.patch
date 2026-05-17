@@ -1,0 +1,13 @@
+diff --git a/crates/pyxel-binding/Cargo.toml b/crates/pyxel-binding/Cargo.toml
+index 40b2ac7..b675f4f 100644
+--- a/crates/pyxel-binding/Cargo.toml
++++ b/crates/pyxel-binding/Cargo.toml
+@@ -24,7 +24,7 @@ pyxel-core = { path = "../pyxel-core" }
+ 
+ # sysinfo has no Emscripten target; exclude from WASM builds
+ [target.'cfg(not(target_os = "emscripten"))'.dependencies]
+-sysinfo = "0.39"
++sysinfo = "0.38"
+ 
+ [features]
+ sdl2_dynamic = ["pyxel-core/sdl2_dynamic"]

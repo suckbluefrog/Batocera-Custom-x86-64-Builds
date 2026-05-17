@@ -256,17 +256,17 @@ gba:
   manufacturer: Nintendo
   release: 2001
   hardware: portable
-  extensions: [gba, zip, 7z]
+  extensions: [gba, zip, 7z, tar, rar]
   emulators:
     nanoboyadvance:
-      nanoboyadvance: { requireAnyOf: [BR2_PACKAGE_NANOBOYADVANCE], incompatible_extensions: [zip, 7z] }
+      nanoboyadvance: { requireAnyOf: [BR2_PACKAGE_NANOBOYADVANCE] }
     skyemu:
-      skyemu: { requireAnyOf: [BR2_PACKAGE_SKYEMU] }
+      skyemu: { requireAnyOf: [BR2_PACKAGE_SKYEMU], incompatible_extensions: [tar, rar] }
     libretro:
-      skyemu: { requireAnyOf: [BR2_PACKAGE_LIBRETRO_SKYEMU] }
-      mgba:   { requireAnyOf: [BR2_PACKAGE_LIBRETRO_MGBA] }
-      vba-m:  { requireAnyOf: [BR2_PACKAGE_LIBRETRO_VBA_M] }
-      gpsp:   { requireAnyOf: [BR2_PACKAGE_LIBRETRO_GPSP] }
+      skyemu: { requireAnyOf: [BR2_PACKAGE_LIBRETRO_SKYEMU], incompatible_extensions: [tar, rar] }
+      mgba:   { requireAnyOf: [BR2_PACKAGE_LIBRETRO_MGBA], incompatible_extensions: [tar, rar] }
+      vba-m:  { requireAnyOf: [BR2_PACKAGE_LIBRETRO_VBA_M], incompatible_extensions: [tar, rar] }
+      gpsp:   { requireAnyOf: [BR2_PACKAGE_LIBRETRO_GPSP], incompatible_extensions: [tar, rar] }
   comment_en: |
     For more info: https://wiki.batocera.org/systems:gba
   comment_fr: |
@@ -2000,7 +2000,7 @@ apple2:
   manufacturer: Apple
   release: 1977
   hardware: computer
-  extensions: [nib, do, po, dsk, mfi, dfi, rti, edd, woz, wav, zip, 7z, chd, hdv, 2mg]
+  extensions: [nib, do, po, dsk, mfi, dfi, rti, edd, woz, wav, zip, 7z, chd, hdv, 2mg, m3u]
   emulators:
     libretro:
       mame: { requireAnyOf: [BR2_PACKAGE_LIBRETRO_MAME] }
@@ -2011,6 +2011,17 @@ apple2:
       gsplus: { requireAnyOf: [BR2_PACKAGE_GSPLUS], incompatible_extensions: [mfi, dfi, rti, edd, woz, wav, zip, 7z, chd, hdv, 2mg] }
     applewin:
       applewin: { requireAnyOf: [BR2_PACKAGE_APPLEWIN], incompatible_extensions: [chd] }
+  comment_en: |
+    Apple II disk images go in /userdata/roms/apple2.
+
+    AppleWin supports floppy images such as .dsk, .do, .po, .woz and .nib, and hard disk images such as .hdv and .2mg. Launch a single image directly, or create an .m3u playlist for a multi-disk title. Put one image path per line; relative paths are resolved from the playlist folder. The first entry is inserted in drive 1 and the second entry is inserted in drive 2.
+
+    Example:
+    Oregon Trail.m3u
+    Oregon Trail/Oregon Trail Disk 1.dsk
+    Oregon Trail/Oregon Trail Disk 2.dsk
+
+    For a manually selected second disk, open the game's advanced options and set FLOPPY DRIVE 2 IMAGE. While AppleWin is running, press F3 to open the Disks tab, then choose Open on drive 1 or drive 2 to change disks. F5 swaps the active floppy drive.
 
 saturn:
   name: Saturn
@@ -5591,6 +5602,112 @@ dxx-rebirth:
     Trouvez la documentation ici: https://wiki.batocera.org/systems:dxx-rebirth
   comment_br: |
     Para mais informações: https://wiki.batocera.org/systems:dxx-rebirth
+
+dusk:
+  name: Dusk
+  manufacturer: Ports
+  release:
+  hardware: port
+  extensions: [rvz]
+  platform: gamecube
+  group: ports
+  path: dusk
+  emulators:
+    dusk:
+      dusk: { requireAnyOf: [ BR2_PACKAGE_DUSK ] }
+  comment_en: |
+    Native Twilight Princess engine.
+
+    Put your original GameCube Twilight Princess RVZ in:
+
+        /userdata/roms/dusk/Twilight Princess.rvz
+
+    Use that exact filename so the seeded artwork and game entry match.
+
+    Recommended dump: USA GameCube, Game ID GZ2E01, RVZ format.
+    Dusk opens to its own main menu; select the RVZ from there.
+  comment_fr: |
+    Moteur natif pour Twilight Princess.
+
+    Placez votre RVZ GameCube original de Twilight Princess ici :
+
+        /userdata/roms/dusk/Twilight Princess.rvz
+  comment_br: |
+    Motor nativo para Twilight Princess.
+
+    Coloque o RVZ original de GameCube do Twilight Princess aqui:
+
+        /userdata/roms/dusk/Twilight Princess.rvz
+
+opengoal:
+  name: OpenGOAL
+  manufacturer: Ports
+  release:
+  hardware: port
+  extensions: [iso]
+  platform: ps2
+  group: ports
+  path: opengoal
+  emulators:
+    opengoal:
+      opengoal: { requireAnyOf: [ BR2_PACKAGE_OPENGOAL ] }
+  comment_en: |
+    Native OpenGOAL runtime for the Jak and Daxter series.
+
+    Put your own clean PS2 ISO dumps in:
+
+        /userdata/roms/opengoal/
+
+    Recommended filenames:
+
+        Jak and Daxter.iso
+        Jak II.iso
+        Jak 3.iso
+
+    First launch extracts and compiles the selected game into /userdata/saves/opengoal.
+  comment_fr: |
+    Runtime natif OpenGOAL pour la serie Jak and Daxter.
+
+    Placez vos propres dumps ISO PS2 propres dans :
+
+        /userdata/roms/opengoal/
+  comment_br: |
+    Runtime nativo OpenGOAL para a serie Jak and Daxter.
+
+    Coloque seus proprios dumps ISO PS2 limpos em:
+
+        /userdata/roms/opengoal/
+
+unleashedrecomp:
+  name: Sonic Unleashed Recompiled
+  manufacturer: Ports
+  release:
+  hardware: port
+  extensions: [unleashedrecomp]
+  platform: xbox360
+  group: ports
+  path: unleashedrecomp
+  emulators:
+    unleashedrecomp:
+      unleashedrecomp: { requireAnyOf: [ BR2_PACKAGE_UNLEASHED_RECOMP ] }
+  comment_en: |
+    Native Sonic Unleashed Xbox 360 recompilation port.
+
+    Launch the seeded entry to run the built-in installer. You must provide
+    your own Xbox 360 game, update, and optional DLC files.
+
+    Game content is installed to /userdata/game, /userdata/update, and /userdata/dlc.
+    Saves and configuration are stored in /userdata/saves/unleashedrecomp.
+  comment_fr: |
+    Port natif recompile de Sonic Unleashed Xbox 360.
+
+    Lancez l'entree fournie pour ouvrir l'installateur integre avec vos
+    propres fichiers du jeu Xbox 360.
+  comment_br: |
+    Port nativo recompilado de Sonic Unleashed para Xbox 360.
+
+    Inicie a entrada fornecida para abrir o instalador integrado com seus
+    proprios arquivos do jogo Xbox 360.
 
 etlegacy:
   name: Wolfenstein - Enemy Territory

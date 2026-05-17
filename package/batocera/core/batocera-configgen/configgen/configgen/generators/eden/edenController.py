@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ...controller import generate_sdl_game_controller_config
+
 if TYPE_CHECKING:
     from ...controller import Controllers
     from ...input import InputMapping
@@ -123,6 +125,10 @@ def _set_switch_style_controllers(
         player_nb_str = f"player_{nplayer}"
         parser.set("Controls", f"{player_nb_str}_connected\\default", "false")
         parser.set("Controls", f"{player_nb_str}_connected", "false")
+
+
+def build_eden_sdl_game_controller_config(players_controllers: Controllers) -> str:
+    return generate_sdl_game_controller_config(players_controllers)
 
 
 def _set_button(key: str, pad_guid: str, pad_inputs: InputMapping, port: int) -> str:

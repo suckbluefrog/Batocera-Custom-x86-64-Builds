@@ -3,8 +3,8 @@
 # libretro-scummvm
 #
 ################################################################################
-# Version: Commits on Jun 3, 2025
-LIBRETRO_SCUMMVM_VERSION = 55fcf4050ac1102638cd7975677f81ae1a2c2070
+# Version: Commits on May 5, 2026
+LIBRETRO_SCUMMVM_VERSION = 660e13b0764fe2be39b6d723345ecabfbb318cc5
 LIBRETRO_SCUMMVM_SITE = $(call github,libretro,scummvm,$(LIBRETRO_SCUMMVM_VERSION))
 LIBRETRO_SCUMMVM_LICENSE = GPLv2
 LIBRETRO_SCUMMVM_DEPENDENCIES += retroarch
@@ -46,7 +46,7 @@ endef
 
 # Details from backends/platform/libretro/dependencies.mk
 define LIBRETRO_SCUMMVM_DEPS
-	$(call LIBRETRO_CLONE_AND_INIT,libretro-deps,abf5246b016569759e7d1b0ea91bb98c2e34d160)
+	$(call LIBRETRO_CLONE_AND_INIT,libretro-deps,7e6e34f0319f4c7448d72f0e949e76265ccf55a1)
 	$(call LIBRETRO_CLONE_AND_INIT,libretro-common,70ed90c42ddea828f53dd1b984c6443ddb39dbd6)
 endef
 

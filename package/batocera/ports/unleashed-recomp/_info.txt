@@ -1,0 +1,19 @@
+Unleashed Recompiled expects user-supplied original Xbox 360 Sonic Unleashed
+game files. The port does not include game assets.
+
+Launch "Sonic Unleashed Recompiled" from this folder. The built-in installer
+will ask for the files dumped from your own Xbox 360 disc or digital copy.
+
+Because Batocera runs the native binary outside Flatpak, the installed game
+content is stored here:
+
+  /userdata/game/
+  /userdata/update/
+  /userdata/dlc/
+
+Configuration and saves are stored here:
+
+  /userdata/saves/unleashedrecomp/
+
+Use the EmulationStation launch mode option to run the installer again, add
+DLC, or run the upstream install integrity check.

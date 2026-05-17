@@ -35,6 +35,15 @@ UCLAMP_MAX = 1024
 _QLAUNCH_SUFFIX = ".qlaunch"
 
 
+def _clear_controller_shortcut(
+    parser: CaseSensitiveRawConfigParser, *action_names: str
+) -> None:
+    for action_name in action_names:
+        prefix = f"Shortcuts\\Main%20Window\\{action_name}\\Controller_KeySeq"
+        parser.set("UI", f"{prefix}\\default", "false")
+        parser.set("UI", prefix, "")
+
+
 class EdenGenerator(Generator):
 
     def getHotkeysContext(self):
@@ -301,7 +310,11 @@ exit $EXIT_CODE
         set_override("UI", "singleWindowMode", system.config.get("eden_single_window", "true"))
         set_override("UI", "enable_discord_presence", "false")
         set_override("UI", "confirmClose", "false")
+        set_override("UI", "confirmExit", "false")
+        set_override("UI", "confirmStop", "0")
+        set_override("UI", "check_for_updates_on_start", "false")
         set_override("UI", "UIGameList\\cache_game_list", "false")
+        _clear_controller_shortcut(c, "Exit%20Eden", "Exit%20eden")
 
         set_override("UI", "Paths\\gamedirs\\1\\path", "/userdata/roms/switch")
         set_override("UI", "Paths\\gamedirs\\size", "1")

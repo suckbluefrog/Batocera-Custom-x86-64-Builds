@@ -804,6 +804,38 @@ libretro:
       choices:
         'On': 'true'
         'Off': 'false'
+    retroarch_savefile_location:
+      group: RETROARCH SAVES
+      prompt: SAVE FILE LOCATION
+      description: Choose where RetroArch writes in-game save files.
+      choices:
+        System Folder (Default): system
+        Custom Folder: custom
+        Core Folder: core
+        Content Directory Folder: content
+        Custom Folder + Core Folder: custom_core
+        Custom Folder + Content Directory Folder: custom_content
+    retroarch_savefile_directory:
+      group: RETROARCH SAVES
+      prompt: CUSTOM SAVE FILE FOLDER
+      description: Absolute or /userdata-relative folder used when Save File Location is Custom Folder.
+      preset: input
+    retroarch_savestate_location:
+      group: RETROARCH SAVES
+      prompt: SAVE STATE LOCATION
+      description: Choose where RetroArch writes save states.
+      choices:
+        System Folder (Default): system
+        Custom Folder: custom
+        Core Folder: core
+        Content Directory Folder: content
+        Custom Folder + Core Folder: custom_core
+        Custom Folder + Content Directory Folder: custom_content
+    retroarch_savestate_directory:
+      group: RETROARCH SAVES
+      prompt: CUSTOM SAVE STATE FOLDER
+      description: Absolute or /userdata-relative folder used when Save State Location is Custom Folder.
+      preset: input
     lightgun_map:
       group: ADVANCED OPTIONS
       prompt: CONTROLLER TO LIGHT GUN
@@ -986,6 +1018,23 @@ libretro:
             NTSC (RGB): NTSC (RGB)
             NTSC (S-Video): NTSC (S-Video)
             NTSC (Composite): NTSC (Composite)
+      systems:
+        sgb-msu1:
+          cfeatures:
+            bsnes_sgb_bios:
+              group: ADVANCED OPTIONS
+              prompt: SUPER GAME BOY BIOS
+              description: Select the SGB BIOS. Requires SGB1.sfc or SGB2.sfc in the bios folder.
+              choices:
+                Super Game Boy: SGB1.sfc
+                Super Game Boy 2: SGB2.sfc
+            bsnes_hide_sgb_border:
+              group: ADVANCED OPTIONS
+              prompt: HIDE SGB BORDER
+              description: Hide the Super Game Boy decorative border.
+              choices:
+                'Off': OFF
+                'On': ON
     bsnes_hd:
       features:
       - netplay
@@ -993,6 +1042,108 @@ libretro:
       shared:
       - rewind
       - autosave
+      cfeatures:
+        bsnes_video_filter:
+          prompt: VIDEO FILTERS
+          description: Apply a video filter to mimic various NTSC TV signals.
+          choices:
+            'Off': None
+            NTSC (RF): NTSC (RF)
+            NTSC (RGB): NTSC (RGB)
+            NTSC (S-Video): NTSC (S-Video)
+            NTSC (Composite): NTSC (Composite)
+      systems:
+        sgb-msu1:
+          cfeatures:
+            bsnes_sgb_bios:
+              group: ADVANCED OPTIONS
+              prompt: SUPER GAME BOY BIOS
+              description: Select the SGB BIOS. Requires SGB1.sfc or SGB2.sfc in the bios folder.
+              choices:
+                Super Game Boy: SGB1.sfc
+                Super Game Boy 2: SGB2.sfc
+        snes:
+          cfeatures:
+            bsnes_mode7_scale:
+              group: ADVANCED OPTIONS
+              prompt: HD MODE 7 SCALE
+              description: Scale Mode 7 graphics at a higher resolution. Higher values require more GPU power.
+              choices:
+                'Off': disable
+                '240p (1x)': 1x
+                '480p (2x)': 2x
+                '720p (3x)': 3x
+                '960p (4x)': 4x
+                '1200p (5x)': 5x
+                '1440p (6x)': 6x
+                '1680p (7x)': 7x
+                '1920p (8x)': 8x
+                '2160p (9x)': 9x
+                '2400p (10x)': 10x
+            bsnes_mode7_supersample:
+              group: ADVANCED OPTIONS
+              prompt: HD MODE 7 SUPERSAMPLING
+              description: Supersample Mode 7 before scaling for smoother edges. Higher values require more GPU power.
+              choices:
+                'Off': none
+                2x: 2x
+                3x: 3x
+                4x: 4x
+                5x: 5x
+                6x: 6x
+                7x: 7x
+                8x: 8x
+                9x: 9x
+                10x: 10x
+            bsnes_mode7_wsMode:
+              group: ADVANCED OPTIONS
+              prompt: HD MODE 7 WIDESCREEN
+              description: Extend the horizontal field of view for widescreen displays.
+              choices:
+                'Off': Off
+                Only for Mode 7 scenes: Mode 7
+                Enable for all scenes: all
+        snes-msu1:
+          cfeatures:
+            bsnes_mode7_scale:
+              group: ADVANCED OPTIONS
+              prompt: HD MODE 7 SCALE
+              description: Scale Mode 7 graphics at a higher resolution. Higher values require more GPU power.
+              choices:
+                'Off': disable
+                '240p (1x)': 1x
+                '480p (2x)': 2x
+                '720p (3x)': 3x
+                '960p (4x)': 4x
+                '1200p (5x)': 5x
+                '1440p (6x)': 6x
+                '1680p (7x)': 7x
+                '1920p (8x)': 8x
+                '2160p (9x)': 9x
+                '2400p (10x)': 10x
+            bsnes_mode7_supersample:
+              group: ADVANCED OPTIONS
+              prompt: HD MODE 7 SUPERSAMPLING
+              description: Supersample Mode 7 before scaling for smoother edges. Higher values require more GPU power.
+              choices:
+                'Off': none
+                2x: 2x
+                3x: 3x
+                4x: 4x
+                5x: 5x
+                6x: 6x
+                7x: 7x
+                8x: 8x
+                9x: 9x
+                10x: 10x
+            bsnes_mode7_wsMode:
+              group: ADVANCED OPTIONS
+              prompt: HD MODE 7 WIDESCREEN
+              description: Extend the horizontal field of view for widescreen displays.
+              choices:
+                'Off': Off
+                Only for Mode 7 scenes: Mode 7
+                Enable for all scenes: all
     cap32:
       features:
       - netplay
@@ -1073,14 +1224,6 @@ libretro:
             Game Boy: Game Boy
             Game Boy Color: Game Boy Color
             Super Game Boy: Super Game Boy
-        mesen-s_sgb2:
-          group: ADVANCED OPTIONS
-          prompt: SUPER GAME BOY 2
-          description: Emulate the Super Game Boy 2 for SGB. Runs games at the correct
-            speed.
-          choices:
-            'On': enabled
-            'Off': disabled
         mesen-s_overclock:
           group: ADVANCED OPTIONS
           prompt: OVERCLOCK (UNSTABLE)
@@ -1111,6 +1254,17 @@ libretro:
             400%: 400%
             500%: 500%
             1000%: 1000%
+      systems:
+        sgb:
+          cfeatures:
+            mesen-s_sgb2:
+              group: ADVANCED OPTIONS
+              prompt: SUPER GAME BOY 2
+              description: Emulate the Super Game Boy 2 for SGB. Runs games at the correct
+                speed.
+              choices:
+                'On': enabled
+                'Off': disabled
     mesen:
       features:
       - netplay
@@ -4976,13 +5130,6 @@ libretro:
       systems:
         gb:
           cfeatures:
-            sgb_borders:
-              group: ADVANCED OPTIONS
-              prompt: SUPER GB BORDERS
-              description: Only for Super Game Boy enhanced games.
-              choices:
-                'Off': false
-                'On': true
             color_correction:
               group: ADVANCED OPTIONS
               prompt: COLOR CORRECTION
@@ -4992,13 +5139,6 @@ libretro:
                 'On': GBA
         gbc:
           cfeatures:
-            sgb_borders:
-              group: ADVANCED OPTIONS
-              prompt: SUPER GB BORDERS
-              description: Only for Super Game Boy enhanced games.
-              choices:
-                'Off': false
-                'On': true
             color_correction:
               group: ADVANCED OPTIONS
               prompt: COLOR CORRECTION
@@ -5040,6 +5180,15 @@ libretro:
                 '8': 8
                 '9': 9
                 '10': 10
+        sgb:
+          cfeatures:
+            sgb_borders:
+              group: ADVANCED OPTIONS
+              prompt: SUPER GB BORDERS
+              description: Show the Super Game Boy decorative border.
+              choices:
+                'On': true
+                'Off': false
     mrboom:
       features:
       - netplay
@@ -7331,26 +7480,12 @@ libretro:
               choices:
                 'Off': disabled
                 'On': enabled
-            showborders_gb:
-              group: ADVANCED OPTIONS
-              prompt: SUPER GB BORDERS
-              description: Only for Super Game Boy enhanced games.
-              choices:
-                'Off': disabled
-                'On': enabled
         gbc:
           cfeatures:
             gbcoloroption_gbc:
               group: ADVANCED OPTIONS
               prompt: COLOR CORRECTION
               description: Simulate LCD color inaccuracy.
-              choices:
-                'Off': disabled
-                'On': enabled
-            showborders_gbc:
-              group: ADVANCED OPTIONS
-              prompt: SUPER GB BORDERS
-              description: Only for Super Game Boy enhanced games.
               choices:
                 'Off': disabled
                 'On': enabled
@@ -14008,6 +14143,102 @@ gsplus:
         ROM.00: ROM.00
         APPLE2GS.ROM: APPLE2GS.ROM
         APPLE2GS-BIOS.ROM: APPLE2GS-BIOS.ROM
+applewin:
+  features:
+  - padtokeyboard
+  shared:
+  - powermode
+  - tdp
+  - videomode
+  cfeatures:
+    applewin_media:
+      group: ADVANCED OPTIONS
+      prompt: LOAD SELECTED IMAGE AS
+      description: Choose which AppleWin drive receives the launched image.
+      choices:
+        Auto (Default): auto
+        Floppy Drive 1: d1
+        Floppy Drive 2: d2
+        Hard Disk 1: h1
+        Hard Disk 2: h2
+    applewin_disk2:
+      group: ADVANCED OPTIONS
+      prompt: FLOPPY DRIVE 2 IMAGE
+      description: Optional second floppy image to insert at launch.
+      preset: files
+    applewin_hard2:
+      group: ADVANCED OPTIONS
+      prompt: HARD DISK 2 IMAGE
+      description: Optional second hard disk image to insert at launch.
+      preset: files
+    applewin_fullscreen:
+      group: ADVANCED OPTIONS
+      prompt: FULLSCREEN
+      description: Start AppleWin in fullscreen desktop mode.
+      choices:
+        On (Default): 1
+        'Off': 0
+    applewin_mockingboard:
+      group: ADVANCED OPTIONS
+      prompt: MOCKINGBOARD / PHASOR
+      description: Choose which sound card AppleWin inserts for this game.
+      choices:
+        Auto (Default): auto
+        'Off': 'off'
+        Mockingboard Slot 4: mockingboard_slot4
+        Mockingboard Slot 5: mockingboard_slot5
+        Mockingboard Slots 4 and 5: mockingboard_dual
+        Phasor Slot 4: phasor_slot4
+        Phasor Slot 5: phasor_slot5
+    applewin_no_imgui:
+      group: ADVANCED OPTIONS
+      prompt: SETTINGS UI
+      description: Disable only if the in-game AppleWin disk picker causes trouble.
+      choices:
+        On (Default): 0
+        'Off': 1
+    applewin_aspect:
+      group: ADVANCED OPTIONS
+      prompt: PRESERVE ASPECT RATIO
+      choices:
+        Off (Default): 0
+        'On': 1
+    applewin_fixedspeed:
+      group: ADVANCED OPTIONS
+      prompt: FIXED EMULATION SPEED
+      choices:
+        Off (Default): 0
+        'On': 1
+    applewin_timer:
+      group: ADVANCED OPTIONS
+      prompt: TIMER SYNC
+      description: Use the timer synchronizer instead of video sync.
+      choices:
+        Off (Default): 0
+        'On': 1
+    applewin_no_squaring:
+      group: ADVANCED OPTIONS
+      prompt: GAMEPAD SQUARING
+      description: Disable when an analog controller already reports a square range.
+      choices:
+        On (Default): 0
+        'Off': 1
+    applewin_gl_swap:
+      group: ADVANCED OPTIONS
+      prompt: GL SWAP INTERVAL
+      choices:
+        Auto (Default): auto
+        Immediate: 0
+        VSync: 1
+        Half Rate: 2
+    applewin_audio_buffer:
+      group: ADVANCED OPTIONS
+      prompt: AUDIO BUFFER
+      choices:
+        Auto / 46 ms (Default): auto
+        23 ms: 23
+        64 ms: 64
+        92 ms: 92
 play:
   features:
   - padtokeyboard
@@ -16481,6 +16712,97 @@ xenia-edge:
       description: Xenia Edge on Linux uses the native Vulkan renderer.
       choices:
         Native Vulkan (Default): Vulkan
+    lsfg_vk:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LSFG-VK FRAME GENERATION
+      description: Enables the Lossless Scaling Frame Generation Vulkan layer for
+        native Xenia Edge. Requires Lossless.dll from a purchased Lossless Scaling
+        install.
+      choices:
+        'Off': 0
+        'On': 1
+    lsfg_vk_dll:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LOSSLESS.DLL PATH
+      description: Optional path to Lossless.dll. Default lookup includes /userdata/system/wine/lossless-scaling/Lossless.dll.
+      preset: input
+    lsfg_vk_multiplier:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LSFG MULTIPLIER
+      choices:
+        2x (Default): 2
+        3x: 3
+        4x: 4
+    lsfg_vk_flow_scale:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LSFG FLOW SCALE
+      choices:
+        1.0 (Default x86): '1.0'
+        0.75 (Default ARM): '0.75'
+        0.5: '0.5'
+        0.25: '0.25'
+    lsfg_vk_performance:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LSFG PERFORMANCE MODE
+      choices:
+        'Off': 0
+        'On': 1
+    lsfg_vk_hdr:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LSFG HDR MODE
+      choices:
+        'Off': 0
+        'On': 1
+    lsfg_vk_present_mode:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      - qcs6490
+      - sm8250
+      - sm8550
+      group: ADVANCED OPTIONS
+      prompt: LSFG PRESENT MODE
+      choices:
+        Auto (Default): ''
+        FIFO: fifo
+        Mailbox: mailbox
+        Immediate: immediate
     xenia_vsync:
       prompt: VSYNC
       description: Fix screen tearing. With Some games you need to turn VSync on in
@@ -17011,61 +17333,78 @@ gopher64:
         'Off (Default)': false
         'On': true
 nanoboyadvance:
-  features: []
+  features:
+  - padtokeyboard
   shared:
   - powermode
   - tdp
   - videomode
   cfeatures:
-    nanoboyadvance_scale:
-      prompt: WINDOW SCALE
-      description: Set the internal window scale used by the SDL frontend.
+    nba_filter:
+      prompt: VIDEO FILTER
+      description: Upscaling/filtering algorithm applied to the GBA screen.
       choices:
-        1x: 1
-        2x (Default): 2
-        3x: 3
-        4x: 4
-        5x: 5
-        6x: 6
-    nanoboyadvance_bios_skip:
-      prompt: SKIP BIOS INTRO
-      description: Skip the BIOS animation after startup.
+        Nearest (Default): nearest
+        Linear: linear
+        Sharp: sharp
+        xBRZ: xbrz
+        LCD 1x: lcd1x
+    nba_color_correction:
+      prompt: COLOR CORRECTION
+      description: Emulate the color rendering of the original GBA hardware.
       choices:
-        'Off (Default)': false
-        'On': true
-    nanoboyadvance_sync_to_audio:
-      prompt: SYNC TO AUDIO
-      description: Pace emulation using the audio backend instead of pure video timing.
+        AGB (Default): agb
+        higan: higan
+        None: none
+    nba_lcd_ghosting:
+      prompt: LCD GHOSTING
+      description: Simulate the motion blur of the original GBA LCD screen.
       choices:
-        'Off (Default)': false
-        'On': true
-    nanoboyadvance_audio_resampler:
+        Enabled (Default): 'true'
+        Disabled: 'false'
+    nba_audio_resampler:
       prompt: AUDIO RESAMPLER
-      description: Select the audio resampling quality.
+      description: Audio interpolation quality. Higher quality uses more CPU.
       choices:
-        Cubic (Default): cubic
-        Cosine: cosine
-        Sinc-64: sinc64
-        Sinc-128: sinc128
-        Sinc-256: sinc256
-    nanoboyadvance_interpolate_fifo:
-      prompt: INTERPOLATE FIFO AUDIO
-      description: Smooth direct sound FIFO playback.
+        Cosine (Default): cosine
+        Cubic: cubic
+        Sinc 64: sinc64
+        Sinc 128: sinc128
+        Sinc 256: sinc256
+    nba_mp2k_hle:
+      prompt: MP2K HLE AUDIO
+      description: High-quality reimplementation of the GBA MP2K/M4A audio mixer. Experimental.
       choices:
-        'On (Default)': true
-        'Off': false
-    nanoboyadvance_mp2k_hle_enable:
-      prompt: MP2K HLE
-      description: Enable the high-level MP2K audio reimplementation.
+        Disabled (Default): 'false'
+        Enabled: 'true'
+    nba_skip_bios:
+      prompt: SKIP BIOS INTRO
+      description: Skip the GBA boot logo. Requires a BIOS file when disabled.
       choices:
-        'Off (Default)': false
-        'On': true
-    nanoboyadvance_mp2k_hle_cubic:
-      prompt: MP2K HLE CUBIC FILTER
-      description: Use cubic interpolation for the MP2K HLE audio path.
+        Disabled (Default): 'false'
+        Enabled: 'true'
+    nba_integer_scaling:
+      prompt: INTEGER SCALING
+      description: Snap screen size to integer multiples of 240x160.
       choices:
-        'Off (Default)': false
-        'On': true
+        Disabled (Default): 'false'
+        Enabled: 'true'
+    nba_force_solar_sensor:
+      prompt: SOLAR SENSOR EMULATION
+      description: Force-enable solar sensor emulation (Boktai series). Overrides game database detection.
+      choices:
+        Disabled (Default): 'false'
+        Enabled: 'true'
+    nba_solar_sensor_level:
+      prompt: SOLAR SENSOR LEVEL
+      description: Emulated sunlight intensity (0 = darkness, 255 = full sunlight).
+      choices:
+        '0': '0'
+        Low (23): '23'
+        Medium (60): '60'
+        High (99): '99'
+        Maximum (175): '175'
+        '255': '255'
 skyemu:
   features:
   - cheevos
@@ -18121,6 +18460,100 @@ dxx-rebirth:
       choices:
         Disabled (Default): 0
         Enabled: 1
+dusk:
+  shared:
+  - powermode
+  - tdp
+  - videomode
+  - hud
+  features:
+  - padtokeyboard
+  cfeatures:
+    dusk_graphics_backend:
+      submenu: GRAPHICS
+      prompt: GRAPHICS BACKEND
+      choices:
+        Vulkan (Default): vulkan
+        OpenGL: opengl
+    dusk_audio_driver:
+      submenu: AUDIO
+      prompt: AUDIO DRIVER
+      choices:
+        PulseAudio (Default): pulseaudio
+        ALSA: alsa
+    dusk_audio_latency:
+      submenu: AUDIO
+      prompt: PULSE LATENCY
+      choices:
+        50 ms: '50'
+        100 ms (Default): '100'
+        150 ms: '150'
+        200 ms: '200'
+opengoal:
+  shared:
+  - powermode
+  - tdp
+  - videomode
+  - hud
+  features:
+  - padtokeyboard
+  cfeatures:
+    opengoal_game:
+      submenu: GAME
+      prompt: GAME
+      choices:
+        Auto from filename (Default): auto
+        Jak and Daxter: jak1
+        Jak II: jak2
+        Jak 3: jak3
+    opengoal_rebuild:
+      submenu: GAME
+      prompt: REBUILD GAME CACHE
+      choices:
+        Disabled (Default): 0
+        Enabled: 1
+    opengoal_no_avx2:
+      submenu: CPU
+      prompt: DISABLE AVX2
+      choices:
+        Disabled (Default): 0
+        Enabled: 1
+    opengoal_audio_driver:
+      submenu: AUDIO
+      prompt: AUDIO DRIVER
+      choices:
+        PulseAudio (Default): pulseaudio
+        ALSA: alsa
+unleashedrecomp:
+  shared:
+  - powermode
+  - tdp
+  - videomode
+  - hud
+  features:
+  - padtokeyboard
+  cfeatures:
+    unleashedrecomp_launch_mode:
+      submenu: LAUNCH
+      prompt: LAUNCH MODE
+      choices:
+        Play (Default): play
+        Install or Repair Game: install
+        Install DLC: install-dlc
+        Check Installation: install-check
+    unleashedrecomp_sdl_video_driver:
+      submenu: VIDEO
+      prompt: SDL VIDEO DRIVER
+      choices:
+        Auto (Default): auto
+        Wayland: wayland
+        X11: x11
+    unleashedrecomp_audio_driver:
+      submenu: AUDIO
+      prompt: AUDIO DRIVER
+      choices:
+        PulseAudio (Default): pulseaudio
+        ALSA: alsa
 etlegacy:
   shared:
   - powermode

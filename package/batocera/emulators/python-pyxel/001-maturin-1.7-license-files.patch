@@ -1,0 +1,13 @@
+diff --git a/python/pyproject.toml b/python/pyproject.toml
+index 9b0e5bf..7f0be70 100644
+--- a/python/pyproject.toml
++++ b/python/pyproject.toml
+@@ -10,7 +10,7 @@ readme = "../README.md"
+ requires-python = ">=3.11"
+ authors = [{ name = "Takashi Kitao", email = "takashi.kitao@gmail.com" }]
+ license = "MIT"
+-license-files = ["pyxel/LICENSE"]
++license-files = { paths = ["pyxel/LICENSE"] }
+ keywords = ["game", "gamedev", "retro", "pixel-art", "game-engine"]
+ classifiers = [
+     "Development Status :: 5 - Production/Stable",

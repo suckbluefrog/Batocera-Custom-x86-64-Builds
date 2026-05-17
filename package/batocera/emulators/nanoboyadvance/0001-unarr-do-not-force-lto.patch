@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera <batocera@localhost>
+Date: Sun, 17 May 2026 07:18:00 +0300
+Subject: [PATCH] unarr: do not force LTO
+
+Buildroot's CMake toolchain uses the target ar/ranlib for static
+archives.  The vendored unarr CMakeLists unconditionally adds -flto,
+which can leave libunarr.a with LTO members that are not pulled in when
+NanoBoyAdvance links its Qt executable.
+
+The final link then sees unresolved ar_* symbols from platform-core even
+though libunarr.a is present on the command line.  Let the package build
+without unarr-local LTO so the static archive links normally.
+---
+ thirdparty/unarr-1.1.1-patch/CMakeLists.txt | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/thirdparty/unarr-1.1.1-patch/CMakeLists.txt b/thirdparty/unarr-1.1.1-patch/CMakeLists.txt
+index 514e82f..cbb47ab 100644
+--- a/thirdparty/unarr-1.1.1-patch/CMakeLists.txt
++++ b/thirdparty/unarr-1.1.1-patch/CMakeLists.txt
+@@ -194,8 +194,7 @@ if(UNIX
+             -Werror-implicit-function-declaration
+             $<$<CONFIG:Release>:-fomit-frame-pointer>
+             $<$<C_COMPILER_ID:Clang,AppleClang>:
+-            -Wno-missing-field-initializers>
+-            -flto)
++            -Wno-missing-field-initializers>)
+   if(BUILD_FUZZER)
+     target_compile_options(unarr PUBLIC "${sanitize_opts}")
+     target_compile_definitions(
+-- 
+2.49.0
+

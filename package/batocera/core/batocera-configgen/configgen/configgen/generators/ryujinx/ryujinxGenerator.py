@@ -161,6 +161,13 @@ class RyujinxGenerator(Generator):
         conf["use_input_global_config"] = False
         conf["start_no_ui"] = system.config.get_bool("ryujinx_no_ui", not configure_emulator(rom))
         conf["audio_volume"] = 1
+        conf["window_startup"] = {
+            "window_size_width": int(gameResolution["width"]),
+            "window_size_height": int(gameResolution["height"]),
+            "window_position_x": 0,
+            "window_position_y": 0,
+            "window_maximized": True
+        }
         
         # set ryujinx app language
         conf["language_code"] = getLangFromEnvironment()
@@ -328,7 +335,10 @@ class RyujinxGenerator(Generator):
             use_uclamp=use_uclamp,
             uclamp_min=uclamp_min,
             uclamp_max=UCLAMP_MAX,
-            force_fullscreen_toggle=bool(conf.get("start_fullscreen", True) and not configure_emulator(rom)),
+            force_fullscreen_toggle=(
+                system.config.get_bool("ryujinx_force_fullscreen_toggle", False)
+                and bool(conf.get("start_fullscreen", True) and not configure_emulator(rom))
+            ),
         )
         if configure_emulator(rom):
             commandArray = [str(wrapper_path)]

@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-LIBRETRO_HATARIB_VERSION = 0.3
+LIBRETRO_HATARIB_VERSION = 0e30a915649397eba8418aaf97e16ff5f84702af
 LIBRETRO_HATARIB_SITE = https://github.com/bbbradsmith/hatariB
 LIBRETRO_HATARIB_SITE_METHOD=git
 LIBRETRO_HATARIB_LICENSE = GPLv2
@@ -14,10 +14,11 @@ LIBRETRO_HATARIB_EMULATOR_INFO = hatarib.libretro.core.yml
 LIBRETRO_HATARIB_CONF_ENV += \
     SHORTHASH='"$(shell echo $(LIBRETRO_HATARIB_VERSION) | cut -c 1-7)"' \
 	SDL2_INCLUDE="$(STAGING_DIR)/usr/include/SDL2" \
-	SDL2_LIB="$(STAGING_DIR)/usr/lib" \
+	SDL2_LIB="$(STAGING_DIR)/usr/lib/libSDL2.so" \
+	SDL2_DIR="$(STAGING_DIR)/usr" \
 	SDL2_LINK="$(STAGING_DIR)/usr/lib/libSDL2.so" \
 	ZLIB_INCLUDE="$(STAGING_DIR)/usr/include" \
-	ZLIB_LIB="$(STAGING_DIR)/usr/lib" \
+	ZLIB_LIB="$(STAGING_DIR)/usr/lib/libz.so" \
 	ZLIB_LINK="$(STAGING_DIR)/usr/lib/libz.so"
 
 define LIBRETRO_HATARIB_BUILD_CMDS

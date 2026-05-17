@@ -1,0 +1,16 @@
+#!/bin/sh
+
+SAVE_ROOT="/userdata/saves/unleashedrecomp"
+HOME_DIR="${SAVE_ROOT}/home"
+
+mkdir -p "${HOME_DIR}/.config" "${SAVE_ROOT}/data" "${SAVE_ROOT}/cache" \
+	/userdata/game /userdata/update /userdata/dlc
+
+export HOME="${HOME_DIR}"
+export XDG_CONFIG_HOME="${HOME_DIR}/.config"
+export XDG_DATA_HOME="${SAVE_ROOT}/data"
+export XDG_CACHE_HOME="${SAVE_ROOT}/cache"
+export DISABLE_MANGOHUD=1
+
+cd /usr/lib/unleashedrecomp
+exec /usr/lib/unleashedrecomp/UnleashedRecomp "$@"

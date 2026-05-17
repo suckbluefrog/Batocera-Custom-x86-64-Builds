@@ -167,6 +167,13 @@ ifeq ($(BR2_PACKAGE_EDEN),y)
   BATOCERA_DESKTOPAPPS_ICONS   += eden.png
 endif
 
+# yuzu
+ifeq ($(BR2_PACKAGE_YUZU),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-yuzu
+  BATOCERA_DESKTOPAPPS_APPS    += yuzu-config.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += yuzu.png
+endif
+
 # xenia-edge
 ifeq ($(BR2_PACKAGE_XENIA_EDGE),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-xenia-edge

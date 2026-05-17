@@ -3,7 +3,7 @@
 # xenia-edge
 #
 ################################################################################
-XENIA_EDGE_VERSION = d2b24e8a98ea13c9e5bc524b1bb4d16efa136c0
+XENIA_EDGE_VERSION = 6101f13ec1971199ed5bf6d9f3d43ff6eda84dae
 XENIA_EDGE_SITE = https://github.com/has207/xenia-edge.git
 XENIA_EDGE_SITE_METHOD = git
 XENIA_EDGE_GIT_SUBMODULES = YES
@@ -12,7 +12,7 @@ XENIA_EDGE_LICENSE_FILE = LICENSE
 XENIA_EDGE_EMULATOR_INFO = xenia-edge.emulator.yml
 XENIA_EDGE_SUPPORTS_IN_SOURCE_BUILD = NO
 
-XENIA_EDGE_DEPENDENCIES = sdl2 vulkan-headers vulkan-loader lz4 alsa-lib python-toml \
+XENIA_EDGE_DEPENDENCIES = host-wayland sdl2 vulkan-headers vulkan-loader lz4 alsa-lib python-toml \
     qt6base qt6declarative
 
 XENIA_EDGE_CONF_OPTS += -DCMAKE_BUILD_TYPE=Release
@@ -50,6 +50,18 @@ endef
 
 XENIA_EDGE_PRE_CONFIGURE_HOOKS += XENIA_EDGE_GEN_VERSION_H
 XENIA_EDGE_PRE_CONFIGURE_HOOKS += XENIA_EDGE_BUILD_HOST_SHADER_CC
+
+define XENIA_EDGE_GENERATE_WX_WAYLAND_PROTOCOLS
+	mkdir -p $(@D)/buildroot-build/third_party/wxWidgets/lib/wx/include/gtk3-unicode-static-3.3/wx/protocols
+	$(HOST_DIR)/bin/wayland-scanner client-header \
+		$(@D)/third_party/wxWidgets/src/unix/protocols/pointer-warp-v1.xml \
+		$(@D)/buildroot-build/third_party/wxWidgets/lib/wx/include/gtk3-unicode-static-3.3/wx/protocols/pointer-warp-v1-client-protocol.h
+	$(HOST_DIR)/bin/wayland-scanner private-code \
+		$(@D)/third_party/wxWidgets/src/unix/protocols/pointer-warp-v1.xml \
+		$(@D)/buildroot-build/third_party/wxWidgets/lib/wx/include/gtk3-unicode-static-3.3/wx/protocols/pointer-warp-v1-client-protocol.c
+endef
+
+XENIA_EDGE_POST_CONFIGURE_HOOKS += XENIA_EDGE_GENERATE_WX_WAYLAND_PROTOCOLS
 
 define XENIA_EDGE_INSTALL_TARGET_CMDS
 	find $(@D) -maxdepth 6 -name "xenia_edge" -type f -perm /111 \

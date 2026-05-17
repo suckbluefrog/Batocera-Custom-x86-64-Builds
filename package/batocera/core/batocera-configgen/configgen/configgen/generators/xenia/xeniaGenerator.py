@@ -16,7 +16,7 @@ import toml
 from ... import Command
 from ...batoceraPaths import CACHE, CONFIGS, SAVES, configure_emulator, mkdir_if_not_exists
 from ...controller import generate_sdl_game_controller_config
-from ...utils import vulkan, wine
+from ...utils import lsfg, vulkan, wine
 from ..Generator import Generator
 
 if TYPE_CHECKING:
@@ -506,7 +506,9 @@ exit $EXIT_CODE
             environment = {
                 'SDL_GAMECONTROLLERCONFIG': generate_sdl_game_controller_config(playersControllers),
                 'SDL_JOYSTICK_HIDAPI': '0',
+                'BATOCERA_SKIP_GAMESCOPE': '1',
             }
+            lsfg.apply_lsfg_vk(system, environment)
             return Command.Command(array=commandArray, env=environment)
 
         # Check for aarch64 and setup box64 wrapping
@@ -591,6 +593,8 @@ exit $EXIT_CODE
                     'VK_LAYER_PATH': '/usr/share/vulkan/explicit_layer.d'
                 }
             )
+
+        lsfg.apply_lsfg_vk(system, environment, use_wine_layer=True)
 
         return Command.Command(array=commandArray, env=environment)
 

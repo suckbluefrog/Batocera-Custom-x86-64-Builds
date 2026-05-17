@@ -1,0 +1,17 @@
+config BR2_PACKAGE_OPENGOAL
+	bool "opengoal"
+	depends on BR2_x86_64
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	depends on BR2_INSTALL_LIBSTDCPP
+	select BR2_PACKAGE_ZLIB
+	help
+	  OpenGOAL runtime, extractor, and compiler for the Jak and Daxter
+	  series.
+
+	  Requires a user-supplied original PS2 game ISO at runtime.
+
+	  https://github.com/open-goal/jak-project
+
+comment "opengoal needs an x86_64 glibc C++ toolchain"
+	depends on !BR2_x86_64 || !BR2_TOOLCHAIN_USES_GLIBC || \
+		!BR2_INSTALL_LIBSTDCPP

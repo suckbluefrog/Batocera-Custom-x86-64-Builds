@@ -91,8 +91,8 @@ lutris:
   options:
     hud_support: false
 apple2:
-  emulator: gsplus
-  core:     gsplus
+  emulator: applewin
+  core:     applewin
 apple2gs:
   emulator: gsplus
   core:     gsplus
@@ -222,6 +222,15 @@ dreamcast:
 dxx-rebirth:
   emulator: dxx-rebirth
   core:     dxx-rebirth
+dusk:
+  emulator: dusk
+  core:     dusk
+opengoal:
+  emulator: opengoal
+  core:     opengoal
+unleashedrecomp:
+  emulator: unleashedrecomp
+  core:     unleashedrecomp
 easyrpg:
   emulator: easyrpg
   core:     easyrpg
@@ -509,6 +518,9 @@ oricatmos:
 
 # P-S
 
+pc60:
+  emulator: libretro
+  core:     mame
 pc88:
   emulator: libretro
   core:     quasi88

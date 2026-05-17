@@ -3,9 +3,9 @@
 # batocera-emulationstation
 #
 ################################################################################
-# Last update: Commits on Mar 14, 2026
-BATOCERA_EMULATIONSTATION_VERSION = 24be8599cc89fcafba5a3389d51abb24d03991f5
-BATOCERA_EMULATIONSTATION_SITE = https://github.com/batocera-linux/batocera-emulationstation
+# Last update: Commits on May 17, 2026
+BATOCERA_EMULATIONSTATION_VERSION = ee593421f6df8518f2298a6e7adf17f63156bc49
+BATOCERA_EMULATIONSTATION_SITE = https://github.com/suckbluefrog/batocera-emulationstation
 BATOCERA_EMULATIONSTATION_SITE_METHOD = git
 BATOCERA_EMULATIONSTATION_LICENSE = MIT
 BATOCERA_EMULATIONSTATION_GIT_SUBMODULES = YES
