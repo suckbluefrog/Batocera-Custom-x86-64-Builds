@@ -41,6 +41,7 @@ Latest Build:May 17, 2026
   - Bumped and fixed multiple emulator packages including PCSX2, PPSSPP, RPCS3,
   Xemu, Xenia Edge, TSugaru, OpenMSX, Python Pyxel, and related libretro cores.
   - Updated audio, ConnMan, and post-build handling for the x86-64-v3 image.
+  - Bumped kernel/header to 7.0.8 and Mesa packages to 26.1.0 for the x86-64-v3 build.
 
   ---
 
@@ -56,7 +57,7 @@ Latest Build:May 17, 2026
   parsing and launcher support.
   - Updated Gamescope handling, recording scripts, and fake-output support for
   Wayland/labwc workflows.
-  - Bumped kernel/header to 7.0.8 and Mesa packages to 26.1.0 for the x86-64-v3 build.
+  -
   - Bumped or repaired Azahar, Cemu, MAME/libretro MAME, RPCS3, ShadPS4,
   VPinball, Xenia Edge, and related dependency packages.
   - Added and updated VPinball support libraries including libwinevbs, libvni,
@@ -71,7 +72,7 @@ Latest Build:May 17, 2026
 - Bump RPCS3
 - Add Retroachivements to MelonDS
 - Fixed N64 Launch issues
----
+
 
 ---
 ## 📜 Changelog 29-3-2026
