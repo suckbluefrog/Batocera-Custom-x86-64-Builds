@@ -11,9 +11,64 @@ Latest Build: April 14, 2026
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
+
+README.md.
+
+  ## 📜 Changelog 17-5-2026
+
+  ### Latest
+  - Added SteamGridDB artwork scraping support to EmulationStation, including
+  alternate artwork selection, logo support, and hero artwork handling through
+  marquee assets.
+  - Added Manual IP configuration option in Emulationsation Settings
+  - Added Game Launch vidoes in emulationstationoption per-system or per-game
+  for splash launch videos 
+  - Added user-provided API key support for SteamGridDB and TheGamesDB, with
+  keys usable from ES or from system text files.
+  - Added richer metadata paths for HowLongToBeat, ProtonDB, PCGamingWiki,
+  Heroic, Lutris, GOG, Epic, and mixed scraper priority rules.
+  - Added PCGamingWiki result text to game descriptions when a matching entry is
+  found.
+  - Added AppleWin fullscreen launch support.
+  - Added AppleWin ES options for Mockingboard and Phasor slot configuration.
+  - Added configgen and package support for Dusk, OpenGOAL, and Unleashed
+  Recompiled ports.
+  - Added Tailscale and ZeroTier service packages.
+  - Added RapidYAML target install support for emulator runtime dependencies.
+  - Expanded Nanoboy Advance packaging, controls, archive support, and ES
+  metadata.
+  - Expanded RetroArch/libretro options, including Super Game Boy, BSNES, HD
+  Mode 7, and save-location controls.
+  - Bumped and fixed multiple emulator packages including PCSX2, PPSSPP, RPCS3,
+  Xemu, Xenia Edge, TSugaru, OpenMSX, Python Pyxel, and related libretro cores.
+  - Updated audio, ConnMan, and post-build handling for the x86-64-v3 image.
+
+  ---
+
+  ## 📜 Changelog 6-5-2026
+
+  - Updated Steam integration, Steam Deck mode session handling, Steam user
+  setup, Decky/TDP hooks, night-mode handling, and SteamOS manager support.
+  - Added Control Center TDP controls and expanded handheld power-management
+  integration.
+  - Added LSFG/Vulkan frame-generation support hooks for Wine and Windows launch
+  paths.
+  - Improved Wine, Lutris, Heroic, and LutrisView integration, including ES
+  parsing and launcher support.
+  - Updated Gamescope handling, recording scripts, and fake-output support for
+  Wayland/labwc workflows.
+  - Bumped kernel/header to 7.0.8 and Mesa packages to 26.1.0 for the x86-64-v3 build.
+  - Bumped or repaired Azahar, Cemu, MAME/libretro MAME, RPCS3, ShadPS4,
+  VPinball, Xenia Edge, and related dependency packages.
+  - Added and updated VPinball support libraries including libwinevbs, libvni,
+  libdmdutil, libdof, libpinmame, libpupdmd, libserum, libzedmd, and wxWidgets
+  wiring.
+  - Added RPCS3 save and screenshot sync helper support.
+  - Updated MangoHud/MangoApp packaging and wrapper handling.
+
 ## 📜 Changelog 14-4-2026
 
-### Latest
+
 - Bump RPCS3
 - Add Retroachivements to MelonDS
 - Fixed N64 Launch issues
