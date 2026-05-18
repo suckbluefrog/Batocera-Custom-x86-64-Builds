@@ -3,6 +3,9 @@
 do_help() {
     echo "$0 scanlist" >&2
     echo "$0 list" >&2
+    echo "$0 get_route" >&2
+    echo "$0 get_interface" >&2
+    echo "$0 has_ap_mode" >&2
 }
 
 do_list() {
@@ -29,6 +32,27 @@ wait_for_ip() {
         fi
         sleep 0.5
     done
+}
+
+get_route() {
+    ip route show default | awk '/^default/ && $0 ~ / dev wl/ { print $3; exit }'
+}
+
+get_interface() {
+    ip -o link show | awk -F': ' '$2 ~ /^wl/ { print $2; exit }'
+}
+
+has_ap_mode() {
+    WIFI_DEV="$(get_interface)"
+    [ -n "$WIFI_DEV" ] || exit 1
+
+    PHY_LINK="/sys/class/net/${WIFI_DEV}/phy80211"
+    [ -e "$PHY_LINK" ] || exit 1
+
+    PHY="$(basename "$(readlink "$PHY_LINK")")"
+    [ -n "$PHY" ] || exit 1
+
+    iw phy "$PHY" info | sed -n '/Supported interface modes/,/^[^*]*$/s|^.*[*] ||p' | grep -q 'AP'
 }
 
 if [ $# -eq 0 ]; then
@@ -77,6 +101,15 @@ case "${ACTION}" in
         batocera-settings-set wifi.enabled 0
         /etc/init.d/S08connman reload
         wait_for_ip down
+        ;;
+    "get_route")
+        get_route
+        ;;
+    "get_interface")
+        get_interface
+        ;;
+    "has_ap_mode")
+        has_ap_mode
         ;;
     *)
         do_help

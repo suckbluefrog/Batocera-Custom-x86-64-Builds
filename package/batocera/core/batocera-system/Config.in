@@ -200,6 +200,8 @@ config BR2_PACKAGE_BATOCERA_SYSTEM
 	select BR2_PACKAGE_IW				# wireless country config for regulatoryDB
 	select BR2_PACKAGE_WIRELESS_TOOLS		# wireless tools
 	select BR2_PACKAGE_WIRELESS_TOOLS_LIB		# wireless tools
+	select BR2_PACKAGE_DNSMASQ			if BR2_USE_MMU # local Netplay hotspot DHCP/DNS
+	select BR2_PACKAGE_HOSTAPD			if BR2_USE_MMU # local Netplay hotspot AP
 	select BR2_PACKAGE_DROPBEAR			# ssh server
 	select BR2_PACKAGE_PM_UTILS			# suspend
 	select BR2_PACKAGE_QTSIXA_SHANWAN		# ps3 pad
