@@ -6,12 +6,18 @@ LOG="/userdata/system/logs/steam.log"
 HOTKEY_DIR="/userdata/system/configs/hotkeygen"
 ACTIVE_MAP="${HOTKEY_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 COMMON_CONTEXT="${HOTKEY_DIR}/common_context.ally.conf"
-SYSTEM_DIR="/usr/share/hotkeygen"
+SYSTEM_DIR="/usr/share/batocera/services/allyhotkeys.d"
 ES_MAP="${SYSTEM_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping.es"
 DEFAULT_MAP="${SYSTEM_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 
 hotkeygen_permanent_running() {
     pgrep -f '(^|[[:space:]])(/usr/bin/)?hotkeygen([[:space:]].*)?--permanent([[:space:]]|$)' >/dev/null 2>&1
+}
+
+ensure_hotkeygen_started() {
+    if ! hotkeygen_permanent_running && [ -x /etc/init.d/S90hotkeygen ]; then
+        /etc/init.d/S90hotkeygen start >/dev/null 2>&1 || true
+    fi
 }
 
 allyhotkeys_enabled() {
@@ -44,10 +50,9 @@ start() {
     fi
 
     if command -v hotkeygen >/dev/null 2>&1; then
+        ensure_hotkeygen_started
         /usr/bin/hotkeygen --default-context >/dev/null 2>&1 || true
-        if hotkeygen_permanent_running; then
-            /usr/bin/hotkeygen --reload >/dev/null 2>&1 || true
-        fi
+        /usr/bin/hotkeygen --reload >/dev/null 2>&1 || true
     fi
 }
 

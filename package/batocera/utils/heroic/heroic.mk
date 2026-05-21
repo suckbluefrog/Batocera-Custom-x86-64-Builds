@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-HEROIC_VERSION = 2.21.0
+HEROIC_VERSION = 2.22.0
 HEROIC_LICENSE = GPL-3.0
 HEROIC_STRIP = NO
 HEROIC_TOOLCHAIN = manual

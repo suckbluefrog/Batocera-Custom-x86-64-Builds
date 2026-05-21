@@ -6,18 +6,18 @@ index b953b6f..8820b4b 100644
      </text>
      -->
 -    <text name="md_lbl_developer, md_lbl_publisher, md_lbl_lastplayed, md_lbl_playcount, md_lbl_players, md_lbl_releasedate">
-+    <text name="md_lbl_developer, md_lbl_publisher, md_lbl_lastplayed, md_lbl_playcount, md_lbl_players, md_lbl_releasedate, md_lbl_hltbmain, md_lbl_protondb">
++    <text name="md_lbl_developer, md_lbl_publisher, md_lbl_lastplayed, md_lbl_playcount, md_lbl_players, md_lbl_releasedate, md_lbl_hltbmain, md_lbl_hltbcompletionist, md_lbl_protondb">
        <color>969696</color>
        <forceUppercase>0</forceUppercase>
        <fontPath>./../art/fonts/Cabin-Regular.ttf</fontPath>
        <fontSize>0.023</fontSize>
      </text>
 -    <text name="md_genre, md_developer, md_publisher, md_lastplayed, md_releasedate, md_players">
-+    <text name="md_genre, md_developer, md_publisher, md_lastplayed, md_releasedate, md_players, md_hltbmain, md_protondb">
++    <text name="md_genre, md_developer, md_publisher, md_lastplayed, md_releasedate, md_players, md_hltbmain, md_hltbcompletionist, md_protondb">
        <color>969696</color>
        <forceUppercase>0</forceUppercase>
        <fontPath>./../art/fonts/Cabin-Bold.ttf</fontPath>
-@@ -199,9 +199,43 @@ originally based on: "simple" by nils bonenberger
+@@ -199,9 +199,60 @@ originally based on: "simple" by nils bonenberger
        <size>0 0.033</size>
        <format>${dateFormat}</format>
      </datetime>
@@ -32,13 +32,24 @@ index b953b6f..8820b4b 100644
 +      <alignment>left</alignment>
 +      <singleLineScroll>true</singleLineScroll>
 +    </text>
-+    <text name="md_lbl_protondb">
++    <text name="md_lbl_hltbcompletionist">
 +      <pos>0.55 0.705</pos>
++      <size>0.15 0</size>
++    </text>
++    <text name="md_hltbcompletionist">
++      <color>EFEFFF</color>
++      <pos>0.70 0.705</pos>
++      <size>0.28 0.033</size>
++      <alignment>left</alignment>
++      <singleLineScroll>true</singleLineScroll>
++    </text>
++    <text name="md_lbl_protondb">
++      <pos>0.55 0.735</pos>
 +      <size>0.15 0</size>
 +    </text>
 +    <text name="md_protondb">
 +      <color>EFEFFF</color>
-+      <pos>0.70 0.705</pos>
++      <pos>0.70 0.735</pos>
 +      <size>0.28 0.033</size>
 +      <alignment>left</alignment>
 +      <singleLineScroll>true</singleLineScroll>
@@ -47,6 +58,12 @@ index b953b6f..8820b4b 100644
 +      <pos>1 1</pos>
 +    </text>
 +    <text name="md_hltbmain" ifSubset="optimizesmallscreens:yes">
++      <pos>1 1</pos>
++    </text>
++    <text name="md_lbl_hltbcompletionist" ifSubset="optimizesmallscreens:yes">
++      <pos>1 1</pos>
++    </text>
++    <text name="md_hltbcompletionist" ifSubset="optimizesmallscreens:yes">
 +      <pos>1 1</pos>
 +    </text>
 +    <text name="md_lbl_protondb" ifSubset="optimizesmallscreens:yes">
@@ -58,8 +75,8 @@ index b953b6f..8820b4b 100644
      <text name="md_description">
 -      <pos>0.55 0.7</pos>
 -      <size>0.43 0.16</size>
-+      <pos>0.55 0.738</pos>
-+      <size>0.43 0.122</size>
++      <pos>0.55 0.768</pos>
++      <size>0.43 0.092</size>
        <color>C0C0C0</color>
        <forceUppercase>0</forceUppercase>
        <fontPath>./../art/fonts/Cabin-Regular.ttf</fontPath>

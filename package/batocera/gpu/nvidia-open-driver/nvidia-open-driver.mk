@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-NVIDIA_OPEN_DRIVER_VERSION = 590.48.01
+NVIDIA_OPEN_DRIVER_VERSION = 595.71.05
 NVIDIA_OPEN_DRIVER_SUFFIX = $(if $(BR2_x86_64),_64)
 NVIDIA_OPEN_DRIVER_SITE = \
     http://download.nvidia.com/XFree86/Linux-x86$(NVIDIA_OPEN_DRIVER_SUFFIX)/$(NVIDIA_OPEN_DRIVER_VERSION)
@@ -24,8 +24,7 @@ ifeq ($(BR2_PACKAGE_NVIDIA_OPEN_DRIVER_XORG),y)
 # they should be built prior to those packages, and the only simple
 # way to do so is to make nvidia-driver depend on them.
 #batocera enable nvidia-driver and mesa3d to coexist in the same fs
-NVIDIA_OPEN_DRIVER_DEPENDENCIES = mesa3d xlib_libX11 xlib_libXext libglvnd \
-    nvidia470-legacy-driver nvidia580-legacy-driver
+NVIDIA_OPEN_DRIVER_DEPENDENCIES = mesa3d xlib_libX11 xlib_libXext libglvnd
 
 # NVIDIA_OPEN_DRIVER_PROVIDES = libgl libegl libgles
 

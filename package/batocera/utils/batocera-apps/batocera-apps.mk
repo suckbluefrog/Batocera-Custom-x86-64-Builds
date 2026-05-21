@@ -10,27 +10,27 @@ BATOCERA_APPS_LICENSE = Various
 BATOCERA_APPS_STRIP = NO
 BATOCERA_APPS_TOOLCHAIN = manual
 
-BATOCERA_APPS_SITE = https://github.com/shy1132/VacuumTube/releases/download/v1.5.6
+BATOCERA_APPS_SITE = https://github.com/shy1132/VacuumTube/releases/download/v1.7.0
 BATOCERA_APPS_SOURCE = VacuumTube-x86_64.AppImage
-BATOCERA_APPS_CHROME_TAG = 20260225-033748
-BATOCERA_APPS_CHROME_SOURCE = Google-Chrome-stable-145.0.7632.116-1-x86_64.AppImage
-BATOCERA_APPS_FIREFOX_TAG = 20260224-203738
-BATOCERA_APPS_FIREFOX_SOURCE = Firefox-stable-148.0-x86_64.AppImage
-BATOCERA_APPS_GEFORCE_INFINITY_SOURCE = GeForceInfinity-linux-1.2.1-x86_64.AppImage
+BATOCERA_APPS_CHROME_TAG = 20260519-050133
+BATOCERA_APPS_CHROME_SOURCE = Google-Chrome-stable-148.0.7778.167-1-x86_64.AppImage
+BATOCERA_APPS_FIREFOX_TAG = 20260519-212134
+BATOCERA_APPS_FIREFOX_SOURCE = Firefox-stable-151.0-x86_64.AppImage
+BATOCERA_APPS_GEFORCE_INFINITY_SOURCE = GeForceInfinity-linux-1.2.2-x86_64.AppImage
 BATOCERA_APPS_PARSEC_SOURCE = parsec-linux.deb
 BATOCERA_APPS_PROTONUPQT_SOURCE = ProtonUp-Qt-2.15.0-x86_64.AppImage
-BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE = Steam-ROM-Manager-2.5.33.AppImage
+BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE = Steam-ROM-Manager-2.5.34.AppImage
 BATOCERA_APPS_EXTRA_DOWNLOADS = \
 	https://github.com/ivan-hc/Chrome-appimage/releases/download/$(BATOCERA_APPS_CHROME_TAG)/$(BATOCERA_APPS_CHROME_SOURCE) \
 	https://github.com/ivan-hc/Firefox-appimage/releases/download/$(BATOCERA_APPS_FIREFOX_TAG)/$(BATOCERA_APPS_FIREFOX_SOURCE) \
-	https://github.com/AstralVixen/GeForce-Infinity/releases/download/1.2.1/$(BATOCERA_APPS_GEFORCE_INFINITY_SOURCE) \
+	https://github.com/AstralVixen/GeForce-Infinity/releases/download/1.2.2/$(BATOCERA_APPS_GEFORCE_INFINITY_SOURCE) \
 	https://builds.parsec.app/package/$(BATOCERA_APPS_PARSEC_SOURCE) \
 	https://github.com/DavidoTek/ProtonUp-Qt/releases/download/v2.15.0/$(BATOCERA_APPS_PROTONUPQT_SOURCE) \
-	https://github.com/SteamGridDB/steam-rom-manager/releases/download/v2.5.33/$(BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE) \
+	https://github.com/SteamGridDB/steam-rom-manager/releases/download/v2.5.34/$(BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE) \
 	https://github.com/unknownskl/greenlight/releases/download/v2.4.1/Greenlight-2.4.1.AppImage \
 	https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/Moonlight-6.1.0-x86_64.AppImage \
-	https://github.com/streetpea/chiaki-ng/releases/download/v1.9.9/chiaki-ng.AppImage_x86_64 \
-	https://github.com/peazip/PeaZip/releases/download/10.9.0/peazip_portable-10.9.0.LINUX.Qt6.x86_64.tar.gz
+	https://github.com/streetpea/chiaki-ng/releases/download/v1.10.0/chiaki-ng.AppImage_x86_64 \
+	https://github.com/peazip/PeaZip/releases/download/11.1.0/peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz
 
 define BATOCERA_APPS_EXTRACT_CMDS
 	set -e; \
@@ -83,7 +83,7 @@ define BATOCERA_APPS_EXTRACT_CMDS
 		fi; \
 	}; \
 	fetch_appimage "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/VacuumTube-x86_64.AppImage" \
-		"https://github.com/shy1132/VacuumTube/releases/download/v1.5.6/VacuumTube-x86_64.AppImage" \
+		"https://github.com/shy1132/VacuumTube/releases/download/v1.7.0/VacuumTube-x86_64.AppImage" \
 		"$(@D)/vacuumtube.AppImage"; \
 	fetch_appimage "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/$(BATOCERA_APPS_CHROME_SOURCE)" \
 		"https://github.com/ivan-hc/Chrome-appimage/releases/download/$(BATOCERA_APPS_CHROME_TAG)/$(BATOCERA_APPS_CHROME_SOURCE)" \
@@ -92,7 +92,7 @@ define BATOCERA_APPS_EXTRACT_CMDS
 		"https://github.com/ivan-hc/Firefox-appimage/releases/download/$(BATOCERA_APPS_FIREFOX_TAG)/$(BATOCERA_APPS_FIREFOX_SOURCE)" \
 		"$(@D)/firefox.AppImage"; \
 	fetch_appimage "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/$(BATOCERA_APPS_GEFORCE_INFINITY_SOURCE)" \
-		"https://github.com/AstralVixen/GeForce-Infinity/releases/download/1.2.1/$(BATOCERA_APPS_GEFORCE_INFINITY_SOURCE)" \
+		"https://github.com/AstralVixen/GeForce-Infinity/releases/download/1.2.2/$(BATOCERA_APPS_GEFORCE_INFINITY_SOURCE)" \
 		"$(@D)/geforceinfinity.AppImage"; \
 	fetch_deb "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/$(BATOCERA_APPS_PARSEC_SOURCE)" \
 		"https://builds.parsec.app/package/$(BATOCERA_APPS_PARSEC_SOURCE)" \
@@ -101,7 +101,7 @@ define BATOCERA_APPS_EXTRACT_CMDS
 		"https://github.com/DavidoTek/ProtonUp-Qt/releases/download/v2.15.0/$(BATOCERA_APPS_PROTONUPQT_SOURCE)" \
 		"$(@D)/protonupqt.AppImage"; \
 	fetch_appimage "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/$(BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE)" \
-		"https://github.com/SteamGridDB/steam-rom-manager/releases/download/v2.5.33/$(BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE)" \
+		"https://github.com/SteamGridDB/steam-rom-manager/releases/download/v2.5.34/$(BATOCERA_APPS_STEAM_ROM_MANAGER_SOURCE)" \
 		"$(@D)/steamrommanager.AppImage"; \
 	fetch_appimage "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/Greenlight-2.4.1.AppImage" \
 		"https://github.com/unknownskl/greenlight/releases/download/v2.4.1/Greenlight-2.4.1.AppImage" \
@@ -110,17 +110,17 @@ define BATOCERA_APPS_EXTRACT_CMDS
 		"https://github.com/moonlight-stream/moonlight-qt/releases/download/v6.1.0/Moonlight-6.1.0-x86_64.AppImage" \
 		"$(@D)/moonlight.AppImage"; \
 	fetch_appimage "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/chiaki-ng.AppImage_x86_64" \
-		"https://github.com/streetpea/chiaki-ng/releases/download/v1.9.9/chiaki-ng.AppImage_x86_64" \
+		"https://github.com/streetpea/chiaki-ng/releases/download/v1.10.0/chiaki-ng.AppImage_x86_64" \
 		"$(@D)/chiaki.AppImage"; \
-	if [ -f "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/peazip_portable-10.9.0.LINUX.Qt6.x86_64.tar.gz" ]; then \
-		cp "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/peazip_portable-10.9.0.LINUX.Qt6.x86_64.tar.gz" "$(@D)/peazip-qt6.tar.gz"; \
+	if [ -f "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz" ]; then \
+		cp "$(DL_DIR)/$(BATOCERA_APPS_DL_SUBDIR)/peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz" "$(@D)/peazip-qt6.tar.gz"; \
 	else \
-		wget -O "$(@D)/peazip-qt6.tar.gz" "https://github.com/peazip/PeaZip/releases/download/10.9.0/peazip_portable-10.9.0.LINUX.Qt6.x86_64.tar.gz"; \
+		wget -O "$(@D)/peazip-qt6.tar.gz" "https://github.com/peazip/PeaZip/releases/download/11.1.0/peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz"; \
 	fi; \
 	tar -tzf "$(@D)/peazip-qt6.tar.gz" >/dev/null 2>&1 || { \
 		echo "batocera-apps: invalid peazip archive, re-downloading" >&2; \
 		rm -f "$(@D)/peazip-qt6.tar.gz"; \
-		wget -O "$(@D)/peazip-qt6.tar.gz" "https://github.com/peazip/PeaZip/releases/download/10.9.0/peazip_portable-10.9.0.LINUX.Qt6.x86_64.tar.gz"; \
+		wget -O "$(@D)/peazip-qt6.tar.gz" "https://github.com/peazip/PeaZip/releases/download/11.1.0/peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz"; \
 		tar -tzf "$(@D)/peazip-qt6.tar.gz" >/dev/null 2>&1 || exit 1; \
 	}
 endef
@@ -149,7 +149,7 @@ define BATOCERA_APPS_INSTALL_TARGET_CMDS
 	install -m 0644 $(@D)/chiaki.AppImage $(TARGET_DIR)/usr/share/batocera/apps/chiaki.AppImage
 	mkdir -p $(TARGET_DIR)/usr/share/batocera/apps/peazip
 	if [ ! -f "$(@D)/peazip-qt6.tar.gz" ]; then \
-		wget -O "$(@D)/peazip-qt6.tar.gz" "https://github.com/peazip/PeaZip/releases/download/10.9.0/peazip_portable-10.9.0.LINUX.Qt6.x86_64.tar.gz"; \
+		wget -O "$(@D)/peazip-qt6.tar.gz" "https://github.com/peazip/PeaZip/releases/download/11.1.0/peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz"; \
 	fi
 	tar -xzf $(@D)/peazip-qt6.tar.gz -C $(TARGET_DIR)/usr/share/batocera/apps/peazip
 

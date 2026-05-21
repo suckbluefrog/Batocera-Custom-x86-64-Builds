@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-NVIDIA580_LEGACY_DRIVER_VERSION = 580.126.09
+NVIDIA580_LEGACY_DRIVER_VERSION = 580.159.03
 NVIDIA580_LEGACY_DRIVER_SUFFIX = $(if $(BR2_x86_64),_64)
 NVIDIA580_LEGACY_DRIVER_SITE = \
     http://download.nvidia.com/XFree86/Linux-x86$(NVIDIA580_LEGACY_DRIVER_SUFFIX)/$(NVIDIA580_LEGACY_DRIVER_VERSION)
@@ -24,8 +24,7 @@ ifeq ($(BR2_PACKAGE_NVIDIA580_LEGACY_DRIVER_XORG),y)
 # they should be built prior to those packages, and the only simple
 # way to do so is to make nvidia-driver depend on them.
 #batocera enable nvidia-driver and mesa3d to coexist in the same fs
-NVIDIA580_LEGACY_DRIVER_DEPENDENCIES = mesa3d xlib_libX11 xlib_libXext libglvnd \
-    nvidia470-legacy-driver
+NVIDIA580_LEGACY_DRIVER_DEPENDENCIES = mesa3d xlib_libX11 xlib_libXext libglvnd
 
 # NVIDIA580_LEGACY_DRIVER_PROVIDES = libgl libegl libgles
 
@@ -336,6 +335,13 @@ define NVIDIA580_LEGACY_DRIVER_RENAME_KERNEL_MODULES
 	echo $(NVIDIA580_LEGACY_DRIVER_VERSION) > $(TARGET_DIR)/usr/share/nvidia/legacy580.version
 endef
 
+define NVIDIA580_LEGACY_DRIVER_COPY_JSON
+	mkdir -p $(TARGET_DIR)/usr/share/nvidia
+	test ! -f $(@D)/supported-gpus/supported-gpus.json || \
+	    cp -f $(@D)/supported-gpus/supported-gpus.json $(TARGET_DIR)/usr/share/nvidia/supported-gpus.json
+endef
+
 NVIDIA580_LEGACY_DRIVER_POST_INSTALL_TARGET_HOOKS += NVIDIA580_LEGACY_DRIVER_RENAME_KERNEL_MODULES
+NVIDIA580_LEGACY_DRIVER_POST_INSTALL_TARGET_HOOKS += NVIDIA580_LEGACY_DRIVER_COPY_JSON
 
 $(eval $(generic-package))

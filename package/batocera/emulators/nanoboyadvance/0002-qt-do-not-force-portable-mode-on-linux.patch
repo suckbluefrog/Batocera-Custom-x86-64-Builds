@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera <batocera@localhost>
+Date: Wed, 20 May 2026 14:28:00 +0300
+Subject: [PATCH] qt: do not force portable mode on Linux
+
+NanoBoyAdvance's Qt frontend forces PORTABLE_MODE when it is not built
+as a macOS app bundle.  On Batocera that makes the emulator load a
+relative config.toml from the process working directory, so the
+configgen-created XDG config is ignored and the BIOS path falls back to
+bios.bin.
+
+Keep portable mode as an explicit opt-in option so Linux builds use
+QStandardPaths and read $XDG_CONFIG_HOME/NanoBoyAdvance/config.toml.
+---
+ src/platform/qt/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/platform/qt/CMakeLists.txt b/src/platform/qt/CMakeLists.txt
+index 8ba63ff..727c6ee 100644
+--- a/src/platform/qt/CMakeLists.txt
++++ b/src/platform/qt/CMakeLists.txt
+@@ -9 +9 @@
+-cmake_dependent_option(PORTABLE_MODE "Enable portable mode" OFF MACOS_BUILD_APP_BUNDLE ON)
++option(PORTABLE_MODE "Enable portable mode" OFF)

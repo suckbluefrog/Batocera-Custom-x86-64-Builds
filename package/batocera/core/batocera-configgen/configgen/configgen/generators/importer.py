@@ -78,6 +78,7 @@ _GENERATOR_MAP: Final[dict[str, tuple[str, str]]] = {
     'touchhle': ('touchhle.touchhleGenerator', 'TouchHLEGenerator'),
     'heroic': ('sh.shGenerator', 'ShGenerator'),
     'lutris': ('sh.shGenerator', 'ShGenerator'),
+    'n64recomp': ('sh.shGenerator', 'ShGenerator'),
 }
 
 def get_generator(emulator: str) -> Generator:

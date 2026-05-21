@@ -12,10 +12,10 @@ BATOCERA_DESKTOPAPPS_PKGDIR = \
 
 # Base files
 BATOCERA_DESKTOPAPPS_SCRIPTS = filemanagerlauncher ftoolbox
-BATOCERA_DESKTOPAPPS_APPS    = xterm.desktop
-BATOCERA_DESKTOPAPPS_ICONS   =
+BATOCERA_DESKTOPAPPS_APPS    = xterm.desktop m3u-builder.desktop win9x-tool.desktop
+BATOCERA_DESKTOPAPPS_ICONS   = m3u-builder.png win9x-tool.png
 BATOCERA_DESKTOPAPPS_TOOLBOX =
-BATOCERA_DESKTOPAPPS_ACTIONS = system.md5sum.desktop
+BATOCERA_DESKTOPAPPS_ACTIONS = system.md5sum.desktop multidisc.toolbox.m3ufromdir.desktop
 
 #file-roller integration for pcmanfm - open/list archives
 BATOCERA_DESKTOPAPPS_APPS    += file-roller-mimics.desktop
@@ -125,6 +125,12 @@ endif
 ifeq ($(BR2_PACKAGE_HEROIC),y)
   BATOCERA_DESKTOPAPPS_APPS    += heroic.desktop
   BATOCERA_DESKTOPAPPS_ICONS   += heroic.png
+endif
+
+# n64 recomp launcher
+ifeq ($(BR2_PACKAGE_N64RECOMP_LAUNCHER),y)
+  BATOCERA_DESKTOPAPPS_APPS    += n64recomp-launcher.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += n64recomp-launcher.png
 endif
 
 # bundled desktop apps

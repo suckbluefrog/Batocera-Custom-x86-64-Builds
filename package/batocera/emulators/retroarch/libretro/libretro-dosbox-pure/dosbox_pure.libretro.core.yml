@@ -63,6 +63,56 @@ custom_features:
       Tandy: tandy
       Hercules: hercules
       PCjr: pcjr
+  pure_svga:
+    prompt: SVGA CHIPSET
+    description: The SVGA adapter to emulate.
+    choices:
+      S3 Trio64: svga_s3
+      S3 Trio64 no-line buffer hack: vesa_nolfb
+      S3 Trio64 VESA 1.3: vesa_oldvbe
+      Tseng Labs ET3000: svga_et3000
+      Tseng Labs ET4000: svga_et4000
+      Paradise PVGA1A: svga_paradise
+  pure_svgamem:
+    prompt: SVGA MEMORY
+    description: Video memory available to the emulated SVGA adapter.
+    choices:
+      512KB: 0
+      1MB: 1
+      2MB: 2
+      3MB: 3
+      4MB: 4
+      8MB: 8
+  pure_voodoo:
+    prompt: 3DFX VOODOO
+    description: Enables 3dfx Voodoo acceleration for DOS and Windows 9x games.
+    choices:
+      8MB Voodoo: 8mb
+      12MB Voodoo dual texture: 12mb
+      4MB Voodoo: 4mb
+      Disabled: off
+  pure_voodoo_perf:
+    prompt: 3DFX VOODOO RENDERER
+    description: Hardware OpenGL is faster; software can be more compatible.
+    choices:
+      Auto: auto
+      Hardware OpenGL: 4
+      Software multi threaded: 1
+      Software multi threaded low quality: 3
+      Software single threaded low quality: 2
+      Software single threaded: 0
+  pure_voodoo_scale:
+    prompt: 3DFX OPENGL SCALE
+    description: Increase the OpenGL render scale for Voodoo output.
+    choices:
+      1x: 1
+      2x: 2
+      3x: 3
+      4x: 4
+      5x: 5
+      6x: 6
+      7x: 7
+      8x: 8
   pure_keyboard_layout:
     prompt: PHYSICAL KEYBOARD LAYOUT
     description: Does not affect the on-screen keyboard.
@@ -99,6 +149,22 @@ custom_features:
       Keep (default): "false"
       Discard: "true"
       Save Difference Per Content: diff
+  pure_bootos_dfreespace:
+    prompt: 'WIN9X D: FREE SPACE'
+    description: Free space exposed to the mounted content drive when booting an installed OS.
+    choices:
+      1GB: 1024
+      2GB: 2048
+      4GB: 4096
+      8GB: 8192
+      'Discard D: changes': discard
+      'Hide D: drive': hide
+  pure_bootos_forcenormal:
+    prompt: FORCE NORMAL CORE IN OS
+    description: Uses the slower normal core when booting an installed OS.
+    choices:
+      'Off': "false"
+      'On': "true"
   pure_savestate:
     prompt: SAVESTATE/REWIND
     description: Rewind can be CPU heavy.
@@ -182,3 +248,4 @@ custom_features:
       'Off': disabled
 systems:
   - dos
+  - win9x

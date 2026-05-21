@@ -844,6 +844,24 @@ dos:
 
      Para mais informações: https://wiki.batocera.org/systems:dos
 
+win9x:
+  name:       Windows 9x
+  manufacturer: Microsoft
+  release: 1995
+  hardware: computer
+  extensions: [pc, m3u, m3u8, zip, dosz, iso, chd, cue, img, ima, vhd, jrc]
+  theme:      pc
+  platform:   pc
+  emulators:
+    libretro:
+      dosbox_pure:      { requireAnyOf: [BR2_PACKAGE_LIBRETRO_DOSBOX_PURE] }
+  comment_en: |
+    Windows 95/98 games launch through DOSBox Pure.
+
+    Use the Win9x Image Builder from the F1 desktop applications menu to create launchable .pc entries in /userdata/roms/win9x.
+
+    Put your own Windows install media and game media on /userdata, then use the builder to create an installer entry and per-image launch folders. DOSBox Pure stores installed Windows images in /userdata/bios.
+
 devilutionx:
   name: Diablo
   manufacturer: Ports
@@ -2100,7 +2118,7 @@ triforce:
   manufacturer: Namco, Sega, Nintendo
   release: 2003
   hardware: arcade
-  extensions: [gcm, iso, gcz, ciso, wbfs, elf, dol, m3u]
+  extensions: [iso, rvz]
   platform: triforce, arcade
   emulators:
     dolphin:
@@ -3062,6 +3080,24 @@ lutris:
           Inicie atalhos do Lutris.
           Execute batocera-lutris-update para gerar lançadores a partir dos arquivos .desktop instalados.
 
+n64recomp:
+  name: N64 Recomp
+  manufacturer: N64 Recompiled
+  release: 2024
+  hardware: port
+  extensions: [sh]
+  platform: n64
+  path: n64recomp
+  emulators:
+    n64recomp:
+      regular: { requireAnyOf: [BR2_PACKAGE_N64RECOMP_LAUNCHER] }
+  comment_en: |
+          Launch N64 recomp shortcuts.
+          Use N64 Recomp Launcher to install games and create desktop shortcuts, then run batocera-n64recomp-update or update game lists to import them.
+  comment_br: |
+          Inicie atalhos do N64 Recomp.
+          Use o N64 Recomp Launcher para instalar jogos e criar atalhos da area de trabalho, depois execute batocera-n64recomp-update ou atualize as listas de jogos para importa-los.
+
 supervision:
   name:       Supervision
   manufacturer: Watara
@@ -3315,14 +3351,10 @@ apple2gs:
   manufacturer: Apple
   release: 1986
   hardware: computer
-  extensions: [2mg, do, nib, po, dsk, mfi, dfi, rti, edd, woz, hfe, mfm, td0, imd, d77, d88, 1dd, cqm, cqui, ima, img, ufi, 360, ipf, dc42, zip, 7z]
+  extensions: [2mg, do, nib, po, dsk]
   emulators:
-    libretro:
-      mame: { requireAnyOf: [BR2_PACKAGE_LIBRETRO_MAME] }
-    mame:
-      mame: { requireAnyOf: [BR2_PACKAGE_MAME] }
     gsplus:
-      gsplus: { requireAnyOf: [BR2_PACKAGE_GSPLUS], incompatible_extensions: [mfi, dfi, rti, edd, woz, hfe, mfm, td0, imd, d77, d88, 1dd, cqm, cqui, ima, img, ufi, 360, ipf, dc42, zip, 7z] }
+      gsplus: { requireAnyOf: [BR2_PACKAGE_GSPLUS] }
   comment_en: |
           If your game does not start using LR-Mame. Ensure you choose the right floppy type for the rom extension.
           i.e. some extensions require you to choose the 3 1/2 inch floppy drive (Drive 3).
