@@ -14,15 +14,17 @@ unset WAYLAND_DISPLAY
 # Log and configuration file paths
 LOG_FILE="/userdata/system/logs/display.log"
 LABWC_CONF_DIR="/userdata/system/.config/labwc"
-LABWC_LOG_FILE="/var/log/labwc.log"
-
-if [ -f "/var/log/nvidia.log" ]; then
-    cp -f /var/log/nvidia.log /userdata/system/logs/nvidia.log
-fi
+LABWC_LOG_FILE="/userdata/system/logs/labwc.log"
+LABWC_RUNTIME_LOG_FILE="/var/log/labwc.log"
 
 mkdir -p /userdata/system/logs
 mkdir -p /var/run
 mkdir -p /var/log
+ln -sf "$LABWC_LOG_FILE" "$LABWC_RUNTIME_LOG_FILE"
+
+if [ -f "/var/log/nvidia.log" ]; then
+    cp -f /var/log/nvidia.log /userdata/system/logs/nvidia.log
+fi
 
 # GPU Selection Logic
 PRIME_PCI_ID=""
@@ -57,3 +59,6 @@ fi
 echo "Starting Labwc with keyboard layout: $XKB_DEFAULT_LAYOUT" >> "$LOG_FILE"
 
 WLR_LIBINPUT_NO_DEVICES=1 /usr/bin/labwc -d -C $LABWC_CONF_DIR > "$LABWC_LOG_FILE" 2>&1
+status=$?
+echo "Labwc exited with status $status; see $LABWC_LOG_FILE" >> "$LOG_FILE"
+exit "$status"

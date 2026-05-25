@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import shlex
+import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,6 +12,69 @@ from ..Generator import Generator
 
 if TYPE_CHECKING:
     from ...types import HotkeysContext
+
+_STEAM_FRONTEND_LAUNCHERS = {
+    "Steam.steam",
+    "Steam GamepadUI.steam",
+    "Steam GamepadUI No Gamescope.steam",
+    "Steam Desktop.steam",
+}
+_STEAM_APP_DIRS = (
+    Path("/userdata/system/steam/steamapps"),
+    Path("/userdata/system/.steam/steam/steamapps"),
+    Path("/userdata/system/.local/share/Steam/steamapps"),
+)
+_STEAM_SKIP_EXE_NAMES = {
+    "crashhandler.exe",
+    "crashpad_handler.exe",
+    "crashpad_database_util.exe",
+    "crashpad_http_upload.exe",
+    "crashreportclient.exe",
+    "crashreporter.exe",
+    "dxsetup.exe",
+    "easyanticheat_eos_setup.exe",
+    "forzaprotocolselector.exe",
+    "forzawebhelper.exe",
+    "hardwarereporter.exe",
+    "machineidentifier.exe",
+    "msedgewebview2.exe",
+    "notification_helper.exe",
+    "oalinst.exe",
+    "workshopuploader.exe",
+    "unitycrashhandler32.exe",
+    "unitycrashhandler64.exe",
+    "unins000.exe",
+    "uninstall.exe",
+    "vc_redist.x64.exe",
+    "vc_redist.x86.exe",
+    "vcredist_x64.exe",
+    "vcredist_x86.exe",
+    "watchdog.exe",
+    "watchdog64.exe",
+}
+_STEAM_SKIP_EXE_DIRS = {
+    "_commonredist",
+    "directx",
+    "dotnet",
+    "installer",
+    "installscript",
+    "redist",
+    "redistributable",
+    "redistributables",
+    "support",
+    "tools",
+    "vcredist",
+}
+_STEAM_SKIP_APP_NAME_TOKENS = (
+    "proton",
+    "steam linux runtime",
+    "steamworks common redistributables",
+)
+_STEAM_SKIP_APP_INSTALLDIR_TOKENS = (
+    "proton",
+    "steamlinuxruntime",
+    "steamworks shared",
+)
 
 
 def _parse_steam_rom_entry(content: str) -> dict[str, str]:
@@ -56,6 +121,102 @@ def _parse_steam_rom_entry(content: str) -> dict[str, str]:
         if key and value:
             entry[key] = value
     return entry
+
+
+def _vdf_get(content: str, key: str) -> str | None:
+    match = re.search(rf'"{re.escape(key)}"\s*"([^"]*)"', content, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _steamapps_dirs() -> list[Path]:
+    dirs: list[Path] = []
+    for steamapps in _STEAM_APP_DIRS:
+        if steamapps.is_dir() and steamapps not in dirs:
+            dirs.append(steamapps)
+
+        libraryfolders = steamapps / "libraryfolders.vdf"
+        if not libraryfolders.is_file():
+            continue
+        try:
+            content = libraryfolders.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+
+        for raw_path in re.findall(r'"path"\s*"([^"]+)"', content, flags=re.IGNORECASE):
+            library_path = Path(raw_path.replace("\\\\", "\\"))
+            library_steamapps = library_path / "steamapps"
+            if library_steamapps.is_dir() and library_steamapps not in dirs:
+                dirs.append(library_steamapps)
+
+    return dirs
+
+
+def _steam_app_dirs(appid: str | None = None) -> list[Path]:
+    app_dirs: list[Path] = []
+    for steamapps in _steamapps_dirs():
+        for manifest in steamapps.glob("appmanifest_*.acf"):
+            try:
+                content = manifest.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+
+            manifest_appid = _vdf_get(content, "appid")
+            if appid is not None and manifest_appid != appid:
+                continue
+
+            name = (_vdf_get(content, "name") or "").lower()
+            installdir = _vdf_get(content, "installdir")
+            if not installdir:
+                continue
+            installdir_lower = installdir.lower()
+            if appid is None and (
+                any(token in name for token in _STEAM_SKIP_APP_NAME_TOKENS)
+                or any(token in installdir_lower for token in _STEAM_SKIP_APP_INSTALLDIR_TOKENS)
+            ):
+                continue
+
+            app_dir = steamapps / "common" / installdir
+            if app_dir.is_dir() and app_dir not in app_dirs:
+                app_dirs.append(app_dir)
+
+    return app_dirs
+
+
+def _is_probable_game_exe(path: Path) -> bool:
+    name = path.name.lower()
+    if not name.endswith(".exe") or name in _STEAM_SKIP_EXE_NAMES:
+        return False
+
+    lower_parts = {part.lower() for part in path.parts}
+    return not bool(lower_parts & _STEAM_SKIP_EXE_DIRS)
+
+
+def _steam_game_exes(appid: str | None = None) -> list[str]:
+    exes: list[str] = []
+    for app_dir in _steam_app_dirs(appid):
+        for root, dirs, files in os.walk(app_dir):
+            dirs[:] = [
+                directory for directory in dirs
+                if directory.lower() not in _STEAM_SKIP_EXE_DIRS and not directory.startswith(".")
+            ]
+            for filename in files:
+                exe = Path(root) / filename
+                if _is_probable_game_exe(exe) and exe.name not in exes:
+                    exes.append(exe.name)
+
+    return exes
+
+
+def _entry_lsfg_exes(entry: dict[str, str]) -> list[str]:
+    raw = entry.get("lsfg_process") or entry.get("lsfg_processes") or entry.get("lsfg_exe") or entry.get("lsfg_exes") or ""
+    exes: list[str] = []
+    for value in re.split(r"[,;]", raw):
+        exe = Path(value.strip()).name
+        if exe and exe not in exes:
+            exes.append(exe)
+    return exes
 
 
 def _normalize_bool_override(value: str | None) -> str | None:
@@ -123,6 +284,7 @@ class SteamGenerator(Generator):
             return parsed
 
         basename = rom.name
+        entry: dict[str, str] = {}
         gameId = None
         command_override = None
         mode_override = None
@@ -255,7 +417,11 @@ class SteamGenerator(Generator):
         if gameResolution and "width" in gameResolution and "height" in gameResolution:
             env["BATOCERA_STEAM_GS_DEFAULT_RES"] = f"{gameResolution['width']}x{gameResolution['height']}"
 
-        lsfg.apply_lsfg_vk(system, env, process_name="steam", use_wine_layer=True)
+        lsfg_exes = _entry_lsfg_exes(entry)
+        for exe in _steam_game_exes(gameId if basename not in _STEAM_FRONTEND_LAUNCHERS else None):
+            if exe not in lsfg_exes:
+                lsfg_exes.append(exe)
+        lsfg.apply_lsfg_vk(system, env, use_wine_layer=True, process_names=lsfg_exes, config_name="steam")
 
         return Command.Command(array=commandArray, env=env)
 

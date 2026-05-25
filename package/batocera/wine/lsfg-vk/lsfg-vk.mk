@@ -6,22 +6,20 @@
 
 LSFG_VK_RELEASE_VERSION = 1.0.0
 LSFG_VK_VERSION = v$(LSFG_VK_RELEASE_VERSION)
-LSFG_VK_X86_SOURCE = lsfg-vk-$(LSFG_VK_RELEASE_VERSION)-x86_64.zip
-LSFG_VK_LICENSE = GPL-3.0
-LSFG_VK_BIN_ARCH_EXCLUDE += /usr/wine/lsfg-vk
-
-ifeq ($(BR2_aarch64),y)
 LSFG_VK_SITE = https://github.com/PancakeTAS/lsfg-vk.git
 LSFG_VK_SITE_METHOD = git
 LSFG_VK_GIT_SUBMODULES = YES
+LSFG_VK_LICENSE = GPL-3.0
 LSFG_VK_LICENSE_FILES = LICENSE.md
 LSFG_VK_SUPPORTS_IN_SOURCE_BUILD = NO
 LSFG_VK_CMAKE_BACKEND = ninja
 LSFG_VK_DEPENDENCIES += vulkan-headers
+LSFG_VK_BIN_ARCH_EXCLUDE += /usr/wine/lsfg-vk
 
 LSFG_VK_CONF_OPTS += -DCMAKE_BUILD_TYPE=Release
 LSFG_VK_CONF_OPTS += -DCMAKE_INSTALL_PREFIX=/usr
 
+ifeq ($(BR2_aarch64),y)
 define LSFG_VK_BUILD_X86_LAYER
 	rm -rf $(@D)/x86-build $(@D)/x86-vulkan-headers
 	mkdir -p $(@D)/x86-build/tmp $(@D)/x86-vulkan-headers
@@ -81,26 +79,20 @@ define LSFG_VK_INSTALL_TARGET_CMDS
 		> $(TARGET_DIR)/usr/wine/lsfg-vk/x64/share/vulkan/explicit_layer.d/VkLayer_LS_frame_generation.json
 endef
 
-$(eval $(cmake-package))
 else
-LSFG_VK_SOURCE = $(LSFG_VK_X86_SOURCE)
-LSFG_VK_SITE = https://github.com/PancakeTAS/lsfg-vk/releases/download/$(LSFG_VK_VERSION)
-
-define LSFG_VK_EXTRACT_CMDS
-	mkdir -p $(@D)/target
-	unzip -q $(DL_DIR)/$(LSFG_VK_DL_SUBDIR)/$(LSFG_VK_SOURCE) -d $(@D)/target
-endef
-
 define LSFG_VK_INSTALL_TARGET_CMDS
 	rm -rf $(TARGET_DIR)/usr/wine/lsfg-vk
 	mkdir -p $(TARGET_DIR)/usr/wine/lsfg-vk/x64/lib
 	mkdir -p $(TARGET_DIR)/usr/wine/lsfg-vk/x64/share/vulkan/explicit_layer.d
-	$(INSTALL) -D -m 0755 $(@D)/target/lib/liblsfg-vk.so \
+	$(INSTALL) -D -m 0755 $(@D)/buildroot-build/liblsfg-vk.so \
 		$(TARGET_DIR)/usr/wine/lsfg-vk/x64/lib/liblsfg-vk.so
+	$(INSTALL) -D -m 0755 $(@D)/buildroot-build/thirdparty/pe-parse/pe-parser-library/libpe-parse.so \
+		$(TARGET_DIR)/usr/wine/lsfg-vk/x64/lib/libpe-parse.so
 	sed 's#"library_path": "liblsfg-vk.so"#"library_path": "/usr/wine/lsfg-vk/x64/lib/liblsfg-vk.so"#' \
-		$(@D)/target/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json \
+		$(@D)/VkLayer_LS_frame_generation.json \
 		> $(TARGET_DIR)/usr/wine/lsfg-vk/x64/share/vulkan/explicit_layer.d/VkLayer_LS_frame_generation.json
 endef
 
-$(eval $(generic-package))
 endif
+
+$(eval $(cmake-package))

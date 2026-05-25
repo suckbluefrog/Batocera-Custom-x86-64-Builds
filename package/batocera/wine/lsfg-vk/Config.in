@@ -3,9 +3,10 @@ config BR2_PACKAGE_LSFG_VK
 	depends on BR2_x86_64 || BR2_aarch64
 	help
 	  Lossless Scaling Frame Generation Vulkan layer.
+	  On x86_64 targets this installs a private x64 layer for Wine/Steam.
 	  On aarch64 targets this builds the native layer for native Vulkan
-	  AppImages and also installs the upstream x86_64 layer privately for
-	  Wine/FEX. A user-provided Lossless.dll from a purchased Lossless
-	  Scaling installation is still required at runtime.
+	  AppImages and also installs a private x86_64 layer for Wine/FEX. A
+	  user-provided Lossless.dll from a purchased Lossless Scaling
+	  installation is still required at runtime.
 
 	  https://github.com/PancakeTAS/lsfg-vk

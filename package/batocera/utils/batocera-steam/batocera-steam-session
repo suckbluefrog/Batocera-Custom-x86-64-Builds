@@ -29,6 +29,7 @@ STEAM_FIRST_RUN_WIFI_STAMP="/userdata/system/.steam-first-run-wifi-pending"
 STEAM_FIRST_RUN_PENDING=0
 STEAM_INSTALL_CALLOUT_PID=""
 STEAMOS_MANAGER_PID=""
+STEAM_CHILD_LSFG_ENV=()
 ALLY_HOTKEY_DIR="/userdata/system/configs/hotkeygen"
 ALLY_ACTIVE_MAP="${ALLY_HOTKEY_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 ALLY_COMMON_CONTEXT="${ALLY_HOTKEY_DIR}/common_context.ally.conf"
@@ -39,6 +40,95 @@ ALLY_DEFAULT_MAP="${ALLY_SYSTEM_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 
 allyhotkeys_enabled() {
     [[ -f "${ALLY_COMMON_CONTEXT}" ]]
+}
+
+value_has_lsfg() {
+    local value="$1"
+
+    [[ "${value}" == *LSFG* || "${value}" == *lsfg* || "${value}" == *LS_frame_generation* ]]
+}
+
+strip_lsfg_entries() {
+    local value="$1"
+    local sep="${2:-:}"
+    local old_ifs="${IFS}"
+    local -a entries=()
+    local -a kept=()
+    local entry
+    local joined=""
+
+    IFS="${sep}"
+    read -r -a entries <<< "${value}"
+    IFS="${old_ifs}"
+
+    for entry in "${entries[@]}"; do
+        if value_has_lsfg "${entry}"; then
+            continue
+        fi
+        kept+=("${entry}")
+    done
+
+    for entry in "${kept[@]}"; do
+        if [[ -n "${joined}" ]]; then
+            joined+="${sep}"
+        fi
+        joined+="${entry}"
+    done
+
+    printf '%s' "${joined}"
+}
+
+capture_lsfg_env_var() {
+    local name="$1"
+    local value="${!name-}"
+
+    STEAM_CHILD_LSFG_ENV+=("${name}=${value}")
+    unset "${name}"
+}
+
+capture_lsfg_layer_list() {
+    local name="$1"
+    local sep="${2:-:}"
+    local value="${!name-}"
+    local stripped=""
+
+    if ! value_has_lsfg "${value}"; then
+        return
+    fi
+
+    STEAM_CHILD_LSFG_ENV+=("${name}=${value}")
+    stripped="$(strip_lsfg_entries "${value}" "${sep}")"
+    if [[ -n "${stripped}" ]]; then
+        export "${name}=${stripped}"
+    else
+        unset "${name}"
+    fi
+}
+
+prepare_steam_child_lsfg_env() {
+    local name
+
+    STEAM_CHILD_LSFG_ENV=()
+
+    while IFS= read -r name; do
+        case "${name}" in
+            ENABLE_LSFG|LSFG_*|BATOCERA_LSFG_*)
+                capture_lsfg_env_var "${name}"
+                ;;
+        esac
+    done < <(compgen -e)
+
+    for name in LD_LIBRARY_PATH VK_INSTANCE_LAYERS VK_LAYER_PATH VK_ADD_LAYER_PATH; do
+        if [[ -n "${!name+x}" ]]; then
+            capture_lsfg_layer_list "${name}" ":"
+        fi
+    done
+
+    for name in VK_LOADER_LAYERS_ENABLE VK_LOADER_LAYERS_DISABLE VK_LOADER_LAYERS_ALLOW; do
+        if [[ -n "${!name+x}" ]]; then
+            capture_lsfg_layer_list "${name}" ","
+        fi
+    done
 }
 
 run_ally_hotkey_hook() {
@@ -872,7 +962,11 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
         append_gamescope_flag "--immediate-flips"
     fi
 
+    prepare_steam_child_lsfg_env
     echo "Steam gamescope args: ${gs_args[*]}" >> "${log}"
+    if (( ${#STEAM_CHILD_LSFG_ENV[@]} > 0 )); then
+        echo "Steam gamescope: forwarding LSFG Vulkan layer only to Steam child" >> "${log}"
+    fi
     if [[ "${STEAM_FIRST_RUN_PENDING}" == "1" ]] && [[ "${STEAM_HAS_NETWORK}" == "1" ]]; then
         flash_msg 6 "Steam first launch: preparing and downloading updates..." 22
         flash_msg "${BATOCERA_STEAM_FIRST_RUN_WAIT_SECS:-18}" "Steam is installing updates. This may take a few minutes. Please wait..." 20
@@ -880,7 +974,11 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
     start_steam_install_callouts
     start_nightmode_watch
     set +e
-    gamescope "${gs_args[@]}" -- "$@"
+    if (( ${#STEAM_CHILD_LSFG_ENV[@]} > 0 )); then
+        gamescope "${gs_args[@]}" -- env "${STEAM_CHILD_LSFG_ENV[@]}" "$@"
+    else
+        gamescope "${gs_args[@]}" -- "$@"
+    fi
     session_rc=$?
     set -e
     finalize_first_run_state "${session_rc}"

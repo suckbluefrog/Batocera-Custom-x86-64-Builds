@@ -207,6 +207,33 @@ do
     fi
 done
 
+for XDIR in \
+    usr/share/eden \
+    usr/share/yuzu \
+    usr/share/sunshine \
+    usr/share/xenia-edge \
+    usr/share/n64recomp-launcher \
+    usr/share/shadps4-pkg-extractor \
+    usr/share/qemu \
+    usr/share/soundfonts \
+    usr/lib/unleashedrecomp \
+    usr/ryujinx
+do
+    echo -n "${XDIR}..."
+    if test -e "${TARGET_DIR}/${XDIR}"
+    then
+	mkdir -p "${TARGET2_DIR}/${XDIR}" || exit 1
+	rsync -a "${TARGET_DIR}/${XDIR}/" "${TARGET2_DIR}/${XDIR}/" || exit 1
+	rm -rf "${TARGET_DIR}/${XDIR}/" || exit 1
+	echo "OK."
+    elif test -d "${TARGET2_DIR}/${XDIR}"
+    then
+	echo "Already in target2. Continuing..."
+    else
+	echo "not present, skipping."
+    fi
+done
+
 # generate the image 2
 echo "Generating ${BINARIES_DIR}/rufomaculata..."
 "${HOST_DIR}/bin/mksquashfs" "${TARGET2_DIR}" "${BINARIES_DIR}/rufomaculata" -noappend -b 128K -comp zstd || exit 1

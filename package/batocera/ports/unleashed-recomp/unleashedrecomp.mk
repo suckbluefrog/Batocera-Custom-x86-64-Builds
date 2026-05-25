@@ -9,8 +9,12 @@ UNLEASHED_RECOMP_SITE = https://github.com/hedge-dev/UnleashedRecomp/releases/do
 UNLEASHED_RECOMP_SOURCE = UnleashedRecomp-Flatpak.zip
 UNLEASHED_RECOMP_LICENSE = GPL-3.0
 
-UNLEASHED_RECOMP_DEPENDENCIES += libgtk3 vulkan-loader
-UNLEASHED_RECOMP_FLATPAK = $(shell command -v flatpak)
+UNLEASHED_RECOMP_DEPENDENCIES += libgtk3 vulkan-loader flatpak
+UNLEASHED_RECOMP_FLATPAK = $(TARGET_DIR)/usr/bin/flatpak
+UNLEASHED_RECOMP_TARGET_LD = $(TARGET_DIR)/lib/ld-linux-x86-64.so.2
+UNLEASHED_RECOMP_TARGET_LIBPATH = $(TARGET_DIR)/lib:$(TARGET_DIR)/usr/lib
+UNLEASHED_RECOMP_TARGET_ENV = \
+	PATH="$(TARGET_DIR)/usr/bin:$(TARGET_DIR)/bin:$(PATH)"
 
 define UNLEASHED_RECOMP_EXTRACT_CMDS
 	unzip -q -o $(DL_DIR)/$(UNLEASHED_RECOMP_DL_SUBDIR)/$(UNLEASHED_RECOMP_SOURCE) -d $(@D)
@@ -20,9 +24,12 @@ define UNLEASHED_RECOMP_INSTALL_TARGET_CMDS
 	test -n "$(UNLEASHED_RECOMP_FLATPAK)"
 	rm -rf $(@D)/flatpak-home $(@D)/flatpak-config $(@D)/flatpak-data
 	mkdir -p $(@D)/flatpak-home $(@D)/flatpak-config $(@D)/flatpak-data
+	$(UNLEASHED_RECOMP_TARGET_ENV) \
 	HOME=$(@D)/flatpak-home \
 	XDG_CONFIG_HOME=$(@D)/flatpak-config \
 	XDG_DATA_HOME=$(@D)/flatpak-data \
+		$(UNLEASHED_RECOMP_TARGET_LD) \
+		--library-path "$(UNLEASHED_RECOMP_TARGET_LIBPATH)" \
 		$(UNLEASHED_RECOMP_FLATPAK) install --user --noninteractive --no-deps \
 		$(@D)/io.github.hedge_dev.unleashedrecomp.flatpak
 	$(INSTALL) -D -m 0755 \

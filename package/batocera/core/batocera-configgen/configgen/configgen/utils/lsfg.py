@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,7 @@ if TYPE_CHECKING:
 
 _LSFG_LAYER = "VK_LAYER_LS_frame_generation"
 _HOME = Path("/userdata/system")
+_CONFIG_DIR = _HOME / "configs" / "lsfg-vk"
 
 
 def _append_colon_value(env: MutableMapping[str, str | Path], key: str, value: str) -> None:
@@ -86,12 +88,101 @@ def _resolve_layer_paths(*, use_wine_layer: bool = False, wine_mode: str = "box6
     return None
 
 
+def _toml_string(value: str | Path) -> str:
+    return json.dumps(str(value))
+
+
+def _toml_bool(value: str) -> str:
+    return "true" if value == "1" else "false"
+
+
+def _toml_uint(value: str, default: str = "2", minimum: int = 1) -> str:
+    if value.isdigit() and int(value) >= minimum:
+        return value
+    return default
+
+
+def _toml_float(value: str, default: str = "1.0") -> str:
+    try:
+        parsed = float(value)
+    except ValueError:
+        return default
+    if 0.25 <= parsed <= 1.0:
+        formatted = f"{parsed:g}"
+        if "." not in formatted and "e" not in formatted.lower():
+            formatted += ".0"
+        return formatted
+    return default
+
+
+def _write_process_config(
+    system: Emulator,
+    process_names: list[str],
+    dll_path: Path,
+    *,
+    config_name: str = "batocera",
+) -> Path | None:
+    names: list[str] = []
+    for name in process_names:
+        clean = Path(str(name).strip()).name
+        if clean and clean not in names:
+            names.append(clean)
+
+    if not names:
+        return None
+
+    try:
+        _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+
+    config_path = _CONFIG_DIR / f"{config_name}.toml"
+    multiplier = _toml_uint(system.config.get_str("lsfg_vk_multiplier", "2"), minimum=1)
+    flow_scale = _toml_float(system.config.get_str("lsfg_vk_flow_scale", _default_flow_scale()), _default_flow_scale())
+    performance = _toml_bool(
+        system.config.get_bool("lsfg_vk_performance", _default_performance_mode(), return_values=("1", "0"))
+    )
+    hdr = _toml_bool(system.config.get_bool("lsfg_vk_hdr", False, return_values=("1", "0")))
+    present_mode = system.config.get_str("lsfg_vk_present_mode", "").strip()
+
+    lines = [
+        "version = 1",
+        "",
+        "[global]",
+        f"dll = {_toml_string(dll_path)}",
+        "",
+    ]
+    for name in names:
+        lines.extend(
+            [
+                "[[game]]",
+                f"exe = {_toml_string(name)}",
+                f"multiplier = {multiplier}",
+                f"flow_scale = {flow_scale}",
+                f"performance_mode = {performance}",
+                f"hdr_mode = {hdr}",
+            ]
+        )
+        if present_mode in {"fifo", "vsync", "mailbox", "immediate"}:
+            lines.append(f"experimental_present_mode = {_toml_string(present_mode)}")
+        lines.append("")
+
+    try:
+        config_path.write_text("\n".join(lines), encoding="utf-8")
+    except OSError:
+        return None
+
+    return config_path
+
+
 def apply_lsfg_vk(
     system: Emulator,
     env: MutableMapping[str, str | Path],
     *,
     backend_key: str | None = None,
     process_name: str | None = None,
+    process_names: list[str] | None = None,
+    config_name: str = "batocera",
     use_wine_layer: bool = False,
     defer_layer_env: bool = False,
 ) -> None:
@@ -115,6 +206,18 @@ def apply_lsfg_vk(
         return
 
     env["ENABLE_LSFG"] = "1"
+
+    if process_names is not None:
+        config_path = _write_process_config(system, process_names, dll_path, config_name=config_name)
+        if config_path is None:
+            env.pop("ENABLE_LSFG", None)
+            return
+        env["LSFG_CONFIG"] = str(config_path)
+        _append_colon_value(env, "VK_LAYER_PATH", str(layer_dir))
+        _append_colon_value(env, "LD_LIBRARY_PATH", str(root / "lib"))
+        _append_colon_value(env, "VK_INSTANCE_LAYERS", _LSFG_LAYER)
+        return
+
     env["LSFG_LEGACY"] = "1"
     env["LSFG_DLL_PATH"] = str(dll_path)
     env["LSFG_MULTIPLIER"] = system.config.get_str("lsfg_vk_multiplier", "2")
