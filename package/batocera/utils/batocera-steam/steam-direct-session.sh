@@ -133,11 +133,22 @@ restore_frontend() {
     fi
 }
 
+start_session_supervisor() {
+    command -v batocera-steam-session-supervisor >/dev/null 2>&1 || return 0
+    batocera-steam-session-supervisor start "steam-direct-session" >/dev/null 2>&1 || true
+}
+
+recover_frontend_with_supervisor() {
+    command -v batocera-steam-session-supervisor >/dev/null 2>&1 || return 0
+    batocera-steam-session-supervisor recover "direct-cleanup" >/dev/null 2>&1 || true
+}
+
 cleanup() {
     local rc=$?
 
     log "Steam session exited with status ${rc}"
     restore_frontend
+    recover_frontend_with_supervisor
     exit "${rc}"
 }
 
@@ -152,6 +163,8 @@ if [[ -x "${ES_SERVICE}" ]]; then
         log "frontend did not stop cleanly before Steam launch"
     fi
 fi
+
+start_session_supervisor
 
 unset DISPLAY
 unset WAYLAND_DISPLAY

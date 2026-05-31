@@ -219,6 +219,11 @@ recover_hotkeys() {
     fi
 }
 
+start_session_supervisor() {
+    command -v batocera-steam-session-supervisor >/dev/null 2>&1 || return 0
+    batocera-steam-session-supervisor start "batocera-steam-session" >/dev/null 2>&1 || true
+}
+
 steam_runtime_active() {
     pgrep -x gamescope >/dev/null 2>&1 || \
     pgrep -x gamescopereaper >/dev/null 2>&1 || \
@@ -863,6 +868,7 @@ start_login1_stub
 start_consolekit_stub
 start_displaymanager_stub
 start_uimode_watch
+start_session_supervisor
 
 start_nightmode_watch() {
     if ! command -v batocera-steam-nightmode-watch >/dev/null 2>&1; then
@@ -975,9 +981,9 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
     start_nightmode_watch
     set +e
     if (( ${#STEAM_CHILD_LSFG_ENV[@]} > 0 )); then
-        gamescope "${gs_args[@]}" -- env "${STEAM_CHILD_LSFG_ENV[@]}" "$@"
+        gamescope "${gs_args[@]}" -- /usr/bin/batocera-steam-gamescope-child env "${STEAM_CHILD_LSFG_ENV[@]}" "$@"
     else
-        gamescope "${gs_args[@]}" -- "$@"
+        gamescope "${gs_args[@]}" -- /usr/bin/batocera-steam-gamescope-child "$@"
     fi
     session_rc=$?
     set -e

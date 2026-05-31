@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-RPCS3_VERSION = 61a2604824b01382bf57651b85f87b811306c2de
+RPCS3_VERSION = 1bd246d2d31cee65b867d93ff82993cec8f012cb
 RPCS3_SITE = https://github.com/RPCS3/rpcs3.git
 RPCS3_SITE_METHOD=git
 RPCS3_GIT_SUBMODULES=YES
@@ -49,6 +49,12 @@ ifeq ($(BR2_PACKAGE_VULKAN_HEADERS)$(BR2_PACKAGE_VULKAN_LOADER),yy)
 else
     RPCS3_CONF_OPTS += -DUSE_VULKAN=OFF
 endif
+
+define RPCS3_INSTALL_RPCS3_EXIT
+	$(INSTALL) -D -m 0755 $(RPCS3_PKGDIR)/rpcs3-exit $(TARGET_DIR)/usr/bin/rpcs3-exit
+endef
+
+RPCS3_POST_INSTALL_TARGET_HOOKS += RPCS3_INSTALL_RPCS3_EXIT
 
 $(eval $(cmake-package))
 $(eval $(emulator-info-package))

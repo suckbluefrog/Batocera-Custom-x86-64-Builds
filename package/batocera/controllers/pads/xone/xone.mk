@@ -28,6 +28,12 @@ cp $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/controllers/pads/xone/FW_ACC_0
 # create symbolic link
 ln -sf /lib/firmware/xow_dongle.bin \
     $(TARGET_DIR)/lib/firmware/xow_dongle_045e_02e6.bin
+if test -d $(TARGET_DIR)2/lib/firmware; then \
+    cp $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/controllers/pads/xone/FW_ACC_00U.bin \
+        $(TARGET_DIR)2/lib/firmware/xow_dongle.bin; \
+    ln -sf /lib/firmware/xow_dongle.bin \
+        $(TARGET_DIR)2/lib/firmware/xow_dongle_045e_02e6.bin; \
+fi
 endef
 
 $(eval $(kernel-module))

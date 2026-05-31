@@ -67,12 +67,14 @@ define XENIA_EDGE_INSTALL_TARGET_CMDS
 	find $(@D) -maxdepth 6 -name "xenia_edge" -type f -perm /111 \
 	    | head -1 \
 	    | xargs -I{} $(INSTALL) -D -m 0755 {} $(TARGET_DIR)/usr/xenia_edge/xenia_edge
+	mkdir -p $(TARGET_DIR)/usr/bin
+	ln -sf /usr/xenia_edge/xenia_edge $(TARGET_DIR)/usr/bin/xenia-edge
 
 	mkdir -p $(TARGET_DIR)/usr/xenia_edge/platforms
 	-cp $(STAGING_DIR)/usr/plugins/platforms/libqxcb.so \
 	    $(TARGET_DIR)/usr/xenia_edge/platforms/ 2>/dev/null || true
 
-	mkdir -p $(TARGET_DIR)/usr/share/batocera/datainit/system/configs/xenia_edge/patches
+	mkdir -p $(TARGET_DIR)/usr/share/xenia-edge/patches
 	mkdir -p $(@D)/temp-patches
 	( cd $(@D)/temp-patches && $(GIT) init && \
 	  $(GIT) remote add origin https://github.com/xenia-canary/game-patches.git && \
@@ -80,7 +82,7 @@ define XENIA_EDGE_INSTALL_TARGET_CMDS
 	  echo "patches/*.toml" >> .git/info/sparse-checkout && \
 	  $(GIT) pull --depth=1 origin main && \
 	  mv -f patches/*.toml \
-	      $(TARGET_DIR)/usr/share/batocera/datainit/system/configs/xenia_edge/patches \
+	      $(TARGET_DIR)/usr/share/xenia-edge/patches \
 	)
 	rm -rf $(@D)/temp-patches
 endef

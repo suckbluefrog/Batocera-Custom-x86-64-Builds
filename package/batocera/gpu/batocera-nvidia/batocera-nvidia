@@ -76,6 +76,15 @@ cleanup_driver_version() {
     find -L /usr/lib -name "*${1}*" -print0 | tee -a "$log" | xargs -0 -r rm -f
 }
 
+refresh_nvidia_module_deps() {
+    echo "Refreshing NVIDIA module dependencies..." >> "$log"
+    if depmod -a "$LINUX_VER" >> "$log" 2>&1; then
+        echo "NVIDIA module dependencies refreshed" >> "$log"
+    else
+        echo "Failed to refresh NVIDIA module dependencies" >> "$log"
+    fi
+}
+
 # production driver version
 NVIDIA_DRIVER_VERSION=$(cat /usr/share/nvidia/production.version 2>/dev/null)
 # legacy driver versions
@@ -294,7 +303,7 @@ if [ "$MODE" = "open" ]; then
 	ln -sf /var/run/nvidia/configs/nvidia_icd.i686.json /usr/share/vulkan/icd.d/nvidia_icd.i686.json
     
     # finally link appropriate open kernel modules
-    mkdir -p /var/run/nvidia/modules
+    mkdir -p /var/run/nvidia/modules /lib/modules/$LINUX_VER/updates
     echo "Linking NVIDIA open modules" >> $log
     ln -sf /usr/share/nvidia/modules/nvidia-production.ko /var/run/nvidia/modules/nvidia.ko
     ln -sf /var/run/nvidia/modules/nvidia.ko /lib/modules/$LINUX_VER/updates/nvidia.ko
@@ -304,6 +313,7 @@ if [ "$MODE" = "open" ]; then
     ln -sf /var/run/nvidia/modules/nvidia-drm.ko /lib/modules/$LINUX_VER/updates/nvidia-drm.ko
     ln -sf /usr/share/nvidia/modules/nvidia-uvm-production.ko /var/run/nvidia/modules/nvidia-uvm.ko
     ln -sf /var/run/nvidia/modules/nvidia-uvm.ko /lib/modules/$LINUX_VER/updates/nvidia-uvm.ko    
+    refresh_nvidia_module_deps
     # enable kernel modules
     for m in ipmi_devintf nvidia nvidia_modeset nvidia_uvm nvidia_drm; do
         if modprobe $m >> "$log" 2>&1; then
@@ -517,7 +527,7 @@ elif [ "$MODE" = "legacy580" ]; then
 	ln -sf /var/run/nvidia/configs/nvidia_icd.i686.json /usr/share/vulkan/icd.d/nvidia_icd.i686.json
     
     # finally link appropriate 580.xx kernel modules
-    mkdir -p /var/run/nvidia/modules
+    mkdir -p /var/run/nvidia/modules /lib/modules/$LINUX_VER/updates
     # Unload default/existing modules before symlinking
     echo "Unloading existing NVIDIA modules to release hardware..." >> "$log"
     for m in nvidia_drm nvidia_uvm nvidia_modeset nvidia; do
@@ -541,6 +551,7 @@ elif [ "$MODE" = "legacy580" ]; then
     ln -sf /var/run/nvidia/modules/nvidia-drm.ko /lib/modules/$LINUX_VER/updates/nvidia-drm.ko
     ln -sf /usr/share/nvidia/modules/nvidia580-uvm-legacy.ko /var/run/nvidia/modules/nvidia-uvm.ko
     ln -sf /var/run/nvidia/modules/nvidia-uvm.ko /lib/modules/$LINUX_VER/updates/nvidia-uvm.ko
+    refresh_nvidia_module_deps
     # enable kernel modules
     echo "Loading NVIDIA 580.xx kernel modules..." >> "$log"
     for m in ipmi_devintf nvidia nvidia_modeset nvidia_uvm nvidia_drm; do
@@ -716,7 +727,7 @@ elif [ "$MODE" = "legacy470" ]; then
     ln -sf /var/run/nvidia/configs/nvidia_icd.i686.json /usr/share/vulkan/icd.d/nvidia_icd.i686.json
         
     # finally link the kernel modules & run them
-    mkdir -p /var/run/nvidia/modules
+    mkdir -p /var/run/nvidia/modules /lib/modules/$LINUX_VER/updates
     # Unload default/existing modules before symlinking
     echo "Unloading existing NVIDIA modules to release hardware..." >> "$log"
     for m in nvidia_drm nvidia_uvm nvidia_modeset nvidia ipmi_devintf; do
@@ -731,6 +742,7 @@ elif [ "$MODE" = "legacy470" ]; then
     ln -sf /var/run/nvidia/modules/nvidia-drm.ko /lib/modules/$LINUX_VER/updates/nvidia-drm.ko
     ln -sf /usr/share/nvidia/modules/nvidia470-uvm-legacy.ko /var/run/nvidia/modules/nvidia-uvm.ko
     ln -sf /var/run/nvidia/modules/nvidia-uvm.ko /lib/modules/$LINUX_VER/updates/nvidia-uvm.ko
+    refresh_nvidia_module_deps
     # enable kernel modules
     echo "Loading NVIDIA 470.xx kernel modules..." >> "$log"
     for m in ipmi_devintf nvidia nvidia_modeset nvidia_uvm nvidia_drm; do

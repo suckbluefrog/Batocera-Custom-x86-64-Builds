@@ -3,21 +3,22 @@
 # xenia-canary
 #
 ################################################################################
-# Version: Commits on December 4, 2025
+
+# Version: Commits on May 25, 2026
 XENIA_CANARY_SOURCE = xenia_canary_windows.zip
-XENIA_CANARY_VERSION = aba2269
+XENIA_CANARY_VERSION = 505697f
 XENIA_CANARY_SITE = \
-    https://github.com/xenia-canary/xenia-canary-releases/releases/download/$(XENIA_CANARY_VERSION)
+	https://github.com/xenia-canary/xenia-canary/releases/download/$(XENIA_CANARY_VERSION)
 XENIA_CANARY_LICENSE = BSD
 XENIA_CANARY_LICENSE_FILE = LICENSE
 
 XENIA_CANARY_DEPENDENCIES = python-toml
 
-# ugly hack becuase the is no version in the source file
+# Ugly hack because there is no version in the source file.
 define XENIA_CANARY_CLEAR_DL
-    if [ -f "$(DL_DIR)/$(XENIA_CANARY_DL_SUBDIR)/$(XENIA_CANARY_SOURCE)" ]; then \
-        rm $(DL_DIR)/$(XENIA_CANARY_DL_SUBDIR)/$(XENIA_CANARY_SOURCE); \
-    fi
+	if [ -f "$(DL_DIR)/$(XENIA_CANARY_DL_SUBDIR)/$(XENIA_CANARY_SOURCE)" ]; then \
+		rm $(DL_DIR)/$(XENIA_CANARY_DL_SUBDIR)/$(XENIA_CANARY_SOURCE); \
+	fi
 endef
 
 define XENIA_CANARY_EXTRACT_CMDS
@@ -26,11 +27,11 @@ endef
 
 define XENIA_CANARY_INSTALL_TARGET_CMDS
 	mkdir -p $(TARGET_DIR)/usr
+	rm -f $(TARGET_DIR)/usr/bin/xenia-canary
 	rsync -av --exclude=".*" $(@D)/ $(TARGET_DIR)/usr/xenia-canary/
 endef
 
 define XENIA_CANARY_POST_PROCESS
-	# get the latest patches
 	mkdir -p $(TARGET_DIR)/usr/xenia-canary/patches
 	mkdir -p $(@D)/temp
 	( cd $(@D)/temp && $(GIT) init && \
@@ -40,8 +41,6 @@ define XENIA_CANARY_POST_PROCESS
 	  $(GIT) pull --depth=1 origin main && \
 	  mv -f patches/*.toml $(TARGET_DIR)/usr/xenia-canary/patches \
 	)
-	
-	# Clean up the temporary directory
 	rm -rf $(@D)/temp
 endef
 
