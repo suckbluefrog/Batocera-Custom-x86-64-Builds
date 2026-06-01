@@ -24,7 +24,7 @@ steam_stack_alive() {
     pgrep -x gamescopestream >/dev/null 2>&1 || \
     pgrep -x gamescopectl >/dev/null 2>&1 || \
     pgrep -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1 || \
-    pgrep -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1
+    pgrep -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1
 }
 
 hotkeygen_permanent_running() {

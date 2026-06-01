@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <gameList>
   <game>
-    <path>./Steam GamepadUI.steam</path>
-    <name>Steam Deck Mode</name>
+    <path>./SteamOS Mode.steam</path>
+    <name>SteamOS Mode</name>
     <image>./images/Steam.png</image>
   </game>
   <game>

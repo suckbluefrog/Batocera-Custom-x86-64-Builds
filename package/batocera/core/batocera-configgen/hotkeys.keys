@@ -6,6 +6,18 @@
             "target": [ "KEY_EXIT" ],
 	    "description": "Exit emulator"
         },
+        {
+            "trigger": ["select", "pageup", "start"],
+            "type": "key",
+            "target": [ "KEY_PROG2" ],
+	    "description": "Kill emulator"
+        },
+        {
+            "trigger": ["hotkey", "pageup", "start"],
+            "type": "key",
+            "target": [ "KEY_PROG2" ],
+	    "description": "Kill emulator"
+        },
 	{
             "trigger": ["hotkey", "a"],
             "type": "key",

@@ -1,4 +1,6 @@
 mode=steamos
 gamepadui=1
 gamescope=1
+visible_update_preflight=1
+update_preflight_no_update_secs=15
 command=/usr/bin/steam-direct-session.sh

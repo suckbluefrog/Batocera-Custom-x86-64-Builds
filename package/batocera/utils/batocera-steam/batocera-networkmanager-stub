@@ -169,6 +169,66 @@ def _service_type_to_primary_conn_type(value: str) -> str:
     return ""
 
 
+def _first_net_interface(prefixes):
+    try:
+        names = sorted(os.listdir("/sys/class/net"))
+    except Exception:
+        return ""
+
+    for name in names:
+        lower = name.lower()
+        if lower == "lo":
+            continue
+        if any(lower.startswith(prefix) for prefix in prefixes):
+            return name
+    return ""
+
+
+def _default_interface_for_device_type(device_type: int) -> str:
+    if device_type == NM_DEVICE_TYPE_WIFI:
+        return _first_net_interface(("wl", "wifi")) or "wlan0"
+    if device_type == NM_DEVICE_TYPE_ETHERNET:
+        return _first_net_interface(("en", "eth", "usb")) or "eth0"
+    return ""
+
+
+def _read_sysfs(path: str, default: str = "") -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return default
+
+
+def _net_sysfs_int(iface: str, name: str, default: int = 0) -> int:
+    if not iface:
+        return default
+    try:
+        return int(_read_sysfs(f"/sys/class/net/{iface}/{name}", str(default)))
+    except Exception:
+        return default
+
+
+def _net_flags(iface: str) -> int:
+    if not iface:
+        return 0
+    try:
+        return int(_read_sysfs(f"/sys/class/net/{iface}/flags", "0"), 0)
+    except Exception:
+        return 0
+
+
+def _net_driver(iface: str, default: str = "connman") -> str:
+    if not iface:
+        return default
+    try:
+        link = os.path.realpath(f"/sys/class/net/{iface}/device/driver")
+        base = os.path.basename(link)
+        return base or default
+    except Exception:
+        return default
+
+
 def _connman_service_state_to_nm_device_state(value: str) -> int:
     s = value.lower()
     if s in ("online", "ready"):
@@ -238,7 +298,7 @@ class NetworkManagerShim:
 
     def _build_snapshot(self):
         manager_props = {
-            "Version": dbus.String("batocera-connman-shim-1.1"),
+            "Version": dbus.String("batocera-connman-shim-1.3"),
             "State": dbus.UInt32(NM_STATE_DISCONNECTED),
             "Connectivity": dbus.UInt32(NM_CONNECTIVITY_NONE),
             "NetworkingEnabled": dbus.Boolean(True),
@@ -269,6 +329,7 @@ class NetworkManagerShim:
 
         device_props = None
         wireless_props = None
+        wired_props = None
         active_props = None
         ip4_props = None
         ap_props = {}
@@ -302,6 +363,7 @@ class NetworkManagerShim:
             services = connman.GetServices()
             primary_path = None
             primary_props = None
+            primary_score = 0
             wifi_services = []
 
             for spath, sprops in services:
@@ -310,11 +372,16 @@ class NetworkManagerShim:
                     wifi_services.append((spath, sprops))
 
                 sstate = _safe_str(sprops.get("State", ""), "")
+                type_score = 2 if stype.lower() in ("ethernet", "gadget") else 1
                 if sstate == "online":
-                    primary_path = spath
-                    primary_props = sprops
-                    break
-                if sstate == "ready" and primary_props is None:
+                    score = 20 + type_score
+                elif sstate == "ready":
+                    score = 10 + type_score
+                else:
+                    score = 0
+
+                if score > primary_score:
+                    primary_score = score
                     primary_path = spath
                     primary_props = sprops
 
@@ -324,8 +391,9 @@ class NetworkManagerShim:
                 manager_props["Devices"] = dbus.Array([dbus.ObjectPath(DEVICE_PATH)], signature="o")
                 manager_props["AllDevices"] = dbus.Array([dbus.ObjectPath(DEVICE_PATH)], signature="o")
 
-                device_type = NM_DEVICE_TYPE_WIFI if wifi_available else _service_type_to_nm(_safe_str(primary_props.get("Type", ""), ""))
-                iface = "wlan0" if wifi_available else ""
+                primary_type = _service_type_to_nm(_safe_str(primary_props.get("Type", ""), "")) if primary_props is not None else NM_DEVICE_TYPE_UNKNOWN
+                device_type = primary_type if primary_type != NM_DEVICE_TYPE_UNKNOWN else (NM_DEVICE_TYPE_WIFI if wifi_available else NM_DEVICE_TYPE_UNKNOWN)
+                iface = _default_interface_for_device_type(device_type)
                 hwaddr = ""
                 device_state = NM_DEVICE_STATE_DISCONNECTED
 
@@ -339,11 +407,24 @@ class NetworkManagerShim:
                         hwaddr = _safe_str(eth.get("Address", ""), "")
                     device_state = _connman_service_state_to_nm_device_state(_safe_str(candidate.get("State", "idle"), "idle"))
 
+                candidate_state = "idle"
+                candidate_ipv4 = {}
+                if candidate is not None:
+                    candidate_state = _safe_str(candidate.get("State", "idle"), "idle")
+                    maybe_ipv4 = candidate.get("IPv4", {})
+                    if isinstance(maybe_ipv4, dict):
+                        candidate_ipv4 = maybe_ipv4
+
                 device_props = {
                     "Udi": dbus.String(""),
+                    "Path": dbus.String(""),
                     "Interface": dbus.String(iface),
                     "IpInterface": dbus.String(iface),
-                    "Driver": dbus.String("connman"),
+                    "Driver": dbus.String(_net_driver(iface)),
+                    "DriverVersion": dbus.String(""),
+                    "FirmwareVersion": dbus.String(""),
+                    "Capabilities": dbus.UInt32(3 if device_type == NM_DEVICE_TYPE_ETHERNET else 0),
+                    "Ip4Address": dbus.UInt32(_to_uint32_ip(_safe_str(candidate_ipv4.get("Address", ""), ""))),
                     "State": dbus.UInt32(device_state),
                     "StateReason": dbus.Struct((dbus.UInt32(device_state), dbus.UInt32(0))),
                     "ActiveConnection": dbus.ObjectPath(ACTIVE_PATH if primary_props is not None else "/"),
@@ -358,14 +439,19 @@ class NetworkManagerShim:
                     "DeviceType": dbus.UInt32(device_type),
                     "AvailableConnections": dbus.Array([], signature="o"),
                     "PhysicalPortId": dbus.String(""),
-                    "Mtu": dbus.UInt32(0),
-                    "Metered": dbus.UInt32(0),
+                    "Mtu": dbus.UInt32(_net_sysfs_int(iface, "mtu", 0)),
+                    "Metered": dbus.UInt32(4 if primary_props is not None else 0),
                     "LldpNeighbors": dbus.Array([], signature="a{sv}"),
+                    "Real": dbus.Boolean(True),
+                    "Ip4Connectivity": dbus.UInt32(_state_to_connectivity(candidate_state)),
+                    "Ip6Connectivity": dbus.UInt32(NM_CONNECTIVITY_UNKNOWN),
+                    "InterfaceFlags": dbus.UInt32(_net_flags(iface)),
                     "HwAddress": dbus.String(hwaddr),
                     "PermHwAddress": dbus.String(hwaddr),
+                    "Ports": dbus.Array([], signature="o"),
                 }
 
-                if wifi_available:
+                if device_type == NM_DEVICE_TYPE_WIFI and wifi_available:
                     ap_paths = []
                     active_ap_path = dbus.ObjectPath("/")
 
@@ -424,6 +510,18 @@ class NetworkManagerShim:
                         "AccessPoints": dbus.Array(ap_paths, signature="o"),
                         "ActiveAccessPoint": active_ap_path,
                         "LastScan": dbus.Int64(int(time.time() * 1000)),
+                    }
+
+                if device_type == NM_DEVICE_TYPE_ETHERNET:
+                    speed = _net_sysfs_int(iface, "speed", 0)
+                    if speed < 0:
+                        speed = 0
+                    wired_props = {
+                        "HwAddress": dbus.String(hwaddr),
+                        "PermHwAddress": dbus.String(hwaddr),
+                        "Speed": dbus.UInt32(speed),
+                        "S390Subchannels": dbus.Array([], signature="s"),
+                        "Carrier": dbus.Boolean(_net_sysfs_int(iface, "carrier", 0) == 1),
                     }
 
             if primary_props is not None:
@@ -508,6 +606,7 @@ class NetworkManagerShim:
             "settings": settings_props,
             "device": device_props,
             "wireless": wireless_props,
+            "wired": wired_props,
             "active": active_props,
             "ip4": ip4_props,
             "aps": ap_props,
@@ -524,6 +623,9 @@ class NetworkManagerShim:
 
     def wireless_properties(self):
         return None if self._snapshot["wireless"] is None else dict(self._snapshot["wireless"])
+
+    def wired_properties(self):
+        return None if self._snapshot["wired"] is None else dict(self._snapshot["wired"])
 
     def active_properties(self):
         return None if self._snapshot["active"] is None else dict(self._snapshot["active"])
@@ -554,6 +656,8 @@ class NetworkManagerShim:
             }
             if self._snapshot["wireless"] is not None:
                 interfaces["org.freedesktop.NetworkManager.Device.Wireless"] = self.wireless_properties()
+            if self._snapshot["wired"] is not None:
+                interfaces["org.freedesktop.NetworkManager.Device.Wired"] = self.wired_properties()
             objects[dbus.ObjectPath(DEVICE_PATH)] = interfaces
 
         if self._snapshot["active"] is not None:
@@ -777,6 +881,10 @@ class DeviceObject(PropertiesMixin, dbus.service.Object):
             props = self._shim.wireless_properties()
             if props is not None:
                 return props
+        elif interface_name == "org.freedesktop.NetworkManager.Device.Wired":
+            props = self._shim.wired_properties()
+            if props is not None:
+                return props
 
         raise dbus.exceptions.DBusException(
             "org.freedesktop.DBus.Error.InvalidArgs",
@@ -876,6 +984,7 @@ def periodic_refresh(shim, root_obj, manager_obj, settings_obj, device_obj, acti
     old_settings = shim.settings_properties()
     old_device = shim.device_properties()
     old_wireless = shim.wireless_properties()
+    old_wired = shim.wired_properties()
     old_active = shim.active_properties()
     old_ip4 = shim.ip4_properties()
     old_ap_paths = set(shim.access_point_paths())
@@ -887,6 +996,7 @@ def periodic_refresh(shim, root_obj, manager_obj, settings_obj, device_obj, acti
     new_settings = shim.settings_properties()
     new_device = shim.device_properties()
     new_wireless = shim.wireless_properties()
+    new_wired = shim.wired_properties()
     new_active = shim.active_properties()
     new_ip4 = shim.ip4_properties()
     new_ap_paths = set(shim.access_point_paths())
@@ -908,6 +1018,11 @@ def periodic_refresh(shim, root_obj, manager_obj, settings_obj, device_obj, acti
         changed_wireless = _dict_changes(old_wireless, new_wireless)
         if changed_wireless:
             device_obj.PropertiesChanged("org.freedesktop.NetworkManager.Device.Wireless", changed_wireless, [])
+
+    if old_wired is not None and new_wired is not None:
+        changed_wired = _dict_changes(old_wired, new_wired)
+        if changed_wired:
+            device_obj.PropertiesChanged("org.freedesktop.NetworkManager.Device.Wired", changed_wired, [])
 
     if old_active is not None and new_active is not None:
         changed_active = _dict_changes(old_active, new_active)

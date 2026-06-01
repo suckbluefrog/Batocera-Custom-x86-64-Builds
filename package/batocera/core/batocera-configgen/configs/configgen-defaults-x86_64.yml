@@ -20,6 +20,9 @@ n64:
 n64dd:
   options:
     videomode: max-1920x1080
+ps2:
+  options:
+    gfxbackend: vulkan
 sgb:
   emulator: libretro
   core:     mesen-s

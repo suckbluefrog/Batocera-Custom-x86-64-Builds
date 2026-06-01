@@ -50,6 +50,9 @@ define BATOCERA_STEAM_INSTALL_TARGET_CMDS
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-update-terminal \
 	    $(TARGET_DIR)/usr/bin/
 	install -m 0755 \
+	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-steam-update-preflight \
+	    $(TARGET_DIR)/usr/bin/
+	install -m 0755 \
 	    $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/batocera-displaymanager-stub \
 	    $(TARGET_DIR)/usr/bin/
 	install -m 0755 \

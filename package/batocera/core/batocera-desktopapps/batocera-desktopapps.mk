@@ -159,6 +159,13 @@ ifeq ($(BR2_PACKAGE_BATOCERA_APPS),y)
   BATOCERA_DESKTOPAPPS_ICONS   += steam-rom-manager.png
 endif
 
+# virt-manager
+ifeq ($(BR2_PACKAGE_VIRT_MANAGER),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += VirtManager.sh
+  BATOCERA_DESKTOPAPPS_APPS    += virt-manager.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += virt-manager.png
+endif
+
 # citron
 ifeq ($(BR2_PACKAGE_CITRON),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-citron

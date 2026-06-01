@@ -17,6 +17,9 @@ default:
 
 # 0-C
 
+86box:
+  emulator: 86box
+  core:     86box
 3do:
   emulator: libretro
   core:     opera
@@ -503,6 +506,9 @@ neogeocd:
 nes:
   emulator: libretro
   core:     fceumm
+eka2l1:
+  emulator: eka2l1
+  core:     eka2l1
 ngage:
   emulator: eka2l1
   core:     eka2l1
@@ -720,8 +726,8 @@ supervision:
   emulator: libretro
   core:     potator
 switch:
-  emulator: citron
-  core:     citron
+  emulator: eden
+  core:     eden
   options:
     hud_support: false
 systemsp:
@@ -849,6 +855,9 @@ xbox360:
   core:     xenia-canary
   options:
     hud_support: false
+    xenia_achievement: true
+    xenia_achievement_sound: true
+    xenia_profile: auto
 chihiro:
   emulator: xemu
   core:     xemu

@@ -20,8 +20,37 @@ compositor_running() {
 	return 1
 }
 
+clear_runtime_launcher_env() {
+	local name
+
+	for name in $(env | sed -n 's/^\(BATOCERA_STEAM_[A-Za-z0-9_]*\)=.*/\1/p'); do
+		unset "$name"
+	done
+	for name in $(env | sed -n 's/^\(GAMESCOPE_[A-Za-z0-9_]*\)=.*/\1/p'); do
+		unset "$name"
+	done
+
+	unset STEAM_DECK
+	unset STEAMOS
+	unset STEAM_GAMEPADUI
+	unset STEAM_FORCE_DESKTOPUI
+	unset STEAM_GAME
+	unset SteamGameId
+	unset SteamAppId
+	unset STEAM_USE_MANGOAPP
+	unset STEAM_MANGOAPP_PRESETS_SUPPORTED
+	unset GAMESCOPE_DISPLAY
+	unset GAMESCOPE_WAYLAND_DISPLAY
+	unset GAMESCOPE_SESSION
+	unset WLR_DRM_DEVICES
+	unset WLR_LIBINPUT_NO_DEVICES
+	unset SDL_NOMOUSE
+}
+
 case "$1" in
 	start)
+		clear_runtime_launcher_env
+
 		# Clean up any old pipe and create a new one for communication
 		rm -f "${FIFO_PATH}"
 		rm -f "${SUSPEND_FLAG}"

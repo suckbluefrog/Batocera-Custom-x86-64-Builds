@@ -3,12 +3,19 @@ set -euo pipefail
 
 LOG="/userdata/system/logs/steam.log"
 ES_SERVICE="/etc/init.d/S31emulationstation"
+export BATOCERA_STEAM_ROOT="${BATOCERA_STEAM_ROOT:-/userdata/system/steam}"
 
 mkdir -p "$(dirname "${LOG}")"
 
 log() {
     echo "steam-direct-session: $*" >> "${LOG}"
 }
+
+UPDATE_TERMINAL_DISPLAY="${DISPLAY:-}"
+UPDATE_TERMINAL_WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}"
+UPDATE_TERMINAL_XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
+UPDATE_TERMINAL_XAUTHORITY="${XAUTHORITY:-}"
+UPDATE_TERMINAL_DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}"
 
 ensure_runtime_dir() {
     local uid
@@ -110,14 +117,25 @@ clear_frontend_restore_env() {
     for name in "${!BATOCERA_STEAM_@}"; do
         unset "${name}"
     done
+    for name in "${!GAMESCOPE_@}"; do
+        unset "${name}"
+    done
 
     unset STEAM_DECK
     unset STEAMOS
     unset STEAM_GAMEPADUI
     unset STEAM_FORCE_DESKTOPUI
+    unset STEAM_GAME
+    unset SteamGameId
+    unset SteamAppId
+    unset STEAM_USE_MANGOAPP
+    unset STEAM_MANGOAPP_PRESETS_SUPPORTED
     unset GAMESCOPE_DISPLAY
     unset GAMESCOPE_WAYLAND_DISPLAY
     unset GAMESCOPE_SESSION
+    unset WLR_DRM_DEVICES
+    unset WLR_LIBINPUT_NO_DEVICES
+    unset SDL_NOMOUSE
 }
 
 restore_frontend() {
@@ -134,13 +152,27 @@ restore_frontend() {
 }
 
 start_session_supervisor() {
+    [[ "${BATOCERA_STEAM_SESSION_SUPERVISOR:-0}" == "1" ]] || return 0
     command -v batocera-steam-session-supervisor >/dev/null 2>&1 || return 0
     batocera-steam-session-supervisor start "steam-direct-session" >/dev/null 2>&1 || true
 }
 
 recover_frontend_with_supervisor() {
+    [[ "${BATOCERA_STEAM_SESSION_SUPERVISOR:-0}" == "1" ]] || return 0
     command -v batocera-steam-session-supervisor >/dev/null 2>&1 || return 0
     batocera-steam-session-supervisor recover "direct-cleanup" >/dev/null 2>&1 || true
+}
+
+run_visible_update_preflight() {
+    [[ "${BATOCERA_STEAM_VISIBLE_UPDATE_PREFLIGHT:-0}" != "0" ]] || return 0
+    [[ -x /usr/bin/batocera-steam-update-preflight ]] || return 0
+
+    log "running visible Steam updater preflight before Gamescope"
+    if /usr/bin/batocera-steam-update-preflight launch >> "${LOG}" 2>&1; then
+        log "visible Steam updater preflight completed"
+    else
+        log "visible Steam updater preflight failed; continuing to Gamescope"
+    fi
 }
 
 cleanup() {
@@ -155,6 +187,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 log "requested direct Steam session launch"
+
+run_visible_update_preflight
 
 if [[ -x "${ES_SERVICE}" ]]; then
     log "stopping EmulationStation frontend before Steam launch"
@@ -177,6 +211,22 @@ unset GAMESCOPE_WAYLAND_DISPLAY
 unset GAMESCOPE_SESSION
 unset DBUS_SESSION_BUS_ADDRESS
 
+if [[ -n "${UPDATE_TERMINAL_DISPLAY}" ]]; then
+    export BATOCERA_STEAM_UPDATE_DISPLAY="${UPDATE_TERMINAL_DISPLAY}"
+fi
+if [[ -n "${UPDATE_TERMINAL_WAYLAND_DISPLAY}" ]]; then
+    export BATOCERA_STEAM_UPDATE_WAYLAND_DISPLAY="${UPDATE_TERMINAL_WAYLAND_DISPLAY}"
+fi
+if [[ -n "${UPDATE_TERMINAL_XDG_RUNTIME_DIR}" ]]; then
+    export BATOCERA_STEAM_UPDATE_XDG_RUNTIME_DIR="${UPDATE_TERMINAL_XDG_RUNTIME_DIR}"
+fi
+if [[ -n "${UPDATE_TERMINAL_XAUTHORITY}" ]]; then
+    export BATOCERA_STEAM_UPDATE_XAUTHORITY="${UPDATE_TERMINAL_XAUTHORITY}"
+fi
+if [[ -n "${UPDATE_TERMINAL_DBUS_SESSION_BUS_ADDRESS}" ]]; then
+    export BATOCERA_STEAM_UPDATE_DBUS_SESSION_BUS_ADDRESS="${UPDATE_TERMINAL_DBUS_SESSION_BUS_ADDRESS}"
+fi
+
 ensure_runtime_dir
 
 detected_resolution="$(detect_resolution)"
@@ -194,6 +244,9 @@ export BATOCERA_STEAM_GS_DISABLE_HW_COMPOSITION="${BATOCERA_STEAM_GS_DISABLE_HW_
 export BATOCERA_STEAM_GS_FORCE_COMPOSITION_PIPELINE="${BATOCERA_STEAM_GS_FORCE_COMPOSITION_PIPELINE:-1}"
 export BATOCERA_STEAM_GS_SCALER="${BATOCERA_STEAM_GS_SCALER:-stretch}"
 export BATOCERA_STEAM_GS_FILTER="${BATOCERA_STEAM_GS_FILTER:-linear}"
+if [[ "${BATOCERA_STEAM_FORCE_DISABLE_MANGOAPP:-0}" != "1" ]]; then
+    export BATOCERA_STEAM_GS_MANGOAPP="${BATOCERA_STEAM_GS_MANGOAPP:-1}"
+fi
 
 log "using gamescope defaults res=${BATOCERA_STEAM_GS_DEFAULT_RES} output=${BATOCERA_STEAM_GS_OUTPUT_RES} nested=${BATOCERA_STEAM_GS_NESTED_RES} refresh=${BATOCERA_STEAM_GS_NESTED_REFRESH}"
 

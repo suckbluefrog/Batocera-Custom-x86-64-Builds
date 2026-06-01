@@ -26,7 +26,7 @@
 			<button display="SteamOS" action="batocera-controlcenter-steamos-quick" />
 		</feature>
 		<feature display="Game">
-			<button_confirm display="Kill game" action="batocera-es-swissknife --emukill 0.5" align="left" afterclick="bcc_close" />
+			<button display="Kill game" action="batocera-controlcenter-recent-games stop" align="left" afterclick="bcc_close" />
 			<button display="Screenshot" action="batocera-controlcenter-screenshot" />
 		</feature>
 		<feature display="Session">
@@ -155,7 +155,7 @@
 		<vgroup>
 			<feature display="Session">
 				<button_confirm display="Restart ES" action="batocera-es-swissknife --restart" afterclick="bcc_close" />
-				<button_confirm display="Kill game" action="batocera-es-swissknife --emukill 0.5" afterclick="bcc_close" />
+				<button display="Kill game" action="batocera-controlcenter-recent-games stop" afterclick="bcc_close" />
 			</feature>
 			<feature display="System">
 				<button_confirm display="Reboot" action="batocera-es-swissknife --reboot 0.5" afterclick="bcc_close" />

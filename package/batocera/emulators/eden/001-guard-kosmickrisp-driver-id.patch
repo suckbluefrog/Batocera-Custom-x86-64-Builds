@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Mon, 1 Jun 2026 05:25:00 +0000
+Subject: [PATCH] video_core: guard KosmicKrisp Vulkan driver ID
+
+Eden v0.2.0 references VK_DRIVER_ID_MESA_KOSMICKRISP, but the Vulkan
+headers currently packaged for zen3 do not define that newer enum yet.
+Keep the friendly driver name when newer headers are available while
+allowing the package to build against the existing headers.
+
+Signed-off-by: suckbluefrog <suckbluefrog@proton.me>
+---
+ src/video_core/vulkan_common/vulkan_wrapper.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/video_core/vulkan_common/vulkan_wrapper.cpp b/src/video_core/vulkan_common/vulkan_wrapper.cpp
+index 3e09960dc..fa2436967 100644
+--- a/src/video_core/vulkan_common/vulkan_wrapper.cpp
++++ b/src/video_core/vulkan_common/vulkan_wrapper.cpp
+@@ -1059,8 +1059,10 @@ std::string GetDriverName(VkPhysicalDeviceDriverProperties driver) {
+         return "PVR";
+     case VK_DRIVER_ID_MESA_HONEYKRISP:
+         return "HoneyKrisp";
++#ifdef VK_DRIVER_ID_MESA_KOSMICKRISP
+     case VK_DRIVER_ID_MESA_KOSMICKRISP:
+         return "KosmicKrisp";
++#endif
+     case VK_DRIVER_ID_GGP_PROPRIETARY:
+     case VK_DRIVER_ID_COREAVI_PROPRIETARY:
+     case VK_DRIVER_ID_JUICE_PROPRIETARY:
+-- 
+2.43.0

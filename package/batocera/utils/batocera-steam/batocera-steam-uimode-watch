@@ -39,7 +39,7 @@ def steam_stack_active() -> bool:
         ("pgrep", "-x", "gamescopectl"),
         ("pgrep", "-f", r"/userdata/system/steam/steam\.sh([[:space:]]|$)"),
         ("pgrep", "-f", r"emulatorlauncher.*-system steam"),
-        ("pgrep", "-f", r"Steam GamepadUI\.steam|Steam Desktop\.steam"),
+        ("pgrep", "-f", r"SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam"),
     )
 
     for cmd in checks:

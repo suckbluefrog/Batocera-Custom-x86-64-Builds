@@ -33,6 +33,7 @@ def _resolve_lossless_dll(configured_path: str) -> Path | None:
 
     candidates.extend(
         (
+            _HOME / "wine" / "lossless-config" / "Lossless.dll",
             _HOME / "wine" / "lossless-scaling" / "Lossless.dll",
             _HOME / "wine" / ".local" / "share" / "Steam" / "steamapps" / "common" / "Lossless Scaling" / "Lossless.dll",
             _HOME / ".local" / "share" / "Steam" / "steamapps" / "common" / "Lossless Scaling" / "Lossless.dll",

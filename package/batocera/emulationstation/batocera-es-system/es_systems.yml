@@ -760,6 +760,22 @@ scummvm:
 
     Para mais informações: https://wiki.batocera.org/systems:scummvm
 
+86box:
+  name: 86Box
+  manufacturer: IBM PC compatibles
+  release: 1981
+  hardware: computer
+  path: 86box
+  extensions: [86box, cfg, img, ima, vfd, flp, dsk]
+  theme: pc
+  platform: pc
+  emulators:
+    86box:
+      86box: { requireAnyOf: [BR2_PACKAGE_86BOX] }
+  comment_en: |
+    Put each VM in /userdata/roms/86box as either a directory with an 86box.cfg file or a .cfg file.
+    Floppy images can also be launched directly and are attached to the selected floppy drive.
+
 dos:
   name:       Dos (x86)
   manufacturer: Microsoft
@@ -4662,6 +4678,20 @@ ngage:
   extensions: [n-gage, sisx, sis, zip]
   platform: ngage
   theme: ngage
+  emulators:
+    eka2l1:
+      eka2l1: { requireAnyOf: [BR2_PACKAGE_EKA2L1] }
+
+eka2l1:
+  name: EKA2L1
+  manufacturer: Nokia
+  release: 2003
+  hardware: portable
+  path: eka2l1
+  extensions: [n-gage, sisx, sis, zip]
+  platform: ngage
+  theme: ngage
+  group: ngage
   emulators:
     eka2l1:
       eka2l1: { requireAnyOf: [BR2_PACKAGE_EKA2L1] }

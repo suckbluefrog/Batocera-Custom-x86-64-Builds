@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+
+SAVES_ROOT = Path("/userdata/saves/xbox360")
+CONFIG_ROOTS = (
+    Path("/userdata/system/configs/xenia"),
+    Path("/userdata/system/configs/xenia-canary"),
+    Path("/userdata/system/configs/xenia-edge"),
+    Path("/userdata/system/configs/xenia_edge"),
+)
+PROFILE_RE = re.compile(r"^[0-9a-fA-F]{16}$")
+
+
+def read_first_line(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="ignore").splitlines()[0].strip()
+    except (OSError, IndexError):
+        return ""
+
+
+def profile_label(xuid: str, profile_dir: Path) -> str:
+    for path in (
+        profile_dir / "gamertag.txt",
+        profile_dir / "name.txt",
+        profile_dir.parents[2] / "gamertag.txt",
+        profile_dir.parents[2] / "name.txt",
+    ):
+        label = read_first_line(path)
+        if label:
+            return f"{label} ({xuid})"
+
+    for config_root in CONFIG_ROOTS:
+        for path in (
+            config_root / "profiles" / f"{xuid}.name",
+            config_root / "profiles" / f"{xuid}.txt",
+        ):
+            label = read_first_line(path)
+            if label:
+                return f"{label} ({xuid})"
+
+    return f"Xenia profile {xuid}"
+
+
+def find_profiles() -> list[tuple[str, str]]:
+    profiles: dict[str, str] = {}
+    if not SAVES_ROOT.is_dir():
+        return []
+
+    for profile_dir in SAVES_ROOT.glob("*/FFFE07D1/00010000/*"):
+        if not profile_dir.is_dir():
+            continue
+
+        xuid = profile_dir.name.upper()
+        if not PROFILE_RE.fullmatch(xuid):
+            continue
+
+        if not (profile_dir / "Account").is_file():
+            continue
+
+        profiles[xuid] = profile_label(xuid, profile_dir)
+
+    return sorted(profiles.items(), key=lambda item: item[1].lower())
+
+
+def main() -> int:
+    for xuid, label in find_profiles():
+        print(f"{xuid}:{label}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

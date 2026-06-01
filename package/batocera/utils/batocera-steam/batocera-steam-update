@@ -281,17 +281,20 @@ write_base_launchers() {
     rm -f "${roms_dir}/Steam.steam.disabled"
     rm -f "${roms_dir}/Steam (GamepadUI).steam"
     rm -f "${roms_dir}/Steam (Desktop).steam"
+    rm -f "${roms_dir}/Steam GamepadUI.steam"
     rm -f "${roms_dir}/Steam GamepadUI No Gamescope.steam"
     rm -f "${roms_dir}/ProtonUp-Qt.steam"
     rm -f "${roms_dir}/Steam ROM Manager.steam"
 
-    cat > "${roms_dir}/Steam GamepadUI.steam" <<EOF
+    cat > "${roms_dir}/SteamOS Mode.steam" <<EOF
 mode=steamos
 gamepadui=1
 gamescope=1
+visible_update_preflight=1
+update_preflight_no_update_secs=15
 EOF
     if [[ -n "${gamepadui_command}" ]]; then
-        printf '%s' "${gamepadui_command}" >> "${roms_dir}/Steam GamepadUI.steam"
+        printf '%s' "${gamepadui_command}" >> "${roms_dir}/SteamOS Mode.steam"
     fi
 
     cat > "${roms_dir}/Steam GamepadUI No Gamescope.steam" <<'EOF'
@@ -315,7 +318,7 @@ find "${roms_dir}" -maxdepth 1 -type f -name 'steam-app-*.steam' -delete
 ensure_generic_image
 
 es_add_game_begin
-es_add_game "./Steam GamepadUI.steam" "Steam Deck Mode" "${generic_image_rel}"
+es_add_game "./SteamOS Mode.steam" "SteamOS Mode" "${generic_image_rel}"
 es_add_game "./Steam GamepadUI No Gamescope.steam" "Steam GamepadUI" "${generic_image_rel}"
 es_add_game "./Steam Desktop.steam" "Desktop Mode" "${generic_image_rel}"
 

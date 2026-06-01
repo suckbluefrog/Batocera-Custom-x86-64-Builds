@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -20,6 +21,44 @@ _logger = logging.getLogger(__name__)
 
 XENIA_EDGE_BIN     = Path('/usr/xenia_edge/xenia_edge')
 XENIA_EDGE_PATCHES_SRC = Path('/usr/xenia_edge/patches')
+
+
+def _normalize_xenia_profile_xuid(value: Any) -> str:
+    text = str(value or '').strip()
+    if text.lower() in ('', 'auto', 'prompt', 'ask', 'ask each time', 'none', 'disabled', '0', 'false'):
+        return ''
+
+    for candidate in (text.split(':', 1)[0], Path(text).stem, text):
+        match = re.search(r'(?i)(?:0x)?([0-9a-f]{16})', candidate)
+        if match:
+            return match.group(1).upper()
+
+    return ''
+
+
+def _apply_xenia_profiles(system: Any, config: dict[str, dict[str, Any]]) -> None:
+    profiles_cfg = config.setdefault('Profiles', {})
+    selected: dict[int, str] = {}
+
+    profile_hint = system.config.get('xenia_profile', system.config.MISSING)
+    if profile_hint is not system.config.MISSING:
+        profile = _normalize_xenia_profile_xuid(profile_hint)
+        if profile:
+            selected[0] = profile
+
+    for slot in range(4):
+        profile_hint = system.config.get(f'xenia_profile{slot + 1}', system.config.MISSING)
+        if profile_hint is system.config.MISSING:
+            continue
+
+        profile = _normalize_xenia_profile_xuid(profile_hint)
+        if profile:
+            selected[slot] = profile
+        else:
+            selected.pop(slot, None)
+
+    for slot in range(4):
+        profiles_cfg[f'logged_profile_slot_{slot}_xuid'] = selected.get(slot, '')
 
 
 class XeniaEdgeGenerator(Generator):
@@ -129,8 +168,10 @@ class XeniaEdgeGenerator(Generator):
 
         config['UI'] = {
             'headless': system.config.get_bool('xenia_headless'),
-            'show_achievement_notification': system.config.get_bool('xenia_achievement')
+            'show_achievement_notification': system.config.get_bool('xenia_achievement', True)
         }
+
+        _apply_xenia_profiles(system, config)
 
         config['Vulkan'] = {
             'vulkan_sparse_shared_memory': False

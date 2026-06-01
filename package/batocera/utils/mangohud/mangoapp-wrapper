@@ -1,8 +1,11 @@
 #!/bin/sh
 
-# MangoApp segfaults under Gamescope's Wayland child display on this build.
-# XWayland stays alive and still lets Steam's QAM update the MangoApp config.
+# MangoApp is an X11/Xwayland overlay client; its code calls GLFW's X11 APIs
+# directly. Keep it off GLFW's Wayland backend even inside a gamescope session.
 unset WAYLAND_DISPLAY
 unset GAMESCOPE_WAYLAND_DISPLAY
+export DISPLAY="${BATOCERA_MANGOAPP_DISPLAY:-${DISPLAY:-:0}}"
+export XDG_SESSION_TYPE=x11
+export GLFW_PLATFORM=x11
 
 exec /usr/bin/mangoapp.real "$@"

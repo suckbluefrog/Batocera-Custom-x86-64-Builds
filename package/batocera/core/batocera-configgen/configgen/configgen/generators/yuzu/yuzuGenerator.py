@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 
 from ... import Command
 from ...batoceraPaths import BIOS, mkdir_if_not_exists, ensure_parents_and_open
-from ...controller import generate_sdl_game_controller_config
 from ...utils import lsfg, vulkan
 from ...utils.configparser import CaseSensitiveRawConfigParser
 from ..Generator import Generator
+from ..eden.edenController import build_eden_sdl_game_controller_config
 from .yuzuController import set_yuzu_controllers
 
 if TYPE_CHECKING:
@@ -184,7 +184,7 @@ class YuzuGenerator(Generator):
             "XDG_CACHE_HOME": f"{home}/.cache",
             "LANG": "en_US.UTF-8",
             "LC_ALL": "en_US.UTF-8",
-            "SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers),
+            "SDL_GAMECONTROLLERCONFIG": build_eden_sdl_game_controller_config(playersControllers),
             # Steam Deck can fall back to unusable lizard mode with SDL hidapi in some AppImage builds.
             "SDL_JOYSTICK_HIDAPI": "0",
         }

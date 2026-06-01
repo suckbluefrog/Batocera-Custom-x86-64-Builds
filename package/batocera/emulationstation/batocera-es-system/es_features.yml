@@ -9285,6 +9285,114 @@ dolphin:
               submenu: LIGHT GUNS
               prompt: SHOW LIGHT GUN CROSSHAIRS
               preset: switchauto
+86box:
+  features:
+  - padtokeyboard
+  shared:
+  - powermode
+  - tdp
+  - videomode
+  - gamescope
+  - gamescope_output_resolution
+  - gamescope_nested_resolution
+  - gamescope_nested_refresh
+  - gamescope_framerate_limit
+  - gamescope_scaler
+  - gamescope_filter
+  - gamescope_sharpness
+  - gamescope_hdr
+  - gamescope_output_resolution_custom
+  - gamescope_nested_resolution_custom
+  - gamescope_framerate_limit_custom
+  - gamescope_sharpness_custom
+  - gamescope_adaptive_sync
+  - gamescope_disable_damage_tracking
+  - gamescope_disable_hw_composition
+  - gamescope_force_composition_pipeline
+  - gamescope_backend
+  - gamescope_xwayland_count
+  - gamescope_xwayland_count_custom
+  - gamescope_prefer_vk_device
+  - gamescope_mangoapp
+  - gamescope_force_windows_fullscreen
+  - gamescope_nested_unfocused_refresh
+  - gamescope_nested_unfocused_refresh_custom
+  - gamescope_immediate_flips
+  - gamescope_stats_path
+  - gamescope_disable_color_management
+  - gamescope_disable_xres
+  - ratio
+  - bezel
+  - bezel_stretch
+  - hud
+  - hud_corner
+  - bezel.tattoo
+  - bezel.tattoo_corner
+  - bezel.tattoo_file
+  - bezel.resize_tattoo
+  cfeatures:
+    86box_fullscreen:
+      prompt: FULLSCREEN
+      description: Start 86Box in fullscreen mode.
+      choices:
+        'On (Default)': true
+        'Off': false
+    86box_no_confirm:
+      prompt: SKIP EXIT CONFIRMATION
+      description: Close the emulator without asking for confirmation.
+      choices:
+        'On (Default)': true
+        'Off': false
+    86box_settings_only:
+      prompt: OPEN SETTINGS ONLY
+      description: Open the VM settings dialog instead of immediately starting the VM.
+      choices:
+        'Off (Default)': false
+        'On': true
+    86box_keyboard_hook:
+      prompt: KEYBOARD HOOK
+      description: Change 86Box keyboard hook behavior.
+      choices:
+        Enabled (Default): enabled
+        Disabled: nohook
+    86box_clear_nvram:
+      prompt: CLEAR NVRAM
+      description: Clear CMOS and/or BIOS flash before starting the VM.
+      choices:
+        Disabled (Default): ''
+        CMOS: cmos
+        BIOS flash: flash
+        CMOS and BIOS flash: both
+    86box_floppy_drive:
+      prompt: FLOPPY IMAGE DRIVE
+      description: Floppy drive used when launching a disk image directly.
+      choices:
+        A (Default): A
+        B: B
+    86box_rom_path:
+      prompt: BIOS ROM PATH
+      description: Directory containing 86Box machine BIOS ROMs.
+      preset: input
+    86box_global_config:
+      prompt: GLOBAL CONFIG
+      description: Optional 86Box global configuration file path.
+      preset: input
+    86box_language:
+      prompt: LANGUAGE
+      description: Interface language passed to 86Box.
+      choices:
+        System (Default): system
+        English (US): en-US
+        English (GB): en-GB
+        French: fr-FR
+        German: de-DE
+        Spanish: es-ES
+        Portuguese (Brazil): pt-BR
+        Japanese: ja-JP
+    86box_vm_name:
+      prompt: VM NAME
+      description: Optional name override for the running VM.
+      preset: input
 dosbox:
   features:
   - padtokeyboard
@@ -13335,7 +13443,7 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG-VK FRAME GENERATION
       description: Enables the Lossless Scaling Frame Generation Vulkan layer. Requires
         Lossless.dll from a purchased Lossless Scaling install.
@@ -13349,9 +13457,10 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LOSSLESS.DLL PATH
-      description: Optional path to Lossless.dll. Default lookup includes /userdata/system/wine/lossless-scaling/Lossless.dll.
+      description: Optional path to Lossless.dll. Leave blank to use automatic lookup.
+      message: Default location is ~/wine/lossless-config/Lossless.dll (/userdata/system/wine/lossless-config/Lossless.dll).
       preset: input
     lsfg_vk_multiplier:
       archs_include:
@@ -13360,7 +13469,7 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG MULTIPLIER
       choices:
         2x (Default): 2
@@ -13373,7 +13482,7 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG FLOW SCALE
       choices:
         1.0 (Default x86): '1.0'
@@ -13387,7 +13496,7 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG PERFORMANCE MODE
       choices:
         'Off': 0
@@ -13399,7 +13508,7 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG HDR MODE
       choices:
         'Off': 0
@@ -13411,7 +13520,7 @@ wine:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG PRESENT MODE
       choices:
         Auto (Default): ''
@@ -13605,30 +13714,6 @@ wine:
         DirectInput Native Then Builtin: dinput
         XAudio Native Then Builtin: xaudio
         Media Foundation Native Then Builtin: media
-    wine_runtime_injectors:
-      group: ADVANCED OPTIONS
-      prompt: RUNTIME INJECTOR
-      description: Install common winetricks runtimes into this Wine prefix once.
-      choices:
-        None (Default): none
-        DirectX 9: d3dx9
-        DirectPlay: directplay
-        D3D Compiler 47: d3dcompiler_47
-        XAudio / XACT: xact
-        Core Fonts: corefonts
-        VC++ 2022: vcrun2022
-        VC++ 2005-2022: vcrun2005,vcrun2008,vcrun2010,vcrun2012,vcrun2013,vcrun2015,vcrun2022
-        .NET 4.8: dotnet48
-        .NET 4.0: dotnet40
-        .NET 3.5: dotnet35
-        Common DX9 + VC++: d3dx9,d3dcompiler_47,directplay,xact,vcrun2008,vcrun2010,vcrun2013,vcrun2015,vcrun2022
-        Common DX9 + VC++ + .NET 4.8: d3dx9,d3dcompiler_47,directplay,xact,vcrun2010,vcrun2013,vcrun2015,vcrun2022,dotnet48
-        Custom Winetricks Verbs: custom
-    wine_runtime_injectors_custom:
-      group: ADVANCED OPTIONS
-      prompt: CUSTOM RUNTIME VERBS
-      description: Custom winetricks verbs separated by spaces or commas.
-      preset: input
     wayland_driver:
       group: ADVANCED OPTIONS
       prompt: WAYLAND DRIVER MODE
@@ -14767,6 +14852,7 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LSFG-VK FRAME GENERATION
       description: Enables the Lossless Scaling Frame Generation Vulkan layer for
         Steam-launched Vulkan/DXVK games. Requires Lossless.dll from a purchased Lossless
@@ -14781,8 +14867,10 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LOSSLESS.DLL PATH
-      description: Optional path to Lossless.dll. Default lookup includes /userdata/system/wine/lossless-scaling/Lossless.dll.
+      description: Optional path to Lossless.dll. Leave blank to use automatic lookup.
+      message: Default location is ~/wine/lossless-config/Lossless.dll (/userdata/system/wine/lossless-config/Lossless.dll).
       preset: input
     lsfg_vk_multiplier:
       archs_include:
@@ -14791,6 +14879,7 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LSFG MULTIPLIER
       choices:
         2x (Default): 2
@@ -14803,6 +14892,7 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LSFG FLOW SCALE
       choices:
         1.0 (Default x86): '1.0'
@@ -14816,6 +14906,7 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LSFG PERFORMANCE MODE
       choices:
         'Off': 0
@@ -14827,6 +14918,7 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LSFG HDR MODE
       choices:
         'Off': 0
@@ -14838,6 +14930,7 @@ steam:
       - qcs6490
       - sm8250
       - sm8550
+      submenu: SYSTEM
       prompt: LSFG PRESENT MODE
       choices:
         Auto (Default): ''
@@ -14997,7 +15090,7 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG-VK FRAME GENERATION
       description: Enables the Lossless Scaling Frame Generation Vulkan layer when
         the Vulkan backend is selected. Requires Lossless.dll from a purchased Lossless
@@ -15012,9 +15105,10 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LOSSLESS.DLL PATH
-      description: Optional path to Lossless.dll. Default lookup includes /userdata/system/wine/lossless-scaling/Lossless.dll.
+      description: Optional path to Lossless.dll. Leave blank to use automatic lookup.
+      message: Default location is ~/wine/lossless-config/Lossless.dll (/userdata/system/wine/lossless-config/Lossless.dll).
       preset: input
     lsfg_vk_multiplier:
       archs_include:
@@ -15023,7 +15117,7 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG MULTIPLIER
       choices:
         2x (Default): 2
@@ -15036,7 +15130,7 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG FLOW SCALE
       choices:
         1.0 (Default x86): '1.0'
@@ -15050,7 +15144,7 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG PERFORMANCE MODE
       choices:
         'Off': 0
@@ -15062,7 +15156,7 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG HDR MODE
       choices:
         'Off': 0
@@ -15074,7 +15168,7 @@ eden:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG PRESENT MODE
       choices:
         Auto (Default): ''
@@ -15256,12 +15350,22 @@ eden:
         50%: 50
         25%: 25
     eden_dock_mode:
+      submenu: SYSTEM
       prompt: DOCK MODE
       description: Choose whether the virtual switch is docked or not.
       choices:
         Undocked: 'false'
         Docked (Default): 'true'
+    eden_airplane_mode:
+      submenu: SYSTEM
+      prompt: AIRPLANE MODE
+      description: Disable emulated Switch network access. Enable this if games keep
+        trying to connect to online services.
+      choices:
+        Disabled (Default): 'false'
+        Enabled: 'true'
     eden_language:
+      submenu: SYSTEM
       prompt: LANGUAGE
       description: Change the game's language.
       choices:
@@ -15284,6 +15388,7 @@ eden:
         Traditional Chinese: 16
         Brazilian Portuguese: 17
     eden_region:
+      submenu: SYSTEM
       prompt: CHOOSE CONSOLE REGION
       description: Choose your console region.
       choices:
@@ -15324,7 +15429,7 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG-VK FRAME GENERATION
       description: Enables the Lossless Scaling Frame Generation Vulkan layer when
         the Vulkan backend is selected. Requires Lossless.dll from a purchased Lossless
@@ -15339,9 +15444,10 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LOSSLESS.DLL PATH
-      description: Optional path to Lossless.dll. Default lookup includes /userdata/system/wine/lossless-scaling/Lossless.dll.
+      description: Optional path to Lossless.dll. Leave blank to use automatic lookup.
+      message: Default location is ~/wine/lossless-config/Lossless.dll (/userdata/system/wine/lossless-config/Lossless.dll).
       preset: input
     lsfg_vk_multiplier:
       archs_include:
@@ -15350,7 +15456,7 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG MULTIPLIER
       choices:
         2x (Default): 2
@@ -15363,7 +15469,7 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG FLOW SCALE
       choices:
         1.0 (Default x86): '1.0'
@@ -15377,7 +15483,7 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG PERFORMANCE MODE
       choices:
         'Off': 0
@@ -15389,7 +15495,7 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG HDR MODE
       choices:
         'Off': 0
@@ -15401,7 +15507,7 @@ yuzu:
       - qcs6490
       - sm8250
       - sm8550
-      submenu: RENDERING
+      submenu: SYSTEM
       prompt: LSFG PRESENT MODE
       choices:
         Auto (Default): ''
@@ -16834,7 +16940,7 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG-VK FRAME GENERATION
       description: Enables the Lossless Scaling Frame Generation Vulkan layer for
         native Xenia Edge. Requires Lossless.dll from a purchased Lossless Scaling
@@ -16849,9 +16955,10 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LOSSLESS.DLL PATH
-      description: Optional path to Lossless.dll. Default lookup includes /userdata/system/wine/lossless-scaling/Lossless.dll.
+      description: Optional path to Lossless.dll. Leave blank to use automatic lookup.
+      message: Default location is ~/wine/lossless-config/Lossless.dll (/userdata/system/wine/lossless-config/Lossless.dll).
       preset: input
     lsfg_vk_multiplier:
       archs_include:
@@ -16860,7 +16967,7 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG MULTIPLIER
       choices:
         2x (Default): 2
@@ -16873,7 +16980,7 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG FLOW SCALE
       choices:
         1.0 (Default x86): '1.0'
@@ -16887,7 +16994,7 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG PERFORMANCE MODE
       choices:
         'Off': 0
@@ -16899,7 +17006,7 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG HDR MODE
       choices:
         'Off': 0
@@ -16911,7 +17018,7 @@ xenia-edge:
       - qcs6490
       - sm8250
       - sm8550
-      group: ADVANCED OPTIONS
+      submenu: SYSTEM
       prompt: LSFG PRESENT MODE
       choices:
         Auto (Default): ''
@@ -17560,6 +17667,64 @@ eka2l1:
   - bezel.tattoo_corner
   - bezel.tattoo_file
   - bezel.resize_tattoo
+  cfeatures:
+    eka2l1_fullscreen:
+      prompt: FULLSCREEN
+      description: Start EKA2L1 in fullscreen mode.
+      choices:
+        'On (Default)': true
+        'Off': false
+    eka2l1_launch_mode:
+      prompt: LAUNCH MODE
+      description: Choose how configgen passes the selected file to EKA2L1.
+      choices:
+        Auto (Default): auto
+        Mount card only: mount
+        Mount and run N-Gage: runng
+        Install SIS: install
+        Run app only: run
+    eka2l1_run_app:
+      prompt: RUN APP
+      description: Optional app name, UID, or virtual executable path to run.
+      preset: input
+    eka2l1_device_code:
+      prompt: DEVICE CODE
+      description: Optional firmware code, for example RH-29.
+      preset: input
+    eka2l1_keybind_profile:
+      prompt: KEYBIND PROFILE
+      description: EKA2L1 keybind profile name without file extension.
+      preset: input
+    eka2l1_mmcid:
+      prompt: MMC ID
+      description: Optional MMC ID for the mounted card.
+      preset: input
+    eka2l1_mount_writable:
+      prompt: WRITABLE CARD MOUNT
+      description: Mount game card dumps as writable instead of write-protected.
+      choices:
+        'Off (Default)': false
+        'On': true
+    eka2l1_integer_scaling:
+      prompt: INTEGER SCALING
+      description: Scale the phone screen by whole-number multiples.
+      choices:
+        'On (Default)': true
+        'Off': false
+    eka2l1_nearest_neighbor:
+      prompt: NEAREST NEIGHBOR FILTER
+      description: Use nearest-neighbor filtering for sharper low-resolution output.
+      choices:
+        'On (Default)': true
+        'Off': false
+    eka2l1_audio_volume:
+      prompt: AUDIO VOLUME
+      description: Master audio volume from 0 to 100.
+      choices:
+        25%: 25
+        50%: 50
+        75%: 75
+        100% (Default): 100
 odcommander:
   features:
   - padtokeyboard

@@ -1,7 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
-STEAM_ROOT="${BATOCERA_STEAM_ROOT:-/userdata/system/.local/share/Steam}"
+resolve_steam_root() {
+    local candidate
+
+    for candidate in \
+        "${BATOCERA_STEAM_ROOT:-}" \
+        /userdata/system/steam \
+        /userdata/system/.steam/steam \
+        /userdata/system/.local/share/Steam
+    do
+        [[ -n "${candidate}" ]] || continue
+        if [[ -f "${candidate}/logs/bootstrap_log.txt" || -d "${candidate}" ]]; then
+            printf '%s\n' "${candidate}"
+            return 0
+        fi
+    done
+
+    printf '%s\n' /userdata/system/steam
+}
+
+STEAM_ROOT="$(resolve_steam_root)"
+export BATOCERA_STEAM_ROOT="${STEAM_ROOT}"
 BOOTSTRAP_LOG="${STEAM_ROOT}/logs/bootstrap_log.txt"
 LOG_DIR="/userdata/system/logs"
 LOG="${LOG_DIR}/steam-update-terminal.log"
@@ -22,7 +42,7 @@ new_bootstrap_log() {
 }
 
 update_started() {
-    new_bootstrap_log "$1" | grep -Eq 'Downloading update|Extracting package|Installing update'
+    new_bootstrap_log "$1" | grep -Eq 'Checking for update|Downloading update|Extracting package|Installing update|Verifying installation'
 }
 
 update_finished() {
@@ -90,7 +110,7 @@ watch_for_update() {
     local waited=0
     local wait_secs="${BATOCERA_STEAM_UPDATE_TERMINAL_WAIT_SECS:-900}"
     local geometry="${BATOCERA_STEAM_UPDATE_TERMINAL_GEOMETRY:-96x24}"
-    local display="${DISPLAY:-}"
+    local display="${DISPLAY:-${BATOCERA_STEAM_UPDATE_DISPLAY:-}}"
 
     while (( waited < wait_secs )); do
         if update_started "${baseline}"; then
@@ -98,8 +118,10 @@ watch_for_update() {
             if [[ -n "${display}" && -x /usr/bin/xterm ]]; then
                 env \
                     DISPLAY="${display}" \
-                    WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" \
-                    XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
+                    WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-${BATOCERA_STEAM_UPDATE_WAYLAND_DISPLAY:-}}" \
+                    XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-${BATOCERA_STEAM_UPDATE_XDG_RUNTIME_DIR:-/run/user/$(id -u)}}" \
+                    XAUTHORITY="${XAUTHORITY:-${BATOCERA_STEAM_UPDATE_XAUTHORITY:-}}" \
+                    DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-${BATOCERA_STEAM_UPDATE_DBUS_SESSION_BUS_ADDRESS:-}}" \
                     STEAM_GAME=769 \
                     SteamGameId=769 \
                     SteamAppId=769 \

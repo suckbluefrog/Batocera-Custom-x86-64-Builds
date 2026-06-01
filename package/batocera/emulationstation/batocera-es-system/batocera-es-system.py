@@ -35,6 +35,7 @@ from batocera_es_system_shared import (
 class _CFeatureBaseDict(TypedDict, total=False):
     prompt: Required[str]
     description: str
+    message: str
     group: str
     submenu: str
     order: int
@@ -494,8 +495,10 @@ def _get_xml_feature(
     fspaces = ' ' * nfspaces
     lines: list[str] = []
     description = infos.get('description', '')
+    message = infos.get('message', '')
     submenustr = f' submenu="{_protect_xml(infos["submenu"])}"' if 'submenu' in infos else ''
     groupstr = f' group="{_protect_xml(infos["group"])}"' if 'group' in infos else ''
+    messagestr = f' message="{_protect_xml(message)}"' if message else ''
     orderstr = f' order="{_protect_xml(infos["order"])}"' if 'order' in infos else ''
     presetstr = ''
     if 'preset' in infos:
@@ -504,7 +507,7 @@ def _get_xml_feature(
         presetstr += f' preset-parameters="{_protect_xml(infos["preset_parameters"])}"'
 
     lines.append(
-        f'{fspaces}<feature name="{_protect_xml(infos["prompt"])}"{submenustr}{groupstr}{orderstr} '
+        f'{fspaces}<feature name="{_protect_xml(infos["prompt"])}"{submenustr}{groupstr}{messagestr}{orderstr} '
         f'value="{_protect_xml(key)}" description="{_protect_xml(description)}"{presetstr}>'
     )
 
@@ -514,6 +517,7 @@ def _get_xml_feature(
 
     _add_comment_to_dict_key(toTranslate, infos['prompt'], comment)
     _add_comment_to_dict_key(toTranslate, description, comment.copy())
+    _add_comment_to_dict_key(toTranslate, message, comment.copy())
     if 'preset' not in infos:
         for choice in infos['choices']:
             lines.append(
@@ -687,7 +691,7 @@ def _find_translations(featuresYaml: Path, /) -> dict[str | None, list[_CommentD
                         # core features
                         if 'cfeatures' in core_def:
                             for cfeature_def in core_def['cfeatures'].values():
-                                for tag in ['description', 'submenu', 'group', 'prompt']:
+                                for tag in ['description', 'message', 'submenu', 'group', 'prompt']:
                                     if tag in cfeature_def:
                                         tagval = cast('str', cfeature_def[tag])
                                         _add_comment_to_dict_key(
@@ -705,7 +709,7 @@ def _find_translations(featuresYaml: Path, /) -> dict[str | None, list[_CommentD
                             for system_def in core_def['systems'].values():
                                 if 'cfeatures' in system_def:
                                     for cfeature_def in system_def['cfeatures'].values():
-                                        for tag in ['description', 'submenu', 'group', 'prompt']:
+                                        for tag in ['description', 'message', 'submenu', 'group', 'prompt']:
                                             if tag in cfeature_def:
                                                 tagval = cast('str', cfeature_def[tag])
                                                 _add_comment_to_dict_key(
@@ -720,7 +724,7 @@ def _find_translations(featuresYaml: Path, /) -> dict[str | None, list[_CommentD
                 for system_def in emulator_def['systems'].values():
                     if 'cfeatures' in system_def:
                         for cfeature_def in system_def['cfeatures'].values():
-                            for tag in ['description', 'submenu', 'group', 'prompt']:
+                            for tag in ['description', 'message', 'submenu', 'group', 'prompt']:
                                 if tag in cfeature_def:
                                     tagval = cast('str', cfeature_def[tag])
                                     _add_comment_to_dict_key(toTranslate, tagval, {'emulator': emulator})
@@ -729,7 +733,7 @@ def _find_translations(featuresYaml: Path, /) -> dict[str | None, list[_CommentD
                                     _add_comment_to_dict_key(toTranslate, choice, {'emulator': emulator})
             if 'cfeatures' in emulator_def:
                 for cfeature_def in emulator_def['cfeatures'].values():
-                    for tag in ['description', 'submenu', 'group', 'prompt']:
+                    for tag in ['description', 'message', 'submenu', 'group', 'prompt']:
                         if tag in cfeature_def:
                             tagval = cast('str', cfeature_def[tag])
                             _add_comment_to_dict_key(toTranslate, tagval, {'emulator': emulator})

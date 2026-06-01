@@ -36,7 +36,7 @@ steam_stack_alive() {
     pgrep -x gamescopereaper >/dev/null 2>&1 || \
     pgrep -x gamescopestream >/dev/null 2>&1 || \
     pgrep -x gamescopectl >/dev/null 2>&1 || \
-    pgrep -f 'steamwebhelper\.sh|pressure-vessel|SteamLaunch AppId=|pw-audio-namespace|/proton waitforexitandrun|steam\.exe|/userdata/system/steam/steam\.sh|/usr/share/steam/bin_steam\.sh|emulatorlauncher.*-system steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1
+    pgrep -f 'steamwebhelper\.sh|pressure-vessel|SteamLaunch AppId=|pw-audio-namespace|/proton waitforexitandrun|steam\.exe|/userdata/system/steam/steam\.sh|/usr/share/steam/bin_steam\.sh|emulatorlauncher.*-system steam|SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1
 }
 
 frontend_ready() {

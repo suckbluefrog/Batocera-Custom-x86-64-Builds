@@ -312,6 +312,7 @@ exit $EXIT_CODE
         set_override("UI", "confirmClose", "false")
         set_override("UI", "confirmExit", "false")
         set_override("UI", "confirmStop", "0")
+        set_override("UI", "check_for_updates", "false")
         set_override("UI", "check_for_updates_on_start", "false")
         set_override("UI", "UIGameList\\cache_game_list", "false")
         _clear_controller_shortcut(c, "Exit%20Eden", "Exit%20eden")
@@ -428,6 +429,13 @@ exit $EXIT_CODE
         else:
             c.set("System", "use_docked_mode\\default", "true")
             c.set("System", "use_docked_mode", "1")
+
+        # ---------- Network ----------
+        if not c.has_section("Network"):
+            c.add_section("Network")
+
+        set_override("Network", "airplane_mode",
+                     system.config.get("eden_airplane_mode", "false"))
 
         # ---------- Audio ----------
         if not c.has_section("Audio"):

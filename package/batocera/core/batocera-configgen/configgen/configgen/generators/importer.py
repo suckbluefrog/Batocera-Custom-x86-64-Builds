@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 
 _GENERATOR_MAP: Final[dict[str, tuple[str, str]]] = {
+    '86box': ('_86box.86boxGenerator', 'Box86Generator'),
     'j2me': ('freej2me.freej2meGenerator', 'FreeJ2MEGenerator'),
     'scummvm': ('scummvm.scummvmGenerator', 'ScummVMGenerator'),
     'dosbox': ('dosbox.dosboxGenerator', 'DosBoxGenerator'),

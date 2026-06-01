@@ -1,0 +1,58 @@
+diff --git a/src/frontends/sdl/sdl.c b/src/frontends/sdl/sdl.c
+index a6b114d..a54c41f 100644
+--- a/src/frontends/sdl/sdl.c
++++ b/src/frontends/sdl/sdl.c
+@@ -65,6 +65,20 @@
+ 
+ #define JOYSTICK_THRESHOLD 3200
+ 
++#define JOYHAT_BUTTON_BASE 200
++
++static int joy_hat_button(Uint8 hat, Uint8 value)
++{
++	int base = JOYHAT_BUTTON_BASE + (hat * 4);
++
++	if (value & SDL_HAT_UP)    return base;
++	if (value & SDL_HAT_DOWN)  return base + 1;
++	if (value & SDL_HAT_LEFT)  return base + 2;
++	if (value & SDL_HAT_RIGHT) return base + 3;
++
++	return 0;
++}
++
+ static ConfigFile  *config = NULL;
+ Skin                skin;
+ static View         view, old_view;
+@@ -851,6 +864,11 @@ static void frontend_mainloop(void *arg)
+ 			}
+ 			case SDL_JOYHATMOTION:
+ 				wdprintf(V_DEBUG, "sdl_frontend", "Joy Hat motion\n");
++				if (event.jhat.value == SDL_HAT_CENTERED) {
++					button_repeat_timer = -1;
++				} else {
++					button_repeat_timer = 5;
++				}
+ 				break;
+ 			case SDL_QUIT:
+ 				gmu_core_quit();
+@@ -886,7 +904,7 @@ static void frontend_mainloop(void *arg)
+ 		if (event.type == SDL_KEYDOWN || event.type == SDL_JOYBUTTONDOWN ||
+ 		    event.type == SDL_KEYUP   || event.type == SDL_JOYBUTTONUP   ||
+ 		    event.type == SDL_JOYAXISMOTION ||
+-		    (button_repeat_timer == 0 && user_key_action > 0)) {
++		    event.type == SDL_JOYHATMOTION || (button_repeat_timer == 0 && user_key_action > 0)) {
+ 			ActivateMethod amethod = ACTIVATE_PRESS;
+ 
+ 			switch (event.type) {
+@@ -908,6 +927,11 @@ static void frontend_mainloop(void *arg)
+ 					}
+ 					break;
+ 				}
++				case SDL_JOYHATMOTION:
++					if (event.jhat.value == SDL_HAT_CENTERED)
++						amethod = ACTIVATE_RELEASE;
++					button = joy_hat_button(event.jhat.hat, event.jhat.value);
++					break;
+ 				default: break;
+ 			}
+ 			wdprintf(V_DEBUG, "sdl_frontend", "event.type=%d, button=%d\n", event.type, button);

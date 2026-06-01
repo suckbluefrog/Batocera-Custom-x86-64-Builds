@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 _STEAM_FRONTEND_LAUNCHERS = {
     "Steam.steam",
+    "SteamOS Mode.steam",
     "Steam GamepadUI.steam",
     "Steam GamepadUI No Gamescope.steam",
     "Steam Desktop.steam",
@@ -292,6 +293,8 @@ class SteamGenerator(Generator):
         gamepadui_override = None
         gamescope_override = None
         steam_user_override = None
+        visible_update_preflight_override = None
+        update_preflight_no_update_secs_override = None
         if basename != "Steam.steam":
             # read the id inside the file
             with rom.open() as f:
@@ -303,6 +306,8 @@ class SteamGenerator(Generator):
             gamepadui_override = entry.get("gamepadui")
             gamescope_override = entry.get("gamescope")
             steam_user_override = entry.get("steam_user") or entry.get("user") or entry.get("account")
+            visible_update_preflight_override = entry.get("visible_update_preflight") or entry.get("update_preflight")
+            update_preflight_no_update_secs_override = entry.get("update_preflight_no_update_secs") or entry.get("preflight_no_update_secs")
 
         direct_session_path = Path("/usr/bin/steam-direct-session.sh")
 
@@ -389,7 +394,7 @@ class SteamGenerator(Generator):
             "BATOCERA_STEAM_GS_DISABLE_DAMAGE_TRACKING": system.config.get_bool("gamescope_disable_damage_tracking", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_DISABLE_HW_COMPOSITION": system.config.get_bool("gamescope_disable_hw_composition", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_FORCE_COMPOSITION_PIPELINE": system.config.get_bool("gamescope_force_composition_pipeline", False, return_values=("1", "0")),
-            "BATOCERA_STEAM_GS_MANGOAPP": system.config.get_bool("gamescope_mangoapp", False, return_values=("1", "0")),
+            "BATOCERA_STEAM_GS_MANGOAPP": system.config.get_bool("gamescope_mangoapp", True, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_FORCE_WINDOWS_FULLSCREEN": system.config.get_bool("gamescope_force_windows_fullscreen", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_IMMEDIATE_FLIPS": system.config.get_bool("gamescope_immediate_flips", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_DISABLE_COLOR_MANAGEMENT": system.config.get_bool("gamescope_disable_color_management", False, return_values=("1", "0")),
@@ -401,6 +406,12 @@ class SteamGenerator(Generator):
         if direct_session_requested:
             env["BATOCERA_STEAM_DIRECT_SESSION"] = "1"
             env["BATOCERA_STEAM_USE_GAMESCOPE"] = "1"
+        normalized_visible_preflight = _normalize_bool_override(visible_update_preflight_override)
+        if normalized_visible_preflight is not None:
+            env["BATOCERA_STEAM_VISIBLE_UPDATE_PREFLIGHT"] = normalized_visible_preflight
+        preflight_no_update_secs = _positive_int(update_preflight_no_update_secs_override or "")
+        if preflight_no_update_secs is not None:
+            env["BATOCERA_STEAM_PREFLIGHT_NO_UPDATE_SECS"] = str(preflight_no_update_secs)
         steam_user = _normalize_steam_user(steam_user_override) if steam_user_override is not None else steam_user
         if steam_user != "auto":
             env["BATOCERA_STEAM_USER"] = steam_user
@@ -421,7 +432,10 @@ class SteamGenerator(Generator):
         for exe in _steam_game_exes(gameId if basename not in _STEAM_FRONTEND_LAUNCHERS else None):
             if exe not in lsfg_exes:
                 lsfg_exes.append(exe)
-        lsfg.apply_lsfg_vk(system, env, use_wine_layer=True, process_names=lsfg_exes, config_name="steam")
+        if lsfg_exes:
+            lsfg.apply_lsfg_vk(system, env, use_wine_layer=True, process_names=lsfg_exes, config_name="steam")
+        else:
+            lsfg.apply_lsfg_vk(system, env, use_wine_layer=True, process_name="steam")
 
         return Command.Command(array=commandArray, env=env)
 

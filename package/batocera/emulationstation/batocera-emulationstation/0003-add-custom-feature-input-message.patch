@@ -1,0 +1,133 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Mon, 01 Jun 2026 17:09:24 +0000
+Subject: [PATCH] Support helper messages on custom input features
+
+diff --git a/es-app/src/CustomFeatures.cpp b/es-app/src/CustomFeatures.cpp
+index c036d3a..7f8d217 100644
+--- a/es-app/src/CustomFeatures.cpp
++++ b/es-app/src/CustomFeatures.cpp
+@@ -450,6 +450,9 @@ CustomFeatures CustomFeatures::loadCustomFeatures(pugi::xml_node node)
+ 				if (featureNode.attribute("submenu"))
+ 					cs.submenu = featureNode.attribute("submenu").value();
+ 
++				if (featureNode.attribute("message"))
++					cs.message = featureNode.attribute("message").value();
++
+ 				if (featureNode.attribute("preset"))
+ 					cs.preset = featureNode.attribute("preset").value();
+ 
+@@ -478,6 +481,9 @@ CustomFeatures CustomFeatures::loadCustomFeatures(pugi::xml_node node)
+ 		if (featureNode.attribute("description"))
+ 			feat.description = featureNode.attribute("description").value();
+ 
++		if (featureNode.attribute("message"))
++			feat.message = featureNode.attribute("message").value();
++
+ 		if (featureNode.attribute("submenu"))
+ 			feat.submenu = featureNode.attribute("submenu").value();
+ 
+diff --git a/es-app/src/CustomFeatures.h b/es-app/src/CustomFeatures.h
+index 3f92931..a697489 100644
+--- a/es-app/src/CustomFeatures.h
++++ b/es-app/src/CustomFeatures.h
+@@ -28,6 +28,7 @@ struct CustomFeature
+ 	std::string name;
+ 	std::string value;
+ 	std::string description;
++	std::string message;
+ 	std::string submenu;
+ 	std::string preset;
+ 	std::string preset_parameters;
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index 2f7bb91..c55df20 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -2289,13 +2289,14 @@ void GuiMenu::addFeatureItem(Window* window, GuiSettings* settings, const Custom
+ 	if (configName == "global" && Utils::String::startsWith(feat.value, configName + "."))
+ 		storageName = feat.value;
+ 			
++	std::string message = pgettext("game_options", feat.message.c_str());
+ 	if (feat.preset == "input")
+ 	{
+-		settings->addInputTextConfigRow(pgettext("game_options", feat.name.c_str()), storageName, false);
++		settings->addInputTextConfigRow(pgettext("game_options", feat.name.c_str()), storageName, false, false, nullptr, message);
+ 		return;
+ 	}
+ 	
+ 	if (feat.preset == "password")
+ 	{
+-		settings->addInputTextConfigRow(pgettext("game_options", feat.name.c_str()), storageName, true);
++		settings->addInputTextConfigRow(pgettext("game_options", feat.name.c_str()), storageName, true, false, nullptr, message);
+ 		return;
+ 	}
+diff --git a/es-app/src/guis/GuiSettings.cpp b/es-app/src/guis/GuiSettings.cpp
+index c60ed68..8039700 100644
+--- a/es-app/src/guis/GuiSettings.cpp
++++ b/es-app/src/guis/GuiSettings.cpp
+@@ -9,6 +9,7 @@
+ #include "guis/GuiMsgBox.h"
+ #include "components/SwitchComponent.h"
+ #include "components/OptionListComponent.h"
++#include "components/MultiLineMenuEntry.h"
+ 
+ GuiSettings::GuiSettings(Window* window, const std::string& title, bool tabbedUI) : GuiSettings(window, title, "", nullptr, false, tabbedUI) { }
+ 
+@@ -164,7 +165,8 @@ void GuiSettings::addSubMenu(const std::string& label, const std::function<void(
+ };
+ 
+ void GuiSettings::addInputTextConfigRow(const std::string& title, const std::string& settingsID, bool password, bool storeInSettings
+-	, const std::function<void(Window*, std::string/*title*/, std::string /*value*/, const std::function<void(std::string)>& onsave)>& customEditor)
++	, const std::function<void(Window*, std::string/*title*/, std::string /*value*/, const std::function<void(std::string)>& onsave)>& customEditor
++	, const std::string& description)
+ {
+ 	auto theme = ThemeData::getMenuTheme();
+ 	std::shared_ptr<Font> font = theme->Text.font;
+@@ -173,12 +175,19 @@ void GuiSettings::addInputTextConfigRow(const std::string& title, const std::str
+ 	// LABEL
+ 	Window *window = mWindow;
+ 	ComponentListRow row;
+-
+-	auto lbl = std::make_shared<TextComponent>(window, title, font, color);
+-	if (EsLocale::isRTL())
+-		lbl->setHorizontalAlignment(Alignment::ALIGN_RIGHT);
+-
+-	row.addElement(lbl, true); // label
++	if (!description.empty())
++	{
++		auto lbl = std::make_shared<MultiLineMenuEntry>(window, title, description, true);
++		row.addElement(lbl, true);
++	}
++	else
++	{
++		auto lbl = std::make_shared<TextComponent>(window, title, font, color);
++		if (EsLocale::isRTL())
++			lbl->setHorizontalAlignment(Alignment::ALIGN_RIGHT);
++
++		row.addElement(lbl, true); // label
++	}
+ 
+ 	std::string value = storeInSettings ? Settings::getInstance()->getString(settingsID) : SystemConf::getInstance()->get(settingsID);
+ 
+@@ -199,7 +208,7 @@ void GuiSettings::addInputTextConfigRow(const std::string& title, const std::str
+ 
+ 	auto bracket = std::make_shared<ImageComponent>(mWindow);
+ 	bracket->setImage(theme->Icons.arrow);
+-	bracket->setResize(Vector2f(0, lbl->getFont()->getLetterHeight()));
++	bracket->setResize(Vector2f(0, font->getLetterHeight()));
+ 
+ 	if (EsLocale::isRTL())
+ 		bracket->setFlipX(true);
+diff --git a/es-app/src/guis/GuiSettings.h b/es-app/src/guis/GuiSettings.h
+index e0d0e3d..0817612 100644
+--- a/es-app/src/guis/GuiSettings.h
++++ b/es-app/src/guis/GuiSettings.h
+@@ -79,7 +79,7 @@ public:
+ 		mMenu.updateSize();
+ 	}
+ 	
+-	void addInputTextConfigRow(const std::string& title, const std::string& settingsID, bool password, bool storeInSettings = false, const std::function<void(Window*, std::string/*title*/, std::string /*value*/, const std::function<void(std::string)>& onsave)>& customEditor = nullptr);
++	void addInputTextConfigRow(const std::string& title, const std::string& settingsID, bool password, bool storeInSettings = false, const std::function<void(Window*, std::string/*title*/, std::string /*value*/, const std::function<void(std::string)>& onsave)>& customEditor = nullptr, const std::string& description = "");
+   	void addInputTextRow(const std::string& title, const std::string& value, bool password, const std::function<void(Window*, std::string/*title*/, std::string /*value*/, const std::function<void(std::string)>& onsave)>& customEditor = nullptr, const std::function<void(std::string)>& onsave = nullptr);
+ 	void addFileBrowser(const std::string& title, const std::string& settingsID, GuiFileBrowser::FileTypes type, bool storeInSettings = false);
+ 	

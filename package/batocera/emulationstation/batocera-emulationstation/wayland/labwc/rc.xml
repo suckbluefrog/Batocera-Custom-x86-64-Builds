@@ -8,6 +8,7 @@
     <autoEnableOutputs>yes</autoEnableOutputs>
     <reuseOutputMode>no</reuseOutputMode>
     <xwaylandPersistence>no</xwaylandPersistence>
+    <allowAlwaysOnTop>yes</allowAlwaysOnTop>
   </core>
   <touch deviceName="" mapToOutput="" mouseEmulation="no"/>
   <keyboard>

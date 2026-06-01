@@ -1,8 +1,26 @@
 config BR2_PACKAGE_EDEN
 	bool "Eden (Nintendo Switch)"
 	depends on BR2_x86_64
+	select BR2_PACKAGE_BOOST
+	select BR2_PACKAGE_BOOST_CONTEXT
+	select BR2_PACKAGE_BOOST_FILESYSTEM
+	select BR2_PACKAGE_BOOST_SYSTEM
+	select BR2_PACKAGE_ENET
+	select BR2_PACKAGE_FFMPEG
+	select BR2_PACKAGE_FMT
+	select BR2_PACKAGE_JSON_FOR_MODERN_CPP
+	select BR2_PACKAGE_LIBOPENSSL
+	select BR2_PACKAGE_OPUS
+	select BR2_PACKAGE_QT6BASE
+	select BR2_PACKAGE_QT6CHARTS
+	select BR2_PACKAGE_SDL2
+	select BR2_PACKAGE_VULKAN_HEADERS
+	select BR2_PACKAGE_VULKAN_LOADER
+	select BR2_PACKAGE_VULKAN_UTILITY_LIBRARIES
+	select BR2_PACKAGE_ZLIB
+	select BR2_PACKAGE_ZSTD
 	help
 	  Eden Nintendo Switch emulator.
 
-	  This package installs the published Linux AppImage and wraps it
-	  with a Batocera runtime launcher under /usr/bin/eden.
+	  This package builds Eden from source and installs the native Qt
+	  frontend under /usr/bin/eden.

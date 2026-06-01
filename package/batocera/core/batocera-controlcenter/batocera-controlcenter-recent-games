@@ -420,12 +420,14 @@ def main(argv):
         return 0 if game_at(index) else 1
     if command == "launch":
         return launch(index)
+    if command in ("stop", "kill", "kill-current"):
+        return 0 if stop_current_game() else 1
     if command == "list":
         for pos, game in enumerate(recent_games(3), start=1):
             print(f"{pos}\t{label(pos)}\t{game['path']}")
         return 0
 
-    sys.stderr.write("usage: batocera-controlcenter-recent-games [list|label N|launch N|has-any|has N]\n")
+    sys.stderr.write("usage: batocera-controlcenter-recent-games [list|label N|launch N|stop|kill|kill-current|has-any|has N]\n")
     return 2
 
 

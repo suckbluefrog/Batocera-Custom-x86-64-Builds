@@ -143,6 +143,7 @@ endef
 
 define BATOCERA_CONFIGGEN_SCRIPTS
 	install -D -m 0755 $(CONFIGGEN_DIR)/scripts/batocera-joysticks-hotkeys.py $(TARGET_DIR)/usr/bin/batocera-joysticks-hotkeys
+	install -D -m 0755 $(CONFIGGEN_DIR)/scripts/batocera-xenia-profiles $(TARGET_DIR)/usr/bin/batocera-xenia-profiles
 endef
 
 define BATOCERA_CONFIGGEN_PORTMASTER_PY311_COMPAT

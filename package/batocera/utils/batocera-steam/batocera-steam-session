@@ -220,8 +220,40 @@ recover_hotkeys() {
 }
 
 start_session_supervisor() {
+    [[ "${BATOCERA_STEAM_SESSION_SUPERVISOR:-0}" == "1" ]] || return 0
     command -v batocera-steam-session-supervisor >/dev/null 2>&1 || return 0
     batocera-steam-session-supervisor start "batocera-steam-session" >/dev/null 2>&1 || true
+}
+
+start_steam_update_terminal_watch() {
+    local bootstrap_log
+    local baseline=0
+    local steam_root
+
+    [[ "${BATOCERA_STEAM_UPDATE_TERMINAL:-1}" != "0" ]] || return 0
+    [[ -x /usr/bin/batocera-steam-update-terminal ]] || return 0
+
+    steam_root="${BATOCERA_STEAM_ROOT:-}"
+    if [[ -z "${steam_root}" ]]; then
+        for candidate in /userdata/system/steam /userdata/system/.steam/steam /userdata/system/.local/share/Steam; do
+            if [[ -f "${candidate}/logs/bootstrap_log.txt" || -d "${candidate}" ]]; then
+                steam_root="${candidate}"
+                break
+            fi
+        done
+    fi
+    steam_root="${steam_root:-/userdata/system/steam}"
+    export BATOCERA_STEAM_ROOT="${steam_root}"
+
+    bootstrap_log="${steam_root}/logs/bootstrap_log.txt"
+    if [[ -f "${bootstrap_log}" ]]; then
+        baseline="$(wc -l < "${bootstrap_log}" 2>/dev/null || echo 0)"
+    fi
+
+    BATOCERA_STEAM_UPDATE_BASELINE="${baseline}" \
+        /usr/bin/batocera-steam-update-terminal watch "${baseline}" >> "${log}" 2>&1 &
+    export BATOCERA_STEAM_UPDATE_TERMINAL=0
+    echo "Steam update terminal watcher started before gamescope with bootstrap baseline ${baseline}." >> "${log}"
 }
 
 steam_runtime_active() {
@@ -390,8 +422,8 @@ if [[ "${BATOCERA_STEAM_REQUIRE_NETWORK:-1}" == "1" ]] && [[ "${STEAM_HAS_NETWOR
 
     if command -v batocera-flash-screen >/dev/null 2>&1; then
         if [[ "${STEAM_FIRST_RUN_PENDING}" == "1" ]]; then
-            flash_msg 6 "Steam first setup needs Wi-Fi." 22
-            flash_msg 6 "Please connect to Wi-Fi / internet and retry Steam." 18
+            flash_msg 6 "Steam first setup needs internet." 22
+            flash_msg 6 "Please connect Ethernet or Wi-Fi and retry Steam." 18
         else
             flash_msg 6 "No internet connection." 22
             flash_msg 6 "Please connect to the internet and launch Steam again." 20
@@ -978,6 +1010,7 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
         flash_msg "${BATOCERA_STEAM_FIRST_RUN_WAIT_SECS:-18}" "Steam is installing updates. This may take a few minutes. Please wait..." 20
     fi
     start_steam_install_callouts
+    start_steam_update_terminal_watch
     start_nightmode_watch
     set +e
     if (( ${#STEAM_CHILD_LSFG_ENV[@]} > 0 )); then
@@ -992,6 +1025,7 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
 fi
 
 echo "Steam session: gamescope unavailable or disabled, launching without it" >> "${log}"
+start_steam_update_terminal_watch
 set +e
 "$@"
 session_rc=$?

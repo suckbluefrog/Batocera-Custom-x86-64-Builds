@@ -36,6 +36,37 @@ getCCPID() {
     return 1
 }
 
+raiseControlCenter() {
+    command -v xdotool >/dev/null 2>&1 || return 0
+    test -n "${DISPLAY}" || return 0
+
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        WIDS="$(DISPLAY="${DISPLAY}" xdotool search --name '^Batocera Control Center$' 2>/dev/null || true)"
+        if test -n "${WIDS}"; then
+            for WID in ${WIDS}; do
+                DISPLAY="${DISPLAY}" xdotool windowmap "${WID}" 2>/dev/null || true
+                DISPLAY="${DISPLAY}" xdotool windowraise "${WID}" 2>/dev/null || true
+                DISPLAY="${DISPLAY}" xdotool windowactivate "${WID}" 2>/dev/null || true
+            done
+            return 0
+        fi
+        sleep 0.05
+    done
+}
+
+controlCenterWindows() {
+    command -v xdotool >/dev/null 2>&1 || return 1
+    test -n "${DISPLAY}" || return 1
+    DISPLAY="${DISPLAY}" xdotool search --name '^Batocera Control Center$' 2>/dev/null
+}
+
+controlCenterIsActive() {
+    command -v xdotool >/dev/null 2>&1 || return 1
+    test -n "${DISPLAY}" || return 1
+    ACTIVE_TITLE="$(DISPLAY="${DISPLAY}" xdotool getactivewindow getwindowname 2>/dev/null || true)"
+    test "${ACTIVE_TITLE}" = "Batocera Control Center"
+}
+
 setupDisplayEnv() {
     if test -z "${XDG_RUNTIME_DIR}" -o ! -d "${XDG_RUNTIME_DIR}"; then
         export XDG_RUNTIME_DIR="/var/run"
@@ -91,8 +122,16 @@ if test "$?" -eq 0; then
                 ;;
         esac
         date +%s >"${LAUNCHFILE}"
-        # toogle
-        kill -10 "${PIDVALUE}"
+        if controlCenterIsActive; then
+            # toogle
+            kill -10 "${PIDVALUE}"
+        elif controlCenterWindows >/dev/null; then
+            raiseControlCenter &
+        else
+            # toogle
+            kill -10 "${PIDVALUE}"
+            raiseControlCenter &
+        fi
     fi
 else
     # switch on
@@ -111,5 +150,6 @@ else
             echo "$!" >"${PIDFILE}"
         fi
         date +%s >"${LAUNCHFILE}"
+        raiseControlCenter &
     fi
 fi

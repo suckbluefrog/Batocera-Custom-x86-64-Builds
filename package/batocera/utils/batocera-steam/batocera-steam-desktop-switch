@@ -35,7 +35,7 @@ steam_stack_alive() {
     pgrep -x gamescopestream >/dev/null 2>&1 || \
     pgrep -x gamescopectl >/dev/null 2>&1 || \
     pgrep -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1 || \
-    pgrep -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1
+    pgrep -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1
 }
 
 hotkeys_restored=0
@@ -140,7 +140,7 @@ terminate_steam_stack() {
         pkill -KILL -x steam-runtime-supervisor >/dev/null 2>&1 || true
         pkill -KILL -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1 || true
         pkill -KILL -f 'pressure-vessel' >/dev/null 2>&1 || true
-        pkill -KILL -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1 || true
+        pkill -KILL -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1 || true
 
         if command -v killall >/dev/null 2>&1; then
             killall -q -9 batocera-steam steam steamwebhelper gamescope gamescopereaper gamescopestream gamescopectl steam-runtime-supervisor >/dev/null 2>&1 || true
@@ -161,7 +161,7 @@ terminate_steam_stack() {
     pkill -TERM -x steam-runtime-supervisor >/dev/null 2>&1 || true
     pkill -TERM -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1 || true
     pkill -TERM -f 'pressure-vessel' >/dev/null 2>&1 || true
-    pkill -TERM -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1 || true
+    pkill -TERM -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1 || true
 
     if wait_for_stack_exit 40; then
         return
@@ -178,7 +178,7 @@ terminate_steam_stack() {
     pkill -KILL -x steam-runtime-supervisor >/dev/null 2>&1 || true
     pkill -KILL -f '/userdata/system/homebrew/services/PluginLoader' >/dev/null 2>&1 || true
     pkill -KILL -f 'pressure-vessel' >/dev/null 2>&1 || true
-    pkill -KILL -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1 || true
+    pkill -KILL -f '/userdata/system/steam/steam.sh|/usr/share/steam/bin_steam.sh|emulatorlauncher.*-system steam|SteamOS Mode\.steam|Steam GamepadUI\.steam|Steam Desktop\.steam' >/dev/null 2>&1 || true
 
     if command -v killall >/dev/null 2>&1; then
         killall -q -9 steam steamwebhelper gamescope gamescopereaper gamescopestream gamescopectl steam-runtime-supervisor >/dev/null 2>&1 || true

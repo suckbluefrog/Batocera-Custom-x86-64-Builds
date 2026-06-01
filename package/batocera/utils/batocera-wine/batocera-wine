@@ -115,6 +115,7 @@ resolve_lsfg_vk_dll() {
     fi
 
     candidates+=(
+        "/userdata/system/wine/lossless-config/Lossless.dll"
         "/userdata/system/wine/lossless-scaling/Lossless.dll"
         "/userdata/system/wine/.local/share/Steam/steamapps/common/Lossless Scaling/Lossless.dll"
         "/userdata/system/.local/share/Steam/steamapps/common/Lossless Scaling/Lossless.dll"
@@ -143,7 +144,7 @@ enable_lsfg_vk() {
     fi
 
     if ! dll_path="$(resolve_lsfg_vk_dll "${LSFG_VK_DLL}")"; then
-        flash_msg 5 "LSFG-VK needs Lossless.dll in /userdata/system/wine/lossless-scaling"
+        flash_msg 5 "LSFG-VK needs Lossless.dll in /userdata/system/wine/lossless-config"
         echo "LSFG-VK requested but Lossless.dll was not found"
         return 0
     fi

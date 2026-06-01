@@ -221,7 +221,7 @@ define BATOCERA_APPS_INSTALL_TARGET_CMDS
 			$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/waydroid.png; \
 	fi
 	if [ "$(BR2_PACKAGE_VIRT_MANAGER)" = "y" ]; then \
-		printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'batocera-mouse show' "trap 'batocera-mouse hide' EXIT" 'exec /usr/bin/VirtManager.sh' > $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/VirtManager.sh; \
+		printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'batocera-mouse show' "trap 'batocera-mouse hide' EXIT" 'if [ -x /usr/bin/VirtManager.sh ]; then' '    exec /usr/bin/VirtManager.sh "$$@"' 'fi' 'batocera-services start libvirt >/dev/null 2>&1 || true' 'exec /usr/bin/virt-manager --no-fork --connect "$${VIRT_MANAGER_URI:-qemu:///system}" "$$@"' > $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/VirtManager.sh; \
 		sed -i '/<\/gameList>/i\  <game>\n    <path>./VirtManager.sh</path>\n    <name>Virtual Machine Manager</name>\n    <image>./images/virt-manager.png</image>\n  </game>' \
 			$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/gamelist.xml; \
 		install -D -m 0644 \
