@@ -4,12 +4,17 @@ set -euo pipefail
 STEAM_HOME="${BATOCERA_STEAM_HOME:-/userdata/system/steam}"
 STEAM_ROOT="${BATOCERA_STEAM_ROOT:-${STEAM_HOME}}"
 STEAM_SH="${BATOCERA_STEAM_SH:-${STEAM_HOME}/steam.sh}"
+STEAM_BOOTSTRAP="${BATOCERA_STEAM_BOOTSTRAP:-/usr/share/steam/bootstrap}"
+STEAM_BIN_STUB="${BATOCERA_STEAM_BIN_STUB:-/usr/share/steam/bin_steam.sh}"
 BOOTSTRAP_LOG="${STEAM_ROOT}/logs/bootstrap_log.txt"
+STEAM_CONSOLE_LOG="${BATOCERA_STEAM_CONSOLE_LOG:-/userdata/system/.steam/steam/logs/console-linux.txt}"
 LOG_DIR="/userdata/system/logs"
 LOG="${LOG_DIR}/steam-update-preflight.log"
 PREFLIGHT_SESSION_FLAG="/var/run/batocera-steam-update-preflight"
+STEAM_FIRST_RUN_PENDING_STAMP="/userdata/system/.steam-first-run-pending"
 PREFLIGHT_FLAG_ACTIVE=0
 MOUSE_SHOWN=0
+FRESH_INSTALL_SEEDED=0
 mkdir -p "${LOG_DIR}"
 
 log() {
@@ -48,6 +53,16 @@ file_line_count() {
     fi
 }
 
+file_byte_count() {
+    local file="$1"
+
+    if [[ -f "${file}" ]]; then
+        wc -c < "${file}" 2>/dev/null || echo 0
+    else
+        echo 0
+    fi
+}
+
 line_count() {
     file_line_count "${BOOTSTRAP_LOG}"
 }
@@ -59,27 +74,79 @@ new_bootstrap_log() {
     sed -n "$((baseline + 1)),\$p" "${BOOTSTRAP_LOG}" 2>/dev/null || true
 }
 
+new_preflight_log() {
+    local baseline="${1:-0}"
+
+    [[ -f "${LOG}" ]] || return 0
+    sed -n "$((baseline + 1)),\$p" "${LOG}" 2>/dev/null || true
+}
+
+new_console_log() {
+    local baseline="${1:-0}"
+
+    [[ -f "${STEAM_CONSOLE_LOG}" ]] || return 0
+    sed -n "$((baseline + 1)),\$p" "${STEAM_CONSOLE_LOG}" 2>/dev/null || true
+}
+
 update_started() {
-    new_bootstrap_log "$1" | grep -Eqi 'Downloading update|Add pending download|Extracting package|Installing update'
+    { new_bootstrap_log "$1"; new_console_log "${2:-0}"; } | \
+        grep -Eqi 'Downloading update|Add pending download|Extracting package|Installing update'
 }
 
 update_finished() {
-    new_bootstrap_log "$1" | grep -Eq 'Update complete|Shutdown'
+    { new_bootstrap_log "$1"; new_console_log "${2:-0}"; } | \
+        grep -Eq 'Update complete|Shutdown'
 }
 
 verification_complete() {
-    new_bootstrap_log "$1" | grep -Eq 'Verification complete'
+    { new_bootstrap_log "$1"; new_console_log "${2:-0}"; } | \
+        grep -Eq 'Verification complete'
 }
 
 status_lines() {
-    new_bootstrap_log "$1" | tr -d '\r' | \
+    local bootstrap_baseline="$1"
+    local preflight_baseline="${2:-}"
+    local console_baseline="${3:-}"
+
+    new_bootstrap_log "${bootstrap_baseline}" | tr -d '\r' | \
         grep -E 'Checking for update|Downloading update|Download complete|Extracting package|Installing update|Cleaning up|Update complete|Verifying installation|Verification complete|Shutdown' || true
+
+    if [[ -n "${preflight_baseline}" ]]; then
+        new_preflight_log "${preflight_baseline}" | tr -d '\r' | \
+            grep -E 'steam\.sh\[|bin_steam\.sh\[|setup\.sh\[|Steam runtime environment|Updating Steam runtime|Downloading|Extracting|Installing|Verifying|Update complete|[[:space:]][0-9]+%| 100%|Forced use of runtime' || true
+    fi
+
+    if [[ -n "${console_baseline}" ]]; then
+        new_console_log "${console_baseline}" | tr -d '\r' | \
+            grep -E 'Checking for update|Downloading update|Download complete|Extracting package|Installing update|Cleaning up|Update complete|Verifying installation|Verification complete|Shutdown' || true
+    fi
+}
+
+preflight_update_activity_seen() {
+    local preflight_baseline="${1:-0}"
+
+    new_preflight_log "${preflight_baseline}" | tr -d '\r' | \
+        grep -Eqi 'Setting up Steam content|Updating Steam runtime environment|Downloading|Extracting|Installing|Verifying|[[:space:]][0-9]+%| 100%|Forced use of runtime'
+}
+
+console_update_activity_seen() {
+    local console_baseline="${1:-0}"
+
+    new_console_log "${console_baseline}" | tr -d '\r' | \
+        grep -Eqi 'Downloading update|Extracting package|Installing update|Verifying installation|[[:space:]][0-9]+%|Set percent complete'
+}
+
+preflight_runtime_ready_seen() {
+    local preflight_baseline="${1:-0}"
+
+    new_preflight_log "${preflight_baseline}" | tr -d '\r' | \
+        grep -Eq 'Steam runtime environment up-to-date!'
 }
 
 latest_status() {
     local line
 
-    line="$(status_lines "$1" | tail -n 1)"
+    line="$(status_lines "$@" | tail -n 1)"
     line="${line#*] }"
     printf '%s\n' "${line:-Waiting for Steam updater...}"
 }
@@ -101,9 +168,51 @@ resolve_steam_launcher() {
     return 1
 }
 
+seed_fresh_steam_install() {
+    FRESH_INSTALL_SEEDED=0
+
+    if [[ -x "${STEAM_SH}" || -x "${STEAM_ROOT}/steam.sh" || -x "${STEAM_HOME}/steam.sh" ]]; then
+        return 0
+    fi
+
+    if [[ ! -d "${STEAM_BOOTSTRAP}" ]]; then
+        log "missing Steam bootstrap at ${STEAM_BOOTSTRAP}"
+        return 1
+    fi
+
+    mkdir -p "${STEAM_HOME}"
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a "${STEAM_BOOTSTRAP}/" "${STEAM_HOME}/"
+    else
+        cp -a "${STEAM_BOOTSTRAP}/." "${STEAM_HOME}/"
+    fi
+
+    if [[ -f "${STEAM_BIN_STUB}" ]]; then
+        install -m 0755 "${STEAM_BIN_STUB}" "${STEAM_HOME}/bin_steam.sh"
+    fi
+
+    mkdir -p "$(dirname "${STEAM_FIRST_RUN_PENDING_STAMP}")"
+    : > "${STEAM_FIRST_RUN_PENDING_STAMP}"
+    FRESH_INSTALL_SEEDED=1
+    log "seeded fresh Steam bootstrap into ${STEAM_HOME}"
+}
+
 steam_stack_alive() {
     pgrep -f '/userdata/system/steam/steam\.sh|/usr/share/steam/bin_steam\.sh|steamwebhelper|steam-runtime-supervisor|steamerrorreporter' >/dev/null 2>&1 || \
     pgrep -x steam >/dev/null 2>&1
+}
+
+steam_update_child_active() {
+    pgrep -f '(^|[[:space:]/])steam([[:space:]]|$).* -child-update-ui([[:space:]]|$)' >/dev/null 2>&1
+}
+
+steam_frontend_ready() {
+    pgrep -x steamwebhelper >/dev/null 2>&1 || \
+    pgrep -f '(^|/)steamwebhelper([[:space:]]|$)' >/dev/null 2>&1
+}
+
+clear_first_run_pending() {
+    rm -f "${STEAM_FIRST_RUN_PENDING_STAMP}" 2>/dev/null || true
 }
 
 stop_steam_stack() {
@@ -182,6 +291,8 @@ prepare_user_env() {
 draw_status() {
     local baseline="$1"
     local message="$2"
+    local preflight_baseline="${3:-}"
+    local console_baseline="${4:-}"
     local status
 
     printf '\033[H\033[2J'
@@ -189,18 +300,27 @@ draw_status() {
     printf '  Steam setup/update preflight\n'
     printf '  Steam will switch to gamescope after this phase.\n\n'
     printf '  %s\n\n' "${message}"
-    status="$(latest_status "${baseline}")"
+    status="$(latest_status "${baseline}" "${preflight_baseline}" "${console_baseline}")"
     printf '  Status: %s\n\n' "${status}"
     printf '  Recent activity:\n\n'
-    status_lines "${baseline}" | tail -n 12 | sed 's/^/    /'
+    status_lines "${baseline}" "${preflight_baseline}" "${console_baseline}" | tail -n 12 | sed 's/^/    /'
     printf '\n'
 }
 
 run_in_terminal() {
     local baseline="${1:-$(line_count)}"
-    local no_update_secs="${BATOCERA_STEAM_PREFLIGHT_NO_UPDATE_SECS:-15}"
-    local max_secs="${BATOCERA_STEAM_PREFLIGHT_MAX_SECS:-1800}"
+    local no_update_secs="${BATOCERA_STEAM_PREFLIGHT_NO_UPDATE_SECS:-300}"
+    local max_secs="${BATOCERA_STEAM_PREFLIGHT_MAX_SECS:-3600}"
+    local startup_activity_grace="${BATOCERA_STEAM_PREFLIGHT_STARTUP_ACTIVITY_GRACE_SECS:-90}"
     local waited=0
+    local last_activity=0
+    local update_observed=0
+    local runtime_ready_reported=0
+    local verification_reported=0
+    local preflight_log_baseline=0
+    local console_log_baseline=0
+    local activity_bytes=0
+    local current_activity_bytes=0
     local steam_pid=""
     local steam_launcher=""
     local -a steam_args=(-steamdeck -steamos3 -gamepadui)
@@ -209,13 +329,19 @@ run_in_terminal() {
     mark_preflight_active
     stop_emulationstation_for_update
     prepare_user_env
+    seed_fresh_steam_install || true
 
     steam_launcher="$(resolve_steam_launcher || true)"
     if [[ -z "${steam_launcher}" ]]; then
         log "missing Steam launcher under ${STEAM_HOME} or ${STEAM_ROOT}"
-        draw_status "${baseline}" "Steam launcher was not found."
-        sleep 5
+        draw_status "${baseline}" "Steam is not installed yet, and the bundled bootstrap was not found."
+        sleep 8
         return 0
+    fi
+    if [[ "${FRESH_INSTALL_SEEDED}" == "1" || -f "${STEAM_FIRST_RUN_PENDING_STAMP}" ]]; then
+        no_update_secs="${BATOCERA_STEAM_PREFLIGHT_FIRST_RUN_NO_UPDATE_SECS:-900}"
+        draw_status "${baseline}" "Fresh Steam install detected. Downloading and installing Steam in this window..."
+        sleep 2
     fi
 
     if [[ -n "${BATOCERA_STEAM_PREFLIGHT_ARGS:-${BATOCERA_STEAM_EXTRA_ARGS:-}}" ]]; then
@@ -225,26 +351,45 @@ run_in_terminal() {
 
     stop_steam_stack
     baseline="$(line_count)"
+    preflight_log_baseline="$(file_line_count "${LOG}")"
+    console_log_baseline="$(file_line_count "${STEAM_CONSOLE_LOG}")"
     log "starting Steam updater preflight launcher=${steam_launcher} baseline=${baseline} args=${steam_args[*]}"
+    activity_bytes="$(file_byte_count "${LOG}")"
     set +e
     "${steam_launcher}" "${steam_args[@]}" >> "${LOG}" 2>&1 &
     steam_pid="$!"
     set -e
 
-    while (( waited < no_update_secs )); do
-        draw_status "${baseline}" "Starting Steam so the updater can run visibly..."
-        if update_started "${baseline}"; then
+    while (( waited < no_update_secs || (last_activity > 0 && (waited - last_activity) < startup_activity_grace) )); do
+        draw_status "${baseline}" "Starting Steam so the updater can run visibly..." "${preflight_log_baseline}" "${console_log_baseline}"
+        current_activity_bytes="$(file_byte_count "${LOG}")"
+        if (( current_activity_bytes > activity_bytes )); then
+            activity_bytes="${current_activity_bytes}"
+            last_activity="${waited}"
+        fi
+        if update_started "${baseline}" "${console_log_baseline}" || preflight_update_activity_seen "${preflight_log_baseline}" || console_update_activity_seen "${console_log_baseline}"; then
+            update_observed=1
             break
         fi
-        if update_finished "${baseline}" || verification_complete "${baseline}"; then
-            draw_status "${baseline}" "Steam updater check completed. Starting gamescope next..."
+        if preflight_runtime_ready_seen "${preflight_log_baseline}" && ! steam_update_child_active && [[ "${runtime_ready_reported}" != "1" ]]; then
+            runtime_ready_reported=1
+            log "Steam runtime is up-to-date; waiting for Steam client readiness before gamescope"
+            draw_status "${baseline}" "Steam runtime is up-to-date. Waiting for Steam client readiness..." "${preflight_log_baseline}" "${console_log_baseline}"
+        fi
+        if update_finished "${baseline}" "${console_log_baseline}" || verification_complete "${baseline}" "${console_log_baseline}"; then
+            update_observed=1
+            break
+        fi
+        if steam_frontend_ready && ! steam_update_child_active; then
+            draw_status "${baseline}" "Steam client is ready. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
+            clear_first_run_pending
             stop_steam_stack
-            sleep 2
+            sleep 3
             return 0
         fi
         if [[ -n "${steam_pid}" ]] && ! kill -0 "${steam_pid}" >/dev/null 2>&1 && ! steam_stack_alive; then
             log "Steam preflight process exited before update activity"
-            draw_status "${baseline}" "No Steam updater activity was detected. Starting gamescope next..."
+            draw_status "${baseline}" "No Steam updater activity was detected. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
             sleep 3
             stop_steam_stack
             return 0
@@ -253,9 +398,9 @@ run_in_terminal() {
         waited=$((waited + 1))
     done
 
-    if ! update_started "${baseline}"; then
+    if [[ "${update_observed}" != "1" ]]; then
         log "no updater activity detected after ${no_update_secs}s"
-        draw_status "${baseline}" "No Steam updater activity was detected. Starting gamescope next..."
+        draw_status "${baseline}" "No Steam updater activity was detected. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
         sleep 3
         stop_steam_stack
         return 0
@@ -263,16 +408,30 @@ run_in_terminal() {
 
     waited=0
     while (( waited < max_secs )); do
-        draw_status "${baseline}" "Steam is checking, downloading, or installing an update."
-        if update_finished "${baseline}"; then
-            draw_status "${baseline}" "Update complete. Starting gamescope next..."
+        draw_status "${baseline}" "Steam is checking, downloading, or installing an update." "${preflight_log_baseline}" "${console_log_baseline}"
+        if update_finished "${baseline}" "${console_log_baseline}"; then
+            draw_status "${baseline}" "Steam updater finished; waiting for Steam client readiness..." "${preflight_log_baseline}" "${console_log_baseline}"
+        fi
+        if verification_complete "${baseline}" "${console_log_baseline}" && ! steam_update_child_active && [[ "${verification_reported}" != "1" ]]; then
+            verification_reported=1
+            log "Steam verification completed; waiting for Steam client readiness before gamescope"
+            draw_status "${baseline}" "Steam verification completed. Waiting for Steam client readiness..." "${preflight_log_baseline}" "${console_log_baseline}"
+        fi
+        if preflight_runtime_ready_seen "${preflight_log_baseline}" && ! steam_update_child_active && [[ "${runtime_ready_reported}" != "1" ]]; then
+            runtime_ready_reported=1
+            log "Steam runtime is up-to-date; waiting for Steam client readiness before gamescope"
+            draw_status "${baseline}" "Steam runtime is up-to-date. Waiting for Steam client readiness..." "${preflight_log_baseline}" "${console_log_baseline}"
+        fi
+        if steam_frontend_ready && ! steam_update_child_active; then
+            draw_status "${baseline}" "Steam client is ready. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
+            clear_first_run_pending
+            sleep 3
             stop_steam_stack
-            sleep 2
             return 0
         fi
         if [[ -n "${steam_pid}" ]] && ! kill -0 "${steam_pid}" >/dev/null 2>&1 && ! steam_stack_alive; then
             log "Steam preflight process exited before an update completion marker"
-            draw_status "${baseline}" "Steam exited before a completion marker. Starting gamescope next..."
+            draw_status "${baseline}" "Steam exited before a completion marker. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
             sleep 3
             stop_steam_stack
             return 0

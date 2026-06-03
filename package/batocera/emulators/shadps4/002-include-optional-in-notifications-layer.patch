@@ -1,0 +1,12 @@
+diff --git a/src/imgui/notifications_layer.cpp b/src/imgui/notifications_layer.cpp
+index 7efa0ef..6303bcd 100644
+--- a/src/imgui/notifications_layer.cpp
++++ b/src/imgui/notifications_layer.cpp
+@@ -3,6 +3,7 @@
+ 
+ #include <cmrc/cmrc.hpp>
+ #include <imgui.h>
++#include <optional>
+ #include <queue>
+ 
+ #include "imgui/imgui_std.h"

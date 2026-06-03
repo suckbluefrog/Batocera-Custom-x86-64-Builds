@@ -18,12 +18,14 @@ mkdir -p "${BATOCERA_BINARIES_DIR}/boot/boot/syslinux" || exit 1
 mkdir -p "${BATOCERA_BINARIES_DIR}/boot/EFI/BOOT"      || exit 1
 mkdir -p "${BATOCERA_BINARIES_DIR}/boot/EFI/batocera"  || exit 1
 mkdir -p "${BATOCERA_BINARIES_DIR}/boot/grub"          || exit 1
+rm -rf "${TARGET_DIR}/system"                          || exit 1
+mkdir -p "${TARGET_DIR}/system"                        || exit 1
 
-# Batocera kernel, initrd, and root
-cp "${BINARIES_DIR}/bzImage"         "${BATOCERA_BINARIES_DIR}/boot/boot/linux"           || exit 1
-cp "${BINARIES_DIR}/initrd.gz"       "${BATOCERA_BINARIES_DIR}/boot/boot/"                || exit 1
-cp "${BINARIES_DIR}/rootfs.squashfs" "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.update" || exit 1
-cp "${BINARIES_DIR}/rufomaculata"    "${BATOCERA_BINARIES_DIR}/boot/boot/rufomaculata.update" || exit 1
+# Batocera kernel/initrd stay on the Windows-readable FAT boot partition.
+# The single root squashfs lives on the ext4 SYSTEM partition.
+cp "${BINARIES_DIR}/bzImage"         "${BATOCERA_BINARIES_DIR}/boot/boot/linux" || exit 1
+cp "${BINARIES_DIR}/initrd.gz"       "${BATOCERA_BINARIES_DIR}/boot/boot/"      || exit 1
+cp "${BINARIES_DIR}/rootfs.squashfs" "${TARGET_DIR}/system/batocera"            || exit 1
 
 # Legacy bootloader (vestigial)
 cp "${BOARD_DIR}/boot/syslinux.cfg"       "${BATOCERA_BINARIES_DIR}/boot/boot/"          || exit 1

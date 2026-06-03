@@ -13,8 +13,16 @@ PATH=$PATH:/sbin
 
 createOverlayIfNeeded() {
     COISIZE=$1
+    COIFREE=$(df -m /boot | tail -1 | awk '{print $4}')
 
     test -e "${OVERLAYFILE}" && return 0
+
+    if test "${COISIZE}" -gt "${COIFREE}"
+    then
+	echo "Not enough free space on /boot for a ${COISIZE} MB overlay file."
+	echo "Free space on /boot: ${COIFREE} MB."
+	return 1
+    fi
 
     # X MB as ext4
     echo "Creating an overlay file on the /boot filesystem..."

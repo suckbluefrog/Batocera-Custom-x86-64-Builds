@@ -3963,6 +3963,18 @@ switch:
       ryujinx: { requireAnyOf: [BR2_PACKAGE_RYUJINX], incompatible_extensions: [qlaunch] }
     yuzu:
       yuzu: { requireAnyOf: [BR2_PACKAGE_YUZU] }
+  comment_en: |
+    Firmware files go in /userdata/bios/switch/firmware.
+    Loose .nca files are supported directly in that folder. Registered content dumps using .nca/00 directories are also supported directly in that folder. Dumps that already contain registered firmware are also supported in one of these layouts:
+    /userdata/bios/switch/firmware/registered
+    /userdata/bios/switch/firmware/Contents/registered
+    /userdata/bios/switch/firmware/system/Contents/registered
+
+    prod.keys goes in /userdata/bios/switch/keys/prod.keys or /userdata/bios/switch/prod.keys.
+    title.keys goes in /userdata/bios/switch/keys/title.keys or /userdata/bios/switch/title.keys.
+
+    Eden reads the firmware folder directly and copies it into its NAND layout.
+    Yuzu and Ryujinx also use this firmware folder and link or copy it into their expected NAND/BIS layouts when launched.
 
 quake2:
   name: Quake II
@@ -4659,6 +4671,19 @@ xbox360:
     The Xenia emulators use Vulkan by default, while the WINE builds also offer an experimental D3D12 -> Vulkan (VKD3D) option.
 
     Note: An internet connection is required to create the initial WINE bottle.
+
+    See the Xbox 360 section of the Batocera wiki for current emulator notes and supported formats.
+
+    Xbox Live Arcade content is usually a content file inside a directory instead of a normal disc image.
+    To launch XBLA content from EmulationStation, create a .xbox360 launcher file in the same folder as the XBLA file.
+    Put the XBLA file name inside that .xbox360 file.
+
+    Example:
+    /userdata/roms/xbox360/My XBLA Game/58410A1B
+    /userdata/roms/xbox360/My XBLA Game/My XBLA Game.xbox360
+
+    Contents of My XBLA Game.xbox360:
+    58410A1B
   comment_fr: |
     Actuellement, les émulateurs Xenia fonctionnent sous WINE et sont limités aux systèmes compatibles uniquement avec Vulkan 1.3+.
     Les émulateurs Xenia utiliseront Vulkan natif par défaut, mais une option expérimentale D3D12 -> Vulkan (VKD3D) est fournie.
@@ -4687,7 +4712,7 @@ eka2l1:
   manufacturer: Nokia
   release: 2003
   hardware: portable
-  path: eka2l1
+  path: n-gage
   extensions: [n-gage, sisx, sis, zip]
   platform: ngage
   theme: ngage

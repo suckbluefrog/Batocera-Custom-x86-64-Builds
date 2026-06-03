@@ -103,9 +103,9 @@ rm -f "${TARGET_DIR}/etc/init.d/S40bluetoothd" || exit 1
 rm -rf "${TARGET_DIR}/boot/grub" || exit 1
 
 # reorder the boot scripts for the network boot
-if test -e "${TARGET_DIR}/etc/init.d/S10udevd"
+if test -e "${TARGET_DIR}/etc/init.d/S10udev"
 then
-    mv "${TARGET_DIR}/etc/init.d/S10udevd"   "${TARGET_DIR}/etc/init.d/S05udevd"   || exit 1 # move to make number spaces
+    mv "${TARGET_DIR}/etc/init.d/S10udev"    "${TARGET_DIR}/etc/init.d/S05udev"    || exit 1 # move to make number spaces
 fi
 if test -e "${TARGET_DIR}/etc/init.d/S30dbus"
 then
@@ -175,68 +175,100 @@ if ! [[ -z "${SYSTEM_GETTY_PORT}" ]]; then
         ${TARGET_DIR}/etc/inittab
 fi
 
-# split target dir in 2 cause of the 4GB image size limit
-# in initrd, the 2 targets will be mounted as one
+# Legacy FAT-only image layouts split target into two squashfs files to avoid
+# FAT32's 4GB per-file limit. The x86-64-v3 zen3 layout stores one squashfs on
+# the ext4 SYSTEM partition, so it must not create target2 or rufomaculata.
 TARGET2_DIR=${TARGET_DIR}2
-echo "Generating target2 (${TARGET2_DIR})..."
-mkdir -p "${TARGET2_DIR}" || exit 1
-# Keep each squashfs below FAT32's per-file limit by moving heavy, static assets
-# into the secondary image mounted by initramfs.
-for XDIR in \
-    lib/firmware \
-    lib \
-    lib32 \
-    usr/lib/libretro \
-    usr/share/batocera/apps \
-    usr/share/lutris \
-    usr/share/heroic
-do
-    echo -n "${XDIR}..."
-    if test -e "${TARGET_DIR}/${XDIR}"
-    then
-	mkdir -p "${TARGET2_DIR}/${XDIR}" || exit 1
-	rsync -a "${TARGET_DIR}/${XDIR}/" "${TARGET2_DIR}/${XDIR}/" || exit 1
-	rm -rf "${TARGET_DIR}/${XDIR}/" || exit 1
-	echo "OK."
-    elif test -d "${TARGET2_DIR}/${XDIR}"
-    then
-    echo "Already in target2. Continuing..."
-    else
-	echo "${TARGET_DIR}/${XDIR} not found."
-	exit 1
-    fi
-done
+BATOCERA_IMAGES_TARGETS=$(grep -E "^BR2_TARGET_BATOCERA_IMAGES[ ]*=[ ]*\".*\"[ ]*$" "${BR2_CONFIG}" | sed -e s+"^BR2_TARGET_BATOCERA_IMAGES[ ]*=[ ]*\"\(.*\)\"[ ]*$"+"\1"+)
+SYSTEM_PARTITION_LAYOUT=n
+if echo " ${BATOCERA_IMAGES_TARGETS} " | grep -q " x86-64-v3 "
+then
+    SYSTEM_PARTITION_LAYOUT=y
+fi
+if test "${BATOCERA_TARGET}" = "ZEN3"
+then
+    SYSTEM_PARTITION_LAYOUT=y
+fi
 
-for XDIR in \
-    usr/share/eden \
-    usr/share/yuzu \
-    usr/share/sunshine \
-    usr/share/xenia-edge \
-    usr/share/n64recomp-launcher \
-    usr/share/shadps4-pkg-extractor \
-    usr/share/qemu \
-    usr/share/soundfonts \
-    usr/lib/unleashedrecomp \
-    usr/ryujinx
-do
-    echo -n "${XDIR}..."
-    if test -e "${TARGET_DIR}/${XDIR}"
-    then
-	mkdir -p "${TARGET2_DIR}/${XDIR}" || exit 1
-	rsync -a "${TARGET_DIR}/${XDIR}/" "${TARGET2_DIR}/${XDIR}/" || exit 1
-	rm -rf "${TARGET_DIR}/${XDIR}/" || exit 1
-	echo "OK."
-    elif test -d "${TARGET2_DIR}/${XDIR}"
-    then
-	echo "Already in target2. Continuing..."
-    else
-	echo "not present, skipping."
-    fi
-done
+if test "${SYSTEM_PARTITION_LAYOUT}" = "y"
+then
+    echo "Skipping target2 split for ${BATOCERA_TARGET}/${BATOCERA_IMAGES_TARGETS} SYSTEM partition image layout."
+    rm -rf "${TARGET2_DIR}" || exit 1
+    rm -rf "${TARGET_DIR}/system" || exit 1
+    rm -f "${BINARIES_DIR}/rufomaculata" || exit 1
+else
+    echo "Generating target2 (${TARGET2_DIR})..."
+    mkdir -p "${TARGET2_DIR}" || exit 1
+    # Keep each squashfs below FAT32's per-file limit by moving heavy, static assets
+    # into the secondary image mounted by initramfs.
+    for XDIR in \
+	lib \
+	lib32 \
+	usr/lib/libretro \
+	usr/share/batocera/apps \
+	usr/share/lutris \
+	usr/share/heroic
+    do
+	echo -n "${XDIR}..."
+	if test -e "${TARGET_DIR}/${XDIR}"
+	then
+	    rm -rf "${TARGET2_DIR:?}/${XDIR}" || exit 1
+	    mkdir -p "${TARGET2_DIR}/${XDIR}" || exit 1
+	    rsync -a "${TARGET_DIR}/${XDIR}/" "${TARGET2_DIR}/${XDIR}/" || exit 1
+	    rm -rf "${TARGET_DIR}/${XDIR}/" || exit 1
+	    echo "OK."
+	elif test -d "${TARGET2_DIR}/${XDIR}"
+	then
+	    echo "Already in target2. Continuing..."
+	else
+	    echo "${TARGET_DIR}/${XDIR} not found."
+	    exit 1
+	fi
+    done
 
-# generate the image 2
-echo "Generating ${BINARIES_DIR}/rufomaculata..."
-"${HOST_DIR}/bin/mksquashfs" "${TARGET2_DIR}" "${BINARIES_DIR}/rufomaculata" -noappend -b 128K -comp zstd || exit 1
+    for XDIR in \
+	usr/share/eden \
+	usr/share/yuzu \
+	usr/share/sunshine \
+	usr/share/xenia-edge \
+	usr/share/n64recomp-launcher \
+	usr/share/shadps4-pkg-extractor \
+	usr/share/qemu \
+	usr/share/soundfonts \
+	usr/lib/unleashedrecomp \
+	usr/ryujinx
+    do
+	echo -n "${XDIR}..."
+	if test -e "${TARGET_DIR}/${XDIR}"
+	then
+	    rm -rf "${TARGET2_DIR:?}/${XDIR}" || exit 1
+	    mkdir -p "${TARGET2_DIR}/${XDIR}" || exit 1
+	    rsync -a "${TARGET_DIR}/${XDIR}/" "${TARGET2_DIR}/${XDIR}/" || exit 1
+	    rm -rf "${TARGET_DIR}/${XDIR}/" || exit 1
+	    echo "OK."
+	elif test -d "${TARGET2_DIR}/${XDIR}"
+	then
+	    echo "Already in target2. Continuing..."
+	else
+	    echo "not present, skipping."
+	fi
+    done
+
+    # xone requests the dongle firmware using a dynamic USB-id filename, so it does
+    # not appear in modinfo firmware metadata. Keep it with the split lib tree.
+    if find "${TARGET2_DIR}/lib/modules" -type f -name "xone_dongle.ko" -print -quit 2>/dev/null | grep -q .
+    then
+	mkdir -p "${TARGET2_DIR}/lib/firmware" || exit 1
+	cp "${BR2_EXTERNAL_BATOCERA_PATH}/package/batocera/controllers/pads/xone/FW_ACC_00U.bin" \
+	    "${TARGET2_DIR}/lib/firmware/xow_dongle.bin" || exit 1
+	ln -sf "/lib/firmware/xow_dongle.bin" \
+	    "${TARGET2_DIR}/lib/firmware/xow_dongle_045e_02e6.bin" || exit 1
+    fi
+
+    # generate the image 2
+    echo "Generating ${BINARIES_DIR}/rufomaculata..."
+    "${HOST_DIR}/bin/mksquashfs" "${TARGET2_DIR}" "${BINARIES_DIR}/rufomaculata" -noappend -b 128K -comp zstd || exit 1
+fi
 
 # With PARALLEL_BUILD it is difficult to control which of two
 # conflicting files from different packages will be the one ending up

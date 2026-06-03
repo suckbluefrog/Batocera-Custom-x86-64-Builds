@@ -15,6 +15,8 @@ MAKE_LLEVEL    ?= $(NPROC)
 BATCH_MODE     ?=
 PARALLEL_BUILD ?=
 DIRECT_BUILD   ?=
+PACKAGE_LINK_TARGET := $(shell readlink $(PROJECT_DIR)/package 2>/dev/null || true)
+PACKAGE_LINK_MOUNT  := $(if $(filter /%,$(PACKAGE_LINK_TARGET)),-v $(PACKAGE_LINK_TARGET):$(PACKAGE_LINK_TARGET):ro,)
 
 -include $(LOCAL_MK)
 
@@ -42,7 +44,7 @@ UC = $(shell echo '$1' | tr '[:lower:]' '[:upper:]')
 ifdef DIRECT_BUILD
 
 define MAKE_BUILDROOT
-	@SANITIZED_PATH="$$(printf '%s' "$$PATH" | tr ':' '\n' | awk 'NF && $$0 !~ /[[:space:]]/ { if (!seen[$$0]++) printf("%s%s", sep, $$0); sep=":" }')"; \
+	SANITIZED_PATH="$$(printf '%s' "$$PATH" | tr ':' '\n' | awk 'NF && $$0 !~ /[[:space:]]/ { if (!seen[$$0]++) printf("%s%s", sep, $$0); sep=":" }')"; \
 	if [ -n "$$SANITIZED_PATH" ]; then export PATH="$$SANITIZED_PATH"; fi; \
 	make $(MAKE_OPTS) O=$(OUTPUT_DIR)/$* \
 		BR2_EXTERNAL=$(PROJECT_DIR) \
@@ -65,6 +67,7 @@ define RUN_DOCKER
 	$(DOCKER) run -t --init --rm \
 		-e HOME \
 		-v $(PROJECT_DIR):/build \
+		$(PACKAGE_LINK_MOUNT) \
 		-v $(DL_DIR):/build/buildroot/dl \
 		-v $(OUTPUT_DIR)/$*:/$* \
 		-v $(CCACHE_DIR):$(HOME)/.buildroot-ccache \
@@ -83,6 +86,8 @@ define MAKE_BUILDROOT
 endef
 
 endif # DIRECT_BUILD
+
+BUILDROOT_PROGRESS_SCRIPT = $(if $(DIRECT_BUILD),$(PROJECT_DIR)/scripts/buildroot-package-progress.py,/build/scripts/buildroot-package-progress.py)
 
 vars:
 	@echo "Supported targets:  $(TARGETS)"
@@ -142,7 +147,17 @@ dl-dir:
 	@$(MAKE_BUILDROOT) batocera-$*_defconfig
 
 %-build: batocera-docker-image %-config ccache-dir dl-dir
-	@$(MAKE_BUILDROOT) $(CMD)
+	@mkdir -p $(OUTPUT_DIR)/$*/.br-progress
+	@$(MAKE_BUILDROOT) show-build-order > $(OUTPUT_DIR)/$*/.br-progress/build-order.txt
+	@$(MAKE_BUILDROOT) show-info > $(OUTPUT_DIR)/$*/.br-progress/show-info.json
+	@$(PROJECT_DIR)/scripts/buildroot-package-progress.py setup \
+		$(OUTPUT_DIR)/$*/.br-progress/state.json \
+		$(OUTPUT_DIR)/$* \
+		$(OUTPUT_DIR)/$*/.br-progress/build-order.txt \
+		$(OUTPUT_DIR)/$*/.br-progress/show-info.json
+	@$(MAKE_BUILDROOT) BR2_INSTRUMENTATION_SCRIPTS="$(BUILDROOT_PROGRESS_SCRIPT)" \
+		BR2_PACKAGE_PROGRESS_SCRIPT="$(BUILDROOT_PROGRESS_SCRIPT)" \
+		BR2_PACKAGE_PROGRESS_STATE="$(if $(DIRECT_BUILD),$(OUTPUT_DIR)/$*/.br-progress/state.json,/$*/.br-progress/state.json)" $(CMD)
 
 %-source: batocera-docker-image %-config ccache-dir dl-dir
 	@$(MAKE_BUILDROOT) source
@@ -247,23 +262,51 @@ endif
 
 %-flash: %-supported
 	$(if $(DEV),,$(error "DEV not specified!"))
-	@gzip -dc $(OUTPUT_DIR)/$*/images/batocera/images/$*/batocera-*.img.gz | sudo dd of=$(DEV) bs=5M status=progress
+	@set -e; \
+	IMAGE_DIR="$(OUTPUT_DIR)/$*/images/batocera/images/$*"; \
+	if [ ! -d "$$IMAGE_DIR" ]; then \
+		IMAGE_DIR=$$(find "$(OUTPUT_DIR)/$*/images/batocera/images" -mindepth 1 -maxdepth 1 -type d | sort | head -n1); \
+	fi; \
+	test -n "$$IMAGE_DIR" -a -d "$$IMAGE_DIR" || { echo "No image directory found for $*"; exit 1; }; \
+	gzip -dc "$$IMAGE_DIR"/batocera-*.img.gz | sudo dd of=$(DEV) bs=5M status=progress
 	@sync
 
 %-upgrade: %-supported
 	$(if $(DEV),,$(error "DEV not specified!"))
-	-@sudo umount /tmp/mount
-	-@mkdir -p /tmp/mount
-	@sudo mount $(DEV)1 /tmp/mount
-	@lsblk
-	@ls /tmp/mount
-	@echo "continue BATOCERA upgrade $(DEV)1 with $* build? [y/N]"
-	@read line; if [ "$$line" != "y" ]; then echo aborting; exit 1 ; fi
-	-@sudo rm /tmp/mount/boot/batocera
-	@sudo tar xvf $(OUTPUT_DIR)/$*/images/batocera/images/$*/boot.tar.xz -C /tmp/mount --no-same-owner --exclude=batocera-boot.conf --exclude=config.txt
-	@sudo umount /tmp/mount
-	-@rmdir /tmp/mount
-	@sudo fatlabel $(DEV)1 BATOCERA
+	@set -e; \
+	IMAGE_DIR="$(OUTPUT_DIR)/$*/images/batocera/images/$*"; \
+	if [ ! -d "$$IMAGE_DIR" ]; then \
+		IMAGE_DIR=$$(find "$(OUTPUT_DIR)/$*/images/batocera/images" -mindepth 1 -maxdepth 1 -type d | sort | head -n1); \
+	fi; \
+	test -n "$$IMAGE_DIR" -a -d "$$IMAGE_DIR" || { echo "No image directory found for $*"; exit 1; }; \
+	if echo "$(DEV)" | grep -qE '[0-9]$$'; then BOOT_PART="$(DEV)p1"; SHARE_PART="$(DEV)p3"; else BOOT_PART="$(DEV)1"; SHARE_PART="$(DEV)3"; fi; \
+	if [ -f "$$IMAGE_DIR/update.tar" ]; then \
+		test -f "$$IMAGE_DIR/update.tar.md5" || { echo "Missing $$IMAGE_DIR/update.tar.md5"; exit 1; }; \
+		sudo umount /tmp/mount 2>/dev/null || true; \
+		mkdir -p /tmp/mount; \
+		sudo mount "$$SHARE_PART" /tmp/mount; \
+		lsblk; \
+		ls /tmp/mount; \
+		echo "continue BATOCERA local update staging to $$SHARE_PART with $* build? [y/N]"; \
+		read line; if [ "$$line" != "y" ]; then sudo umount /tmp/mount; echo aborting; exit 1; fi; \
+		sudo mkdir -p /tmp/mount/update; \
+		sudo cp "$$IMAGE_DIR/update.tar" "$$IMAGE_DIR/update.tar.md5" /tmp/mount/update/; \
+		sync; \
+		sudo umount /tmp/mount; \
+	else \
+		sudo umount /tmp/mount 2>/dev/null || true; \
+		mkdir -p /tmp/mount; \
+		sudo mount "$$BOOT_PART" /tmp/mount; \
+		lsblk; \
+		ls /tmp/mount; \
+		echo "continue BATOCERA legacy boot upgrade $$BOOT_PART with $* build? [y/N]"; \
+		read line; if [ "$$line" != "y" ]; then sudo umount /tmp/mount; echo aborting; exit 1; fi; \
+		sudo rm -f /tmp/mount/boot/batocera; \
+		sudo tar xvf "$$IMAGE_DIR/boot.tar.xz" -C /tmp/mount --no-same-owner --exclude=batocera-boot.conf --exclude=config.txt; \
+		sudo umount /tmp/mount; \
+		sudo fatlabel "$$BOOT_PART" BATOCERA; \
+	fi; \
+	rmdir /tmp/mount 2>/dev/null || true
 
 %-toolchain: %-supported
 	$(if $(shell which btrfs 2>/dev/null),, $(error "btrfs not found!"))

@@ -4,18 +4,21 @@
 #
 ################################################################################
 
-EDEN_VERSION = refs/tags/v0.2.0
+EDEN_VERSION = refs/tags/v0.2.1
 EDEN_LICENSE = GPL-3.0-or-later
 EDEN_LICENSE_FILES = LICENSES/GPL-3.0-or-later.txt
 EDEN_SITE = https://git.eden-emu.dev/eden-emu/eden.git
 EDEN_SITE_METHOD = git
 EDEN_SUPPORTS_IN_SOURCE_BUILD = NO
 
-EDEN_DEPENDENCIES = host-pkgconf boost enet ffmpeg fmt json-for-modern-cpp libopenssl \
+EDEN_DEPENDENCIES = host-pkgconf host-clang boost enet ffmpeg fmt json-for-modern-cpp libopenssl \
 	opus qt6base qt6charts sdl2 vulkan-headers vulkan-loader vulkan-utility-libraries \
 	zlib zstd
 
 EDEN_CONF_OPTS += -DCMAKE_BUILD_TYPE=Release
+EDEN_CONF_OPTS += -DCMAKE_C_COMPILER=$(HOST_DIR)/bin/clang
+EDEN_CONF_OPTS += -DCMAKE_CXX_COMPILER=$(HOST_DIR)/bin/clang++
+EDEN_CONF_OPTS += -DCMAKE_EXE_LINKER_FLAGS="-lm -lstdc++"
 EDEN_CONF_OPTS += -DBUILD_TESTING=OFF
 EDEN_CONF_OPTS += -DYUZU_TESTS=OFF
 EDEN_CONF_OPTS += -DENABLE_QT=ON

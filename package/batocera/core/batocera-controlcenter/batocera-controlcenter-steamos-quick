@@ -134,7 +134,7 @@ launch_steamos() {
             BATOCERA_STEAM_MODE=steamos \
             BATOCERA_STEAM_GAMEPADUI=1 \
             BATOCERA_STEAM_USE_GAMESCOPE=1 \
-            BATOCERA_STEAM_VISIBLE_UPDATE_PREFLIGHT=0 \
+            BATOCERA_STEAM_VISIBLE_UPDATE_PREFLIGHT=1 \
             BATOCERA_STEAM_UPDATE_TERMINAL=0 \
             /usr/bin/steam-direct-session.sh
         return

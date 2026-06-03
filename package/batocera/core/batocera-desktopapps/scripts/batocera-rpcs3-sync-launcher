@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ -z "${DISPLAY:-}" ]; then
+    export DISPLAY="$(getLocalXDisplay 2>/dev/null || printf ':0.0')"
+fi
+
+log_dir="/userdata/system/logs"
+log_file="${log_dir}/batocera-rpcs3-sync.log"
+mkdir -p "${log_dir}"
+
+batocera-mouse show
+trap 'batocera-mouse hide' EXIT
+
+exec xterm -fs 14 -fg white -bg black -fa "Monospace" -en UTF-8 -sb -rightbar \
+    -T "Add PSN Games to EmulationStation" \
+    -e /bin/bash -lc '
+        set -o pipefail
+        log_file="$1"
+        mkdir -p "$(dirname "${log_file}")"
+        printf "\n===== batocera-rpcs3-sync %s =====\n" "$(date -Is)" | tee -a "${log_file}"
+        /usr/bin/batocera-rpcs3-sync 2>&1 | tee -a "${log_file}"
+        status=${PIPESTATUS[0]}
+        printf "\nFinished with status %s. Log: %s\n" "${status}" "${log_file}" | tee -a "${log_file}"
+        printf "Press Enter to close."
+        read -r _
+        exit "${status}"
+    ' bash "${log_file}"

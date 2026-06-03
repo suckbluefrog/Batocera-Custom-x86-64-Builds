@@ -119,6 +119,7 @@ endef
 endif
 
 define HOST_NODEJS_SRC_INSTALL_CMDS
+	rm -rf $(HOST_DIR)/lib/node_modules/npm
 	$(HOST_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
 		$(MAKE) -C $(@D) install \
 		$(HOST_NODEJS_SRC_MAKE_OPTS)
@@ -250,6 +251,7 @@ NODEJS_SRC_BIN_ARCH_EXCLUDE = /usr/lib/node_modules/
 endif
 
 define NODEJS_SRC_INSTALL_STAGING_CMDS
+	rm -rf $(STAGING_DIR)/usr/lib/node_modules/npm
 	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
 		$(MAKE) -C $(@D) install \
 		DESTDIR=$(STAGING_DIR) \
@@ -257,6 +259,7 @@ define NODEJS_SRC_INSTALL_STAGING_CMDS
 endef
 
 define NODEJS_SRC_INSTALL_TARGET_CMDS
+	rm -rf $(TARGET_DIR)/usr/lib/node_modules/npm
 	$(TARGET_MAKE_ENV) PYTHON=$(HOST_DIR)/bin/python3 \
 		$(MAKE) -C $(@D) install \
 		DESTDIR=$(TARGET_DIR) \

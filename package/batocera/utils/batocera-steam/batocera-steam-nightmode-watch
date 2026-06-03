@@ -123,6 +123,21 @@ apply_look() {
     log "applied ${label} look on ${display}"
 }
 
+clear_look() {
+    local display
+
+    display="$(resolve_gamescope_display)" || return 1
+    XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
+        GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+        gamescopectl set_look >/dev/null 2>&1 || true
+    XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
+        GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+        gamescopectl composite_force 0 >/dev/null 2>&1 || true
+
+    rm -f "${STATE_FILE}" 2>/dev/null || true
+    log "cleared night look on ${display}"
+}
+
 wait_for_gamescope() {
     local display
     local i
@@ -163,13 +178,23 @@ main() {
         if night_mode_enabled; then
             desired="night"
         else
-            desired="identity"
+            desired="off"
         fi
 
         current="$(cat "${STATE_FILE}" 2>/dev/null || true)"
-        if [[ "${current}" != "${desired}" ]]; then
-            apply_look "${desired}" || true
-        fi
+        case "${desired}:${current}" in
+            night:night|off:"")
+                ;;
+            night:*)
+                apply_look "night" || true
+                ;;
+            off:night)
+                clear_look || true
+                ;;
+            off:*)
+                rm -f "${STATE_FILE}" 2>/dev/null || true
+                ;;
+        esac
 
         sleep "${INTERVAL}"
     done

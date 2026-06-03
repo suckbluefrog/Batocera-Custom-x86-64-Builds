@@ -1,222 +1,169 @@
 #!/bin/bash
 
-do_clean() {
-    test -n "${GETPERPID}" && kill -9 "${GETPERPID}"
-    rm -f "/userdata/system/upgrade/upgrade_message.txt"
-    rm -f "/userdata/system/upgrade/boot.tar.xz"
-    rm -f "/userdata/system/upgrade/boot.tar.xz.md5"
-    if test $# -eq 1; then
-        [ "$1" = "0" ] && echo "Finally syncing of disk ...>>>100"
-        [ "$1" = "1" ] && echo "removed downloaded files, sync disk now"
-    fi
-}
-trap do_clean EXIT
+UPDATE_DIR="/userdata/update"
+UPDATE_TAR="${UPDATE_DIR}/update.tar"
+UPDATE_MD5="${UPDATE_DIR}/update.tar.md5"
+LOCAL_UPDATE_TAR="./update.tar"
+LOCAL_UPDATE_MD5="./update.tar.md5"
 
-# Create upgrade messages for the badge (TERMINAL=0) or plain text output
-do_upgmsg() {
-    if [ $TERMINAL -eq 0 ]; then
-        echo "$1" > /userdata/system/upgrade/upgrade_message.txt
-        [ -n "$2" ] && sleep $2
-    else
-        echo "$1"
-    fi
+print_usage() {
+    cat <<EOF
+Usage:
+  batocera-upgrade
+  batocera-upgrade --check
+  batocera-upgrade /path/to/update.tar [/path/to/update.tar.md5]
+
+Updates are local-only. Place update.tar and update.tar.md5 in /userdata/update
+or pass a local update.tar path to stage it there. The update is applied on the
+next boot after the initramfs validates the MD5 checksum again.
+EOF
 }
 
-do_badgeines() {
-    TARVAL=$1
-    COUNT=0
-    while true
-    do
-        if [ -f "/userdata/system/upgrade/upgrade_message.txt" ]; then
-            [ $COUNT -gt 100 ] && COUNT=0
-            MSG_STRING="$(cat /userdata/system/upgrade/upgrade_message.txt)"
-            echo "$MSG_STRING>>>$COUNT"
-            COUNT=$((COUNT+5))
-            sleep 0.1
-        else
-            CURVAL=$(stat --printf="%s" "/userdata/system/upgrade/boot.tar.xz")
-            CURVAL=$((CURVAL / 1024 / 1024))
-            PER=$((CURVAL * 100 / TARVAL))
-            echo "$CURVAL of $TARVAL MB downloaded ... >>> ${PER}%"
-            sleep 5
-        fi
-    done
+first_md5_field() {
+    awk '{print $1; exit}' "${1}"
 }
 
-# ---- MAIN ----
-echo "Starting the upgrade..."
+verify_update() {
+    local expected_md5
+    local actual_md5
 
-# --- Prepare update URLs ---
+    if ! test -f "${UPDATE_TAR}"
+    then
+	echo "No local update found at ${UPDATE_TAR}."
+	return 12
+    fi
 
-updateurl="https://updates.batocera.org"
+    if ! test -f "${UPDATE_MD5}"
+    then
+	echo "Missing checksum file: ${UPDATE_MD5}."
+	return 2
+    fi
 
-board=$(cat /boot/boot/batocera.board)
-oldboard="$board"
-test "${board}" = "rpi4" && board=rpi464 # "temporarly" download on rpi464 for rpi4
+    expected_md5="$(first_md5_field "${UPDATE_MD5}")"
+    actual_md5="$(md5sum "${UPDATE_TAR}" | awk '{print $1}')"
 
-updatetype="$(/usr/bin/batocera-settings-get updates.type)"
-settingsupdateurl="$(/usr/bin/batocera-settings-get updates.url)"
+    if test -z "${expected_md5}" || test "${expected_md5}" != "${actual_md5}"
+    then
+	echo "MD5 mismatch for ${UPDATE_TAR}."
+	echo "Expected: ${expected_md5:-<empty>}"
+	echo "Actual:   ${actual_md5}"
+	return 2
+    fi
 
-# customizable upgrade url website
-test -n "${settingsupdateurl}" && updateurl="${settingsupdateurl}"
+    echo "Local update is staged and MD5 verified:"
+    echo "  ${UPDATE_TAR}"
+    echo "  ${UPDATE_MD5}"
+    return 0
+}
 
-# force a default value in case the value is removed or miswritten
-test "${updatetype}" != "stable" -a "${updatetype}" != "unstable" -a "${updatetype}" != "butterfly" && updatetype="stable"
+stage_update() {
+    local source_tar="${1}"
+    local source_md5="${2}"
+    local stage_action="${3:-copy}"
 
-# custom the url directory
-DWD_HTTP_DIR="${updateurl}/${board}/${updatetype}/last"
+    if ! test -f "${source_tar}"
+    then
+	echo "Update tar not found: ${source_tar}" >&2
+	return 2
+    fi
 
-# custom CLI url
-test $# -eq 1 && DWD_HTTP_DIR="$1"
+    if test -z "${source_md5}"
+    then
+	if test -f "${source_tar}.md5"
+	then
+	    source_md5="${source_tar}.md5"
+	elif test -f "$(dirname "${source_tar}")/update.tar.md5"
+	then
+	    source_md5="$(dirname "${source_tar}")/update.tar.md5"
+	fi
+    fi
 
-# started from Terminal/SSH (TERMINAL=1) or from ES (TERMINAL=0)
-[ -t 1 ] && TERMINAL=1 || TERMINAL=0
+    if ! test -f "${source_md5}"
+    then
+	echo "Update checksum not found. Expected ${source_tar}.md5 or provide it as the second argument." >&2
+	return 2
+    fi
 
-# --- Prepare file downloads ---
-
-# Check if "manual" argument is provided
-if [ "$1" == "manual" ]; then
-    # Check if the local file exists
-    if [ -f "/userdata/system/upgrade/boot.tar.xz" ]; then
-        size=$(du -m "/userdata/system/upgrade/boot.tar.xz" | awk '{print $1}')
-        echo "Using local file: /userdata/system/upgrade/boot.tar.xz (${size}MB)"
+    mkdir -p "${UPDATE_DIR}" || return 1
+    if test "${stage_action}" = "move"
+    then
+	mv "${source_tar}" "${UPDATE_TAR}" || return 1
+	mv "${source_md5}" "${UPDATE_MD5}" || return 1
     else
-        echo "Error: Local file /userdata/system/upgrade/boot.tar.xz not found."
-        exit 1
+	cp "${source_tar}" "${UPDATE_TAR}" || return 1
+	cp "${source_md5}" "${UPDATE_MD5}" || return 1
     fi
-else
-    # download directory
-    mkdir -p /userdata/system/upgrade || exit 1
+}
 
-    # get size to download
-    url="${DWD_HTTP_DIR}/boot.tar.xz"
-    echo "url: ${url}"
-    headers=$(curl -A "batocera-upgrade.header" -sfIL "${url}")
-    test $? -eq 0 || exit 1
-    size=$(echo "$headers" | grep -i "Content-Length: " | tail -1 | sed -e s+'^Content-Length: \([0-9]*\).*$'+'\1'+I) # take the last one in case of redirection
-    size=$((size / 1024 / 1024))
-    test $? -eq 0 || exit 1
-    echo "need to download ${size}mb"
-fi
-
-# check free space on fs
-if [ "$1" != "manual" ]; then
-    filesystems="/userdata/system /boot"
-else
-    filesystems="/boot"
-fi
-
-# Check free space on filesystems
-for fs in $filesystems
-do
-    freespace=$(df -m "${fs}" | tail -1 | awk '{print $4}')
-    test $? -eq 0 || exit 1
-    if test "${size}" -gt "${freespace}"
+stage_current_directory_update() {
+    if test -f "${LOCAL_UPDATE_TAR}" && test -f "${LOCAL_UPDATE_MD5}"
     then
-        echo "Not enough space on ${fs} to perform the update"
-        exit 1
-    fi
-done
+	if test "$(pwd -P)" = "${UPDATE_DIR}"
+	then
+	    verify_update || return $?
+	    echo "Update is already staged in ${UPDATE_DIR}. Reboot to apply it."
+	    return 0
+	fi
 
-##### Up to this the GUI was not used, now do_upgmsg will automatically decide which output to use
-# download
-if [ "$1" != "manual" ]; then
-    if [ $TERMINAL -eq 0 ]; then
-        # download inside ES with badge
-        touch "/userdata/system/upgrade/boot.tar.xz"
-        do_badgeines "${size}" &
-        GETPERPID=$!
-        curl -A "batocera-upgrade" -sfL "${url}" -o "/userdata/system/upgrade/boot.tar.xz" || exit 1
-        do_upgmsg "Calculating md5 checksum ..."
-    else
-        # download inside SSH or terminal
-        curl -A "batocera-upgrade" -fL "${url}" -o "/userdata/system/upgrade/boot.tar.xz" || exit 1
-        echo "Check proper file download, checking md5sum - please wait"
+	echo "Found update.tar and update.tar.md5 in the current directory."
+	stage_update "${LOCAL_UPDATE_TAR}" "${LOCAL_UPDATE_MD5}" move || return $?
+	verify_update || return $?
+	echo "Update staged from the current directory. Reboot to apply it."
+	return 0
     fi
-fi
 
-# try to download an md5 checksum
-if [ "$1" != "manual" ]; then
-    curl -A "batocera-upgrade.md5" -sfL "${url}.md5" -o "/userdata/system/upgrade/boot.tar.xz.md5"
-fi
-if test -e "/userdata/system/upgrade/boot.tar.xz.md5"
-then
-    DISTMD5=$(cat "/userdata/system/upgrade/boot.tar.xz.md5")
-    CURRMD5=$(md5sum "/userdata/system/upgrade/boot.tar.xz" | sed -e s+' .*$'++)
-    if test "${DISTMD5}" = "${CURRMD5}"
+    if test -f "${LOCAL_UPDATE_TAR}" || test -f "${LOCAL_UPDATE_MD5}"
     then
-        do_upgmsg "Checksum validated ..." 2
-    else
-        do_upgmsg "Checksum error ..." 5
-        exit 1
+	echo "Found only one local update file in the current directory."
+	echo "Expected both ./update.tar and ./update.tar.md5."
+	return 2
     fi
-else
-    do_upgmsg "Missing md5 file - proceed ..." 3
-fi
 
-# remount /boot in rw
-echo "remounting /boot in rw"
-if ! mount -o remount,rw /boot
-then
-    exit 1
-fi
+    return 12
+}
 
-# backup boot files
-# all these files doesn't exist on non rpi platform, so, we have to test them
-# don't put the boot.ini file while it's not really to be customized
-do_upgmsg "Backing up config files ..." 0.5
-BOOTFILES="config.txt batocera-boot.conf"
-for BOOTFILE in ${BOOTFILES}
-do
-    if test -e "/boot/${BOOTFILE}"
-    then
-        if ! cp "/boot/${BOOTFILE}" "/boot/${BOOTFILE}.upgrade"
-        then
-            exit 1
-        fi
-    fi
-done
+case "${1:-}" in
+    -h|--help)
+	print_usage
+	exit 0
+	;;
+    --check)
+	verify_update
+	exit $?
+	;;
+    "")
+	stage_current_directory_update
+	status=$?
+	if test "${status}" -eq 0
+	then
+	    exit 0
+	fi
+	if test "${status}" -ne 12
+	then
+	    exit "${status}"
+	fi
 
-# extract file on /boot
-do_upgmsg "Extracting files ..."
-if ! (cd /boot && xz -dc < "/userdata/system/upgrade/boot.tar.xz" | tar xvf - --no-same-owner)
-then
-    exit 1
-fi
-
-# restore boot files
-do_upgmsg "Restoring config files ..." 0.5
-for BOOTFILE in ${BOOTFILES}
-do
-    if test -e "/boot/${BOOTFILE}.upgrade"
-    then
-        if ! mv "/boot/${BOOTFILE}.upgrade" "/boot/${BOOTFILE}"
-        then
-            echo "Outch" >&2
-        fi
-    fi
-done
-
-# remount /boot in ro
-do_upgmsg "Doing final cleanups ..." 0.5
-if ! mount -o remount,ro /boot
-then
-    exit 1
-fi
-
-# a sync with some cleanups of downloaded and created files
-do_clean $TERMINAL
-sync
-
-# exit from ES-badge without additional messages
-[ $TERMINAL -eq 0 ] && exit 0
-
-# verify update is for same board, provide a warning if not
-newboard=$(cat /boot/boot/batocera.board)
-if [ "$oldboard" != "$newboard" ]
-then
-    echo; echo "WARNING: Current board is ${oldboard}, applied update is for ${newboard}"
-fi
-
-echo; echo "Done. Please reboot the system so that the changes take effect!"
-exit 0
+	if test -f "${UPDATE_TAR}" || test -f "${UPDATE_MD5}"
+	then
+	    verify_update
+	    status=$?
+	    if test "${status}" -eq 0
+	    then
+		echo "Reboot to apply this update."
+		exit 0
+	    fi
+	    exit "${status}"
+	fi
+	print_usage
+	echo
+	echo "No ./update.tar and ./update.tar.md5 found in the current directory."
+	echo "Pass explicit paths, or place both files in ${UPDATE_DIR} and reboot."
+	exit "${status}"
+	;;
+    *)
+	stage_update "${1}" "${2:-}" || exit $?
+	verify_update || exit $?
+	echo "Update staged. Reboot to apply it."
+	exit 0
+	;;
+esac

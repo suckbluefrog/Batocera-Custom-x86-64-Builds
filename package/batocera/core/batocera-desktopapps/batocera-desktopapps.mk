@@ -96,6 +96,12 @@ ifeq ($(BR2_PACKAGE_RPCS3),y)
   BATOCERA_DESKTOPAPPS_ICONS   += rpcs3.png
 endif
 
+# rpcs3 psn sync
+ifeq ($(BR2_PACKAGE_BATOCERA_RPCS3_SYNC),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-rpcs3-sync-launcher
+  BATOCERA_DESKTOPAPPS_APPS    += rpcs3-psn-sync.desktop
+endif
+
 # cemu
 ifeq ($(BR2_PACKAGE_CEMU),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-cemu
@@ -125,6 +131,12 @@ endif
 ifeq ($(BR2_PACKAGE_HEROIC),y)
   BATOCERA_DESKTOPAPPS_APPS    += heroic.desktop
   BATOCERA_DESKTOPAPPS_ICONS   += heroic.png
+endif
+
+# lutris
+ifneq ($(BR2_PACKAGE_LUTRIS)$(BR2_PACKAGE_LUTRIS_APPIMAGE),)
+  BATOCERA_DESKTOPAPPS_APPS    += lutris.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += lutris.png
 endif
 
 # n64 recomp launcher

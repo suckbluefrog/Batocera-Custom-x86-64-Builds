@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<gameList>
+  <game>
+    <path>./Install.PortMaster.sh</path>
+    <name>Install PortMaster</name>
+    <image>./images/portmaster.png</image>
+  </game>
+  <game>
+    <path>./PortMaster.sh</path>
+    <name>PortMaster</name>
+    <image>./images/portmaster.png</image>
+  </game>
+</gameList>

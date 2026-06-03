@@ -16,4 +16,17 @@
     <lang>en</lang>
     <cheevosHash>E646A696BC968B5DC7FFAB48CF9B3C94</cheevosHash>
   </game>
+  <game>
+    <path>./apotris.zip</path>
+    <name>Apotris</name>
+    <desc>Falling-block puzzle game for Game Boy Advance.</desc>
+    <image>./images/apotris-image.png</image>
+    <video>./videos/apotris-video.mp4</video>
+    <marquee>./images/apotris-marquee.png</marquee>
+    <developer>akouzoukos</developer>
+    <genre>Puzzle-Game</genre>
+    <players>1</players>
+    <md5>b1531617654bf2bb73f5d1405e6d53f8</md5>
+    <lang>en</lang>
+  </game>
 </gameList>

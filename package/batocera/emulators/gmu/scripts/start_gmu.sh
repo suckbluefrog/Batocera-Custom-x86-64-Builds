@@ -10,45 +10,115 @@ mkdir -p "${GMUPATH}" "${MUSICDIR}" "${LOGDIR}"
 
 export SDL_AUDIODRIVER="${GMU_SDL_AUDIODRIVER:-alsa}"
 
-has_xbox_controller() {
-    grep -Eqi 'Name=.*(Xbox|X-Box|Microsoft Xbox|Microsoft X-Box)' /proc/bus/input/devices 2>/dev/null
+mapping_value() {
+    local key="${1}"
+
+    printf '%s\n' "${SDL_GAMECONTROLLERCONFIG:-}" | tr ',' '\n' | sed -n "s/^${key}://p" | head -n 1
 }
 
-write_xbox_gmuinput() {
+button_value() {
+    local key="${1}"
+    local fallback="${2}"
+    local value
+
+    value="$(mapping_value "${key}")"
+    case "${value}" in
+        b[0-9]*)
+            printf '%s\n' "${value#b}"
+            ;;
+        *)
+            printf '%s\n' "${fallback}"
+            ;;
+    esac
+}
+
+dpad_value() {
+    local key="${1}"
+    local fallback="${2}"
+    local value
+
+    value="$(mapping_value "${key}")"
+    case "${value}" in
+        b[0-9]*)
+            printf '%s\n' "${value#b}"
+            ;;
+        *)
+            printf '%s\n' "${fallback}"
+            ;;
+    esac
+}
+
+axis_number() {
+    local key="${1}"
+    local fallback="${2}"
+    local value
+
+    value="$(mapping_value "${key}")"
+    case "${value}" in
+        a[0-9]*)
+            printf '%s\n' "$(( ${value#a} + 1 ))"
+            ;;
+        *)
+            printf '%s\n' "${fallback}"
+            ;;
+    esac
+}
+
+write_sdl_gmuinput() {
+    local btn_a btn_b btn_x btn_y
+    local btn_l btn_r btn_select btn_start btn_menu btn_lstick btn_rstick
+    local dpad_up dpad_down dpad_left dpad_right
+    local axis_x axis_y
+
+    btn_a="$(button_value a 0)"
+    btn_b="$(button_value b 1)"
+    btn_x="$(button_value x 2)"
+    btn_y="$(button_value y 3)"
+    btn_l="$(button_value leftshoulder 4)"
+    btn_r="$(button_value rightshoulder 5)"
+    btn_select="$(button_value back 6)"
+    btn_start="$(button_value start 7)"
+    btn_menu="$(button_value guide 8)"
+    btn_lstick="$(button_value leftstick 9)"
+    btn_rstick="$(button_value rightstick 10)"
+    dpad_up="$(dpad_value dpup 200)"
+    dpad_down="$(dpad_value dpdown 201)"
+    dpad_left="$(dpad_value dpleft 202)"
+    dpad_right="$(dpad_value dpright 203)"
+    axis_x="$(axis_number leftx 1)"
+    axis_y="$(axis_number lefty 2)"
+
     cat > "${GMUINPUT}" <<'EOF'
 FullKeyboard=no
-JoyButton-0=0,Ignore
-JoyButton-1=1,A
-JoyButton-2=2,B
-JoyButton-3=4,Y
-JoyButton-4=5,X
-JoyButton-5=7,L
-JoyButton-6=8,R
-JoyButton-7=11,Select
-JoyButton-8=12,Start
-JoyButton-9=13,Menu
-JoyButton-10=14,StickClick
-JoyButton-11=15,HelpI
-JoyButton-12=200,Up
-JoyButton-13=201,Down
-JoyButton-14=202,Left
-JoyButton-15=203,Right
-JoyAxis-0=-1,Left
-JoyAxis-1=1,Right
-JoyAxis-2=-2,Up
-JoyAxis-3=2,Down
 EOF
+    {
+        printf 'JoyButton-0=%s,A\n' "${btn_a}"
+        printf 'JoyButton-1=%s,B\n' "${btn_b}"
+        printf 'JoyButton-2=%s,X\n' "${btn_x}"
+        printf 'JoyButton-3=%s,Y\n' "${btn_y}"
+        printf 'JoyButton-4=%s,L\n' "${btn_l}"
+        printf 'JoyButton-5=%s,R\n' "${btn_r}"
+        printf 'JoyButton-6=%s,Select\n' "${btn_select}"
+        printf 'JoyButton-7=%s,Start\n' "${btn_start}"
+        printf 'JoyButton-8=%s,Menu\n' "${btn_menu}"
+        printf 'JoyButton-9=%s,StickClick\n' "${btn_lstick}"
+        printf 'JoyButton-10=%s,HelpI\n' "${btn_rstick}"
+        printf 'JoyButton-11=%s,Up\n' "${dpad_up}"
+        printf 'JoyButton-12=%s,Down\n' "${dpad_down}"
+        printf 'JoyButton-13=%s,Left\n' "${dpad_left}"
+        printf 'JoyButton-14=%s,Right\n' "${dpad_right}"
+        printf 'JoyAxis-0=-%s,Left\n' "${axis_x}"
+        printf 'JoyAxis-1=%s,Right\n' "${axis_x}"
+        printf 'JoyAxis-2=-%s,Up\n' "${axis_y}"
+        printf 'JoyAxis-3=%s,Down\n' "${axis_y}"
+    } >> "${GMUINPUT}"
 }
 
 if [ ! -f "${GMUCONFIG}" ]; then
     cp /usr/share/gmu/batocera/gmu.conf "${GMUCONFIG}"
 fi
 
-if has_xbox_controller; then
-    write_xbox_gmuinput
-else
-    cp /usr/share/gmu/batocera/gmuinput.conf "${GMUINPUT}"
-fi
+write_sdl_gmuinput
 sed -i \
     -e "s~^SDL.InputConfigFile=.*~SDL.InputConfigFile=${GMUINPUT}~" \
     -e "s~^SDL.KeyMap=.*~SDL.KeyMap=batocera.keymap~" \

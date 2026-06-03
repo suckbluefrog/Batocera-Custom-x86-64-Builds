@@ -29,6 +29,7 @@ ryujinxConfFile: Final = ryujinxConf / "Config.json"
 switchBios: Final = BIOS / "switch"
 switchKeysDir: Final = switchBios / "keys"
 switchNandDir: Final = switchBios / "nand"
+switchFirmwareDir: Final = switchBios / "firmware"
 ryujinxKeys: Final = switchBios / "prod.keys"
 ryujinxExec: Final = ryujinxConf / "ryujinx"
 
@@ -125,6 +126,7 @@ class RyujinxGenerator(Generator):
         # Prefer shared Switch BIOS paths for keys/NAND and link into Ryujinx layout.
         _link_dir_into_expected(switchNandDir, ryujinxConf / "bis")
         _bootstrap_firmware_registered_from_flat_nand(switchNandDir, ryujinxConf / "bis")
+        _bootstrap_firmware_registered_from_firmware_dir(ryujinxConf / "bis")
         prod_key_source = _pick_existing_path(
             switchKeysDir / "prod.keys",
             switchBios / "prod.keys",
@@ -592,7 +594,7 @@ def _copy_key_file_into_expected(source_file, expected_file):
     if expected_file.is_symlink():
         expected_file.unlink(missing_ok=True)
 
-    if expected_file.exists():
+    if expected_file.exists() and filecmp.cmp(source_file, expected_file, shallow=False):
         return
 
     expected_file.parent.mkdir(parents=True, exist_ok=True)
@@ -604,6 +606,75 @@ def _pick_existing_path(*candidates):
         if path.exists():
             return path
     return None
+
+
+def _resolve_firmware_dir():
+    candidates = (
+        switchFirmwareDir / "registered",
+        switchFirmwareDir / "Contents" / "registered",
+        switchFirmwareDir / "system" / "Contents" / "registered",
+    )
+
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+
+    if switchFirmwareDir.is_dir() and any(_is_registered_firmware_entry(child) for child in switchFirmwareDir.iterdir()):
+        return switchFirmwareDir
+
+    return None
+
+
+def _is_registered_firmware_entry(path):
+    if path.is_file():
+        return True
+
+    return path.is_dir() and path.name.endswith(".nca") and (path / "00").is_file()
+
+
+def _registered_firmware_entries(source_dir):
+    for child in sorted(source_dir.iterdir()):
+        if child.is_file():
+            yield child, child.name
+        elif child.is_dir() and child.name.endswith(".nca") and (child / "00").is_file():
+            yield child / "00", child.name
+
+
+def _bootstrap_firmware_registered_from_firmware_dir(bis_root):
+    """
+    Shared Switch firmware dumps live in /userdata/bios/switch/firmware.
+    Ryujinx expects registered firmware under bis/system/Contents/registered.
+    """
+    source_dir = _resolve_firmware_dir()
+    if source_dir is None:
+        return
+
+    registered = bis_root / "system" / "Contents" / "registered"
+    registered.mkdir(parents=True, exist_ok=True)
+
+    for nca, target_name in _registered_firmware_entries(source_dir):
+        target = registered / target_name
+
+        # Replace symlinks with regular files/hardlinks for tools that skip symlink entries.
+        if target.is_symlink():
+            try:
+                if target.resolve() == nca.resolve():
+                    continue
+            except FileNotFoundError:
+                pass
+            target.unlink(missing_ok=True)
+        elif target.is_dir():
+            shutil.rmtree(target)
+        elif target.exists() and filecmp.cmp(nca, target, shallow=False):
+            continue
+        elif target.exists():
+            target.unlink()
+
+        try:
+            os.link(nca, target)
+        except OSError:
+            # Cross-device fallback: copy as a normal file.
+            shutil.copy2(nca, target)
 
 
 def _bootstrap_firmware_registered_from_flat_nand(nand_root, bis_root):

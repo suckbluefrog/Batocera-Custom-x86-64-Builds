@@ -228,6 +228,9 @@ define BATOCERA_APPS_INSTALL_TARGET_CMDS
 			$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-desktopapps/icons/virt-manager.png \
 			$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/virt-manager.png; \
 	fi
+	rm -f \
+		$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/WineTools.sh \
+		$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/wine-tools.png
 	install -D -m 0644 \
 		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-desktopapps/icons/vacuumtube.png \
 		$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/vacuumtube.png

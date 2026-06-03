@@ -1,0 +1,427 @@
+#!/bin/bash
+set -euo pipefail
+
+BOOT_SOURCE="${BOOT_SOURCE:-/boot}"
+SYSTEM_SOURCE="${SYSTEM_SOURCE:-}"
+TMP_ROOT="/tmp/batocera-install-internal"
+TMP_BOOT="${TMP_ROOT}/boot"
+TMP_SYSTEM="${TMP_ROOT}/system"
+TMP_SHARE="${TMP_ROOT}/share"
+
+BOOT_LABEL="BATOCERA"
+SYSTEM_LABEL="SYSTEM"
+SHARE_LABEL="SHARE"
+
+MIB=$((1024 * 1024))
+GIB=$((1024 * 1024 * 1024))
+MIN_BOOT_GB=2
+MIN_SHARE_GB=1
+
+cleanup() {
+    set +e
+    sync
+    for mp in "${TMP_SHARE}" "${TMP_SYSTEM}" "${TMP_BOOT}"; do
+        if mountpoint -q "${mp}" 2>/dev/null; then
+            umount "${mp}"
+        fi
+    done
+    rmdir "${TMP_SHARE}" "${TMP_SYSTEM}" "${TMP_BOOT}" "${TMP_ROOT}" 2>/dev/null || true
+}
+
+trap cleanup EXIT
+
+show_help() {
+    cat <<EOF
+Usage: batocera-install-internal
+
+Creates a PC internal Batocera layout on a selected disk:
+  1. FAT32 BATOCERA boot partition
+  2. ext4 SYSTEM partition containing the live squashfs
+  3. ext4 SHARE partition using all remaining space
+
+This is destructive and wipes the selected disk.
+EOF
+}
+
+dialog_msg() {
+    local title="${1}"
+    local message="${2}"
+    dialog --clear --title "${title}" --msgbox "${message}" 14 76
+}
+
+dialog_info() {
+    local title="${1}"
+    local message="${2}"
+    dialog --clear --title "${title}" --infobox "${message}" 8 76
+    printf '%s\n' "${message}"
+}
+
+die() {
+    local message="${1}"
+    if command -v dialog >/dev/null 2>&1 && [ -t 0 ]; then
+        dialog_msg "Install Batocera Internal" "ERROR: ${message}" || true
+    fi
+    printf 'ERROR: %s\n' "${message}" >&2
+    exit 1
+}
+
+require_cmd() {
+    command -v "${1}" >/dev/null 2>&1 || die "Missing required command: ${1}"
+}
+
+mounted_source_for() {
+    local mountpoint="${1}"
+    awk -v mp="${mountpoint}" '$2 == mp { print $1; exit }' /proc/mounts
+}
+
+disk_from_part() {
+    local part="${1}"
+
+    case "${part}" in
+        /dev/mapper/*)
+            readlink -f "${part}" 2>/dev/null || printf '%s\n' "${part}"
+            ;;
+        *p[0-9])
+            printf '%s\n' "${part%p[0-9]*}"
+            ;;
+        *[0-9])
+            printf '%s\n' "${part%[0-9]*}"
+            ;;
+        *)
+            printf '%s\n' "${part}"
+            ;;
+    esac
+}
+
+part_path() {
+    local disk="${1}"
+    local num="${2}"
+
+    case "${disk}" in
+        /dev/mmcblk*|/dev/nvme*)
+            printf '%sp%s\n' "${disk}" "${num}"
+            ;;
+        *)
+            printf '%s%s\n' "${disk}" "${num}"
+            ;;
+    esac
+}
+
+disk_is_live_disk() {
+    local disk="${1}"
+    local source
+    local source_disk
+
+    for mountpoint in /boot /system /userdata; do
+        source="$(mounted_source_for "${mountpoint}")"
+        [ -n "${source}" ] || continue
+        source="$(readlink -f "${source}" 2>/dev/null || printf '%s\n' "${source}")"
+        source_disk="$(disk_from_part "${source}")"
+        [ "${source_disk}" = "${disk}" ] && return 0
+    done
+
+    return 1
+}
+
+find_system_source() {
+    if [ -n "${SYSTEM_SOURCE}" ]; then
+        printf '%s\n' "${SYSTEM_SOURCE}"
+        return
+    fi
+
+    for candidate in /system/batocera /boot/boot/batocera; do
+        if [ -f "${candidate}" ]; then
+            printf '%s\n' "${candidate}"
+            return
+        fi
+    done
+}
+
+select_target_disk() {
+    local choices=()
+    local line
+    local name
+    local size
+    local model
+    local type
+    local rm
+    local tran
+    local label
+
+    while IFS= read -r line; do
+        NAME=
+        SIZE=
+        MODEL=
+        TYPE=
+        RM=
+        TRAN=
+        eval "${line}"
+        name="${NAME}"
+        size="${SIZE}"
+        model="${MODEL}"
+        type="${TYPE}"
+        rm="${RM}"
+        tran="${TRAN}"
+        [ "${type}" = "disk" ] || continue
+        if disk_is_live_disk "${name}"; then
+            continue
+        fi
+        label="${size}"
+        [ -n "${model}" ] && label="${label} ${model}"
+        [ -n "${tran}" ] && label="${label} [${tran}]"
+        [ "${rm}" = "1" ] && label="${label} removable"
+        choices+=("${name}" "${label}")
+    done < <(lsblk -dnPpo NAME,SIZE,MODEL,TYPE,RM,TRAN)
+
+    if [ "${#choices[@]}" -eq 0 ]; then
+        die "No installable target disks were found. The live /boot, /system, and /userdata disks are hidden."
+    fi
+
+    dialog --clear --stdout \
+        --title "Install Batocera Internal" \
+        --menu "Select the internal target disk to wipe and install Batocera onto:" \
+        20 86 10 "${choices[@]}"
+}
+
+prompt_gb() {
+    local title="${1}"
+    local prompt="${2}"
+    local min="${3}"
+    local max="${4}"
+    local default="${5}"
+    local value
+
+    while :; do
+        value="$(dialog --clear --stdout --title "${title}" --inputbox "${prompt}" 12 76 "${default}")" || return 1
+        if ! [[ "${value}" =~ ^[0-9]+$ ]]; then
+            dialog_msg "${title}" "Enter a whole number of GB."
+            continue
+        fi
+        if (( value < min || value > max )); then
+            dialog_msg "${title}" "Value must be between ${min} GB and ${max} GB."
+            continue
+        fi
+        printf '%s\n' "${value}"
+        return 0
+    done
+}
+
+unmount_disk() {
+    local disk="${1}"
+    local mountpoint
+
+    while IFS= read -r mountpoint; do
+        [ -n "${mountpoint}" ] || continue
+        umount "${mountpoint}" 2>/dev/null || true
+    done < <(lsblk -nrpo MOUNTPOINT "${disk}" | awk 'NF')
+
+    if lsblk -nrpo MOUNTPOINT "${disk}" | awk 'NF { found=1 } END { exit found ? 0 : 1 }'; then
+        return 1
+    fi
+
+    return 0
+}
+
+wait_for_block() {
+    local dev="${1}"
+    local i
+
+    for i in $(seq 1 10); do
+        [ -b "${dev}" ] && return 0
+        sleep 1
+    done
+
+    return 1
+}
+
+set_boot_conf_key() {
+    local file="${1}"
+    local key="${2}"
+    local value="${3}"
+
+    if grep -qE "^[# ]*${key}[ ]*=" "${file}"; then
+        sed -i -E "s|^[# ]*${key}[ ]*=.*|${key}=${value}|" "${file}"
+    else
+        printf '\n%s=%s\n' "${key}" "${value}" >> "${file}"
+    fi
+}
+
+main() {
+    local system_source
+    local system_size_bytes
+    local min_system_gb
+    local target_disk
+    local target_size_bytes
+    local target_gb
+    local max_boot_gb
+    local boot_gb
+    local max_system_gb
+    local default_system_gb
+    local system_gb
+    local share_gb
+    local confirm
+    local boot_end_mib
+    local system_end_mib
+    local boot_part
+    local system_part
+    local share_part
+    local boot_conf
+
+    if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+        show_help
+        exit 0
+    fi
+
+    [ "$(id -u)" -eq 0 ] || die "Run this script as root."
+    [ -t 0 ] || die "This installer must be run from an interactive terminal."
+
+    for cmd in awk blockdev cp dialog grep lsblk mkdir mkfs.ext4 mkfs.vfat mount mountpoint parted partprobe sed seq sleep stat sync umount; do
+        require_cmd "${cmd}"
+    done
+
+    [ -d "${BOOT_SOURCE}" ] || die "Boot source ${BOOT_SOURCE} does not exist."
+    [ -d "${BOOT_SOURCE}/EFI/BOOT" ] || die "Boot source ${BOOT_SOURCE} does not contain EFI/BOOT."
+    [ -f "${BOOT_SOURCE}/boot/linux" ] || die "Boot source ${BOOT_SOURCE} does not contain boot/linux."
+    [ -f "${BOOT_SOURCE}/boot/initrd.gz" ] || die "Boot source ${BOOT_SOURCE} does not contain boot/initrd.gz."
+
+    system_source="$(find_system_source)"
+    [ -n "${system_source}" ] || die "Could not find the live Batocera squashfs at /system/batocera or /boot/boot/batocera."
+    [ -f "${system_source}" ] || die "System source ${system_source} is not a file."
+
+    system_size_bytes="$(stat -c '%s' "${system_source}")"
+    min_system_gb=$(((system_size_bytes + GIB - 1) / GIB))
+    [ "${min_system_gb}" -lt 1 ] && min_system_gb=1
+
+    dialog_msg "Install Batocera Internal" \
+"This installer wipes an entire selected PC disk and creates:
+
+  1. BATOCERA FAT32 boot partition
+  2. SYSTEM ext4 partition for the live squashfs
+  3. SHARE ext4 userdata partition using the remaining space
+
+The live /boot, /system, and /userdata disks are hidden from the target list."
+
+    target_disk="$(select_target_disk)" || exit 0
+    [ -b "${target_disk}" ] || die "Selected target ${target_disk} is not a block device."
+
+    target_size_bytes="$(blockdev --getsize64 "${target_disk}")"
+    target_gb=$((target_size_bytes / GIB))
+    if (( target_gb < MIN_BOOT_GB + min_system_gb + MIN_SHARE_GB )); then
+        die "${target_disk} is too small. Need at least $((MIN_BOOT_GB + min_system_gb + MIN_SHARE_GB)) GB."
+    fi
+
+    max_boot_gb=$((target_gb - min_system_gb - MIN_SHARE_GB))
+    boot_gb="$(prompt_gb \
+        "BATOCERA Boot Size" \
+        "Enter FAT32 BATOCERA boot partition size in GB.\n\nMinimum: ${MIN_BOOT_GB} GB.\nThis partition keeps EFI, kernel, initrd, and batocera-boot.conf Windows-editable." \
+        "${MIN_BOOT_GB}" "${max_boot_gb}" "${MIN_BOOT_GB}")" || exit 0
+
+    max_system_gb=$((target_gb - boot_gb - MIN_SHARE_GB))
+    default_system_gb=$((min_system_gb + 4))
+    [ "${default_system_gb}" -gt "${max_system_gb}" ] && default_system_gb="${max_system_gb}"
+    system_gb="$(prompt_gb \
+        "SYSTEM Partition Size" \
+        "Enter ext4 SYSTEM partition size in GB.\n\nCurrent live squashfs needs at least ${min_system_gb} GB.\nChoosing a size close to the minimum can make future update.tar installs fail until the partition is manually resized." \
+        "${min_system_gb}" "${max_system_gb}" "${default_system_gb}")" || exit 0
+
+    share_gb=$((target_gb - boot_gb - system_gb))
+    if (( share_gb < MIN_SHARE_GB )); then
+        die "Selected sizes leave less than ${MIN_SHARE_GB} GB for SHARE."
+    fi
+
+    dialog --clear --title "Confirm Destructive Install" --yesno \
+"Target disk:
+  ${target_disk}
+
+New layout:
+  BATOCERA boot : ${boot_gb} GB FAT32
+  SYSTEM        : ${system_gb} GB ext4
+  SHARE         : about ${share_gb} GB ext4
+
+Source boot:
+  ${BOOT_SOURCE}
+
+Source system image:
+  ${system_source}
+
+This will wipe every partition and all data on ${target_disk}." \
+        22 78 || exit 0
+
+    confirm="$(dialog --clear --stdout --title "Final Confirmation" --inputbox \
+"Type the exact target device path to wipe:
+
+${target_disk}" 12 76)" || exit 0
+    [ "${confirm}" = "${target_disk}" ] || die "Confirmation did not match ${target_disk}; aborting."
+
+    if disk_is_live_disk "${target_disk}"; then
+        die "Refusing to repartition the live Batocera disk ${target_disk}."
+    fi
+
+    dialog_info "Install Batocera Internal" "Unmounting ${target_disk}..."
+    unmount_disk "${target_disk}" || die "Unable to unmount all partitions on ${target_disk}."
+
+    dialog_info "Install Batocera Internal" "Creating GPT partition table on ${target_disk}..."
+    parted -s "${target_disk}" mklabel gpt
+
+    boot_end_mib=$((boot_gb * 1024 + 1))
+    system_end_mib=$((boot_end_mib + system_gb * 1024))
+
+    parted -a optimal -s "${target_disk}" mkpart "${BOOT_LABEL}" fat32 1MiB "${boot_end_mib}MiB"
+    parted -s "${target_disk}" set 1 esp on || true
+    parted -s "${target_disk}" set 1 boot on || true
+    parted -a optimal -s "${target_disk}" mkpart "${SYSTEM_LABEL}" ext4 "${boot_end_mib}MiB" "${system_end_mib}MiB"
+    parted -a optimal -s "${target_disk}" mkpart "${SHARE_LABEL}" ext4 "${system_end_mib}MiB" 100%
+
+    partprobe "${target_disk}" || true
+    sleep 2
+
+    boot_part="$(part_path "${target_disk}" 1)"
+    system_part="$(part_path "${target_disk}" 2)"
+    share_part="$(part_path "${target_disk}" 3)"
+    wait_for_block "${boot_part}" || die "Partition node ${boot_part} did not appear."
+    wait_for_block "${system_part}" || die "Partition node ${system_part} did not appear."
+    wait_for_block "${share_part}" || die "Partition node ${share_part} did not appear."
+
+    dialog_info "Install Batocera Internal" "Formatting ${boot_part} as FAT32..."
+    mkfs.vfat -F 32 -n "${BOOT_LABEL}" "${boot_part}" >/dev/null
+
+    dialog_info "Install Batocera Internal" "Formatting ${system_part} as ext4..."
+    mkfs.ext4 -F -q -L "${SYSTEM_LABEL}" -m 0 "${system_part}"
+
+    dialog_info "Install Batocera Internal" "Formatting ${share_part} as ext4..."
+    mkfs.ext4 -F -q -L "${SHARE_LABEL}" -m 0 "${share_part}"
+
+    mkdir -p "${TMP_BOOT}" "${TMP_SYSTEM}" "${TMP_SHARE}"
+    mount "${boot_part}" "${TMP_BOOT}"
+    mount "${system_part}" "${TMP_SYSTEM}"
+    mount "${share_part}" "${TMP_SHARE}"
+
+    dialog_info "Install Batocera Internal" "Copying boot files..."
+    cp -r "${BOOT_SOURCE}/." "${TMP_BOOT}/"
+
+    boot_conf="${TMP_BOOT}/batocera-boot.conf"
+    if [ -f "${boot_conf}" ]; then
+        set_boot_conf_key "${boot_conf}" "autoresize" "false"
+        set_boot_conf_key "${boot_conf}" "sharedevice" "INTERNAL"
+    fi
+
+    dialog_info "Install Batocera Internal" "Copying system squashfs..."
+    cp "${system_source}" "${TMP_SYSTEM}/batocera"
+
+    dialog_info "Install Batocera Internal" "Syncing disks..."
+    sync
+
+    dialog_msg "Install Batocera Internal" \
+"Internal install complete.
+
+Installed:
+  ${boot_part} -> BATOCERA boot
+  ${system_part} -> SYSTEM squashfs
+  ${share_part} -> SHARE userdata
+
+batocera-boot.conf was set to autoresize=false.
+
+Shut down, remove the USB/SD boot media, and boot this disk from the PC firmware."
+}
+
+main "$@"

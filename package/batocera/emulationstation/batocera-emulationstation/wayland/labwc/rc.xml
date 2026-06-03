@@ -80,7 +80,10 @@
         <output></output>
       </action>
     </windowRule>
-    <windowRule title="Batocera Control Center">
+    <windowRule title="Batocera Control Center" matchOnce="true" allowAlwaysOnTop="yes">
+      <action name="Focus" />
+      <action name="Raise" />
+      <action name="ToggleAlwaysOnTop" />
       <action name="MoveToEdge" direction="up" snapWindows="no" />
       <action name="MoveToOutput">
         <output></output>

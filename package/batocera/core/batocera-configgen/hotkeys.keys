@@ -25,6 +25,12 @@
 	    "description": "Batocera Control Center"
         },
 	{
+            "trigger": ["select", "a"],
+            "type": "key",
+            "target": [ "KEY_CONTEXT_MENU" ],
+	    "description": "Batocera Control Center"
+        },
+	{
             "trigger": ["hotkey", "b"],
             "type": "key",
             "target": [ "KEY_MENU" ],

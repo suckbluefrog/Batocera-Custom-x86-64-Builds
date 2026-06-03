@@ -43,6 +43,11 @@ define UNLEASHED_RECOMP_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/share/batocera/datainit/roms/unleashedrecomp/_info.txt
 	$(INSTALL) -D -m 0644 $(UNLEASHED_RECOMP_PKGDIR)/gamelist.xml \
 		$(TARGET_DIR)/usr/share/batocera/datainit/roms/unleashedrecomp/gamelist.xml
+	icon="$$(find $(@D)/flatpak-data -type f -name 'io.github.hedge_dev.unleashedrecomp.png' -print 2>/dev/null | sort -V | tail -n 1)"; \
+	if [ -n "$$icon" ]; then \
+		$(INSTALL) -D -m 0644 "$$icon" \
+			$(TARGET_DIR)/usr/share/batocera/datainit/roms/unleashedrecomp/images/unleashedrecomp.png; \
+	fi
 	touch "$(TARGET_DIR)/usr/share/batocera/datainit/roms/unleashedrecomp/Sonic Unleashed Recompiled.unleashedrecomp"
 endef
 

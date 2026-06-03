@@ -40,18 +40,31 @@ raiseControlCenter() {
     command -v xdotool >/dev/null 2>&1 || return 0
     test -n "${DISPLAY}" || return 0
 
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
         WIDS="$(DISPLAY="${DISPLAY}" xdotool search --name '^Batocera Control Center$' 2>/dev/null || true)"
         if test -n "${WIDS}"; then
             for WID in ${WIDS}; do
                 DISPLAY="${DISPLAY}" xdotool windowmap "${WID}" 2>/dev/null || true
+                DISPLAY="${DISPLAY}" xdotool windowstate --add ABOVE "${WID}" 2>/dev/null || true
                 DISPLAY="${DISPLAY}" xdotool windowraise "${WID}" 2>/dev/null || true
                 DISPLAY="${DISPLAY}" xdotool windowactivate "${WID}" 2>/dev/null || true
+                DISPLAY="${DISPLAY}" xdotool windowfocus "${WID}" 2>/dev/null || true
             done
             return 0
         fi
         sleep 0.05
     done
+}
+
+forceShowControlCenter() {
+    PIDVALUE="$1"
+
+    if grep -q "SIGUSR2" /usr/share/batocera/controlcenter/controlcenter.py 2>/dev/null; then
+        kill -12 "${PIDVALUE}" 2>/dev/null || return 1
+    else
+        kill -10 "${PIDVALUE}" 2>/dev/null || return 1
+    fi
+    return 0
 }
 
 controlCenterWindows() {
@@ -65,6 +78,49 @@ controlCenterIsActive() {
     test -n "${DISPLAY}" || return 1
     ACTIVE_TITLE="$(DISPLAY="${DISPLAY}" xdotool getactivewindow getwindowname 2>/dev/null || true)"
     test "${ACTIVE_TITLE}" = "Batocera Control Center"
+}
+
+waitControlCenterWindow() {
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        if controlCenterWindows >/dev/null; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    return 1
+}
+
+stopControlCenter() {
+    PIDVALUE="$(getCCPID 2>/dev/null || true)"
+    if test -n "${PIDVALUE}"; then
+        kill "${PIDVALUE}" 2>/dev/null || true
+        for _ in 1 2 3 4 5; do
+            test -e "/proc/${PIDVALUE}" || break
+            sleep 0.1
+        done
+        test -e "/proc/${PIDVALUE}" && kill -9 "${PIDVALUE}" 2>/dev/null || true
+    fi
+    rm -f "${PIDFILE}"
+}
+
+startControlCenter() {
+    bccdisabled="$(/usr/bin/batocera-settings-get bcc.disabled)"
+    bcclogs="$(/usr/bin/batocera-settings-get bcc.logs)"
+    if test "$bccdisabled" != "1"; then
+        export BCC_STARTUP_IGNORE_SECONDS="${BCC_STARTUP_IGNORE_SECONDS:-0.9}"
+        export BCC_GAMEPAD_START_DELAY_SECONDS="${BCC_GAMEPAD_START_DELAY_SECONDS:-0.15}"
+        export BCC_MAIN_BACK_CLOSE="${BCC_MAIN_BACK_CLOSE:-1}"
+
+        if test "$bcclogs" = "1"; then
+            CONTROLCENTER_DEBUG=1 batocera-controlcenter-app ${FLAGS} 20 >/dev/null &
+            echo "$!" >"${PIDFILE}"
+        else
+            batocera-controlcenter-app ${FLAGS} 20 >/dev/null &
+            echo "$!" >"${PIDFILE}"
+        fi
+        date +%s >"${LAUNCHFILE}"
+        raiseControlCenter &
+    fi
 }
 
 setupDisplayEnv() {
@@ -125,31 +181,20 @@ if test "$?" -eq 0; then
         if controlCenterIsActive; then
             # toogle
             kill -10 "${PIDVALUE}"
-        elif controlCenterWindows >/dev/null; then
-            raiseControlCenter &
         else
-            # toogle
-            kill -10 "${PIDVALUE}"
-            raiseControlCenter &
+            # Ask the hidden process to show itself. A hidden GTK window can
+            # still be visible to xdotool, so window existence alone is not a
+            # useful signal here.
+            forceShowControlCenter "${PIDVALUE}"
+            if waitControlCenterWindow; then
+                raiseControlCenter &
+            else
+                stopControlCenter
+                startControlCenter
+            fi
         fi
     fi
 else
     # switch on
-    bccdisabled="$(/usr/bin/batocera-settings-get bcc.disabled)"
-    bcclogs="$(/usr/bin/batocera-settings-get bcc.logs)"
-    if test "$bccdisabled" != "1"; then
-        export BCC_STARTUP_IGNORE_SECONDS="${BCC_STARTUP_IGNORE_SECONDS:-0.9}"
-        export BCC_GAMEPAD_START_DELAY_SECONDS="${BCC_GAMEPAD_START_DELAY_SECONDS:-0.15}"
-        export BCC_MAIN_BACK_CLOSE="${BCC_MAIN_BACK_CLOSE:-1}"
-
-        if test "$bcclogs" = "1"; then
-            CONTROLCENTER_DEBUG=1 batocera-controlcenter-app ${FLAGS} 20 >/dev/null &
-            echo "$!" >"${PIDFILE}"
-        else
-            batocera-controlcenter-app ${FLAGS} 20 >/dev/null &
-            echo "$!" >"${PIDFILE}"
-        fi
-        date +%s >"${LAUNCHFILE}"
-        raiseControlCenter &
-    fi
+    startControlCenter
 fi

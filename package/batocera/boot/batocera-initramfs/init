@@ -1,16 +1,313 @@
 #!/bin/ash
 
 do_mount() {
-    local mount_options="ro"
+    local mount_options="${3}"
 
-    [ ! -z "${2}" ] && mount_options="$mount_options,${2}"
+    [ -z "${mount_options}" ] && mount_options="ro"
 
-    if mount -o $mount_options "${1}"           /boot_root; then return 0; fi
+    if mount -o "${mount_options}" "${1}" "${2}"; then return 0; fi
     return 1
 }
 
+update_write() {
+    local text="${1}"
+    local output
+
+    for output in /dev/tty1 /dev/tty3 /dev/console
+    do
+	test -e "${output}" || continue
+	printf "%b" "${text}" > "${output}" 2>/dev/null || true
+    done
+}
+
+update_line() {
+    update_log "${1}"
+    update_write "\r\033[K${1}\n"
+}
+
+update_log() {
+    test -d /share_root/update || return 0
+    printf '%s\n' "${1}" >> /share_root/update/update.log 2>/dev/null || true
+}
+
+update_screen_start() {
+    update_write "\033[?25l\033[2J\033[H"
+    update_line "Batocera update"
+    update_line "Do not power off."
+    update_line ""
+}
+
+update_screen_finish() {
+    update_write "\033[?25h"
+}
+
+update_spinner_start() {
+    local message="${1}"
+
+    UPDATE_SPINNER_MESSAGE="${message}"
+    (
+	while true
+	do
+	    for frame in '|' '/' '-' '\\'
+	    do
+		update_write "\r\033[K${UPDATE_SPINNER_MESSAGE} ${frame}"
+		sleep 1
+	    done
+	done
+    ) &
+    UPDATE_SPINNER_PID=$!
+}
+
+update_spinner_stop() {
+    local message="${1}"
+    local result="${2}"
+
+    update_spinner_cancel
+    update_line "${message} ${result}"
+}
+
+update_spinner_cancel() {
+    if test -n "${UPDATE_SPINNER_PID}"
+    then
+	kill "${UPDATE_SPINNER_PID}" 2>/dev/null || true
+	wait "${UPDATE_SPINNER_PID}" 2>/dev/null || true
+	UPDATE_SPINNER_PID=
+    fi
+}
+
+update_abort() {
+    local message="${1}"
+
+    update_spinner_cancel
+    update_line "${message}"
+    finish_update_attempt
+    umount /share_root 2>/dev/null
+    update_screen_finish
+    return 1
+}
+
+update_ignore_and_continue() {
+    local message="${1}"
+
+    update_spinner_cancel
+    test -n "${message}" && update_line "${message}"
+    mark_update_failed
+    finish_update_attempt
+    update_line "Ignoring update, continuing launching previous version."
+    umount /share_root 2>/dev/null
+    update_screen_finish
+    return 0
+}
+
+mount_with_retry() {
+    local mount_arg="${1}"
+    local mount_point="${2}"
+    local mount_options="${3}"
+    local mount_label="${4}"
+    local retry_count="${5}"
+    local i
+
+    for i in $(seq "${retry_count}")
+    do
+	if do_mount "${mount_arg}" "${mount_point}" "${mount_options}"
+	then
+	    echo "Mounted ${mount_arg} as ${mount_label}"
+	    return 0
+	fi
+	echo "Waiting for the ${mount_label} device ${mount_arg}"
+	sleep 1
+    done
+
+    return 1
+}
+
+parse_mount_args() {
+    local raw_param
+    local param
+    local mount_options
+
+    BOOT_MOUNTARG=none
+    BOOT_MOUNTOPTIONS=
+    SYSTEM_MOUNTARG=
+    SHARE_MOUNTARG=LABEL=SHARE
+
+    for raw_param in ${cmdline}
+    do
+	mount_options=${raw_param#*:}
+	param=${raw_param%%:*}
+	[ "${mount_options}" = "${param}" ] && mount_options=
+
+	case ${param} in
+	    dev=*)         BOOT_MOUNTARG=${param#dev=}; BOOT_MOUNTOPTIONS=${mount_options};;
+	    label=*)       BOOT_MOUNTARG=LABEL=${param#label=}; BOOT_MOUNTOPTIONS=${mount_options};;
+	    uuid=*)        BOOT_MOUNTARG=UUID=${param#uuid=}; BOOT_MOUNTOPTIONS=${mount_options};;
+	    systemdev=*)   SYSTEM_MOUNTARG=${param#systemdev=};;
+	    systemlabel=*) SYSTEM_MOUNTARG=LABEL=${param#systemlabel=};;
+	    systemuuid=*)  SYSTEM_MOUNTARG=UUID=${param#systemuuid=};;
+	    sharedev=*)    SHARE_MOUNTARG=${param#sharedev=};;
+	    sharelabel=*)  SHARE_MOUNTARG=LABEL=${param#sharelabel=};;
+	    shareuuid=*)   SHARE_MOUNTARG=UUID=${param#shareuuid=};;
+	esac
+    done
+}
+
+finish_update_attempt() {
+    umount /update_root/system 2>/dev/null
+    umount /update_root/boot 2>/dev/null
+    rm -rf /update_root
+    mount -o remount,ro /system_root 2>/dev/null
+    mount -o remount,ro /boot_root 2>/dev/null
+}
+
+mark_update_failed() {
+    update_log "Marking update.tar as failed."
+    rm -f /share_root/update/update.tar.failed /share_root/update/update.tar.md5.failed
+    mv /share_root/update/update.tar /share_root/update/update.tar.failed 2>/dev/null
+    mv /share_root/update/update.tar.md5 /share_root/update/update.tar.md5.failed 2>/dev/null
+}
+
+cleanup_stale_update_state() {
+    update_line "Cleaning stale update state."
+    rm -f /system_root/batocera.old || { update_abort "Failed to remove stale system backup."; return 1; }
+    rm -f /system_root/batocera.update || { update_abort "Failed to remove stale pending system image."; return 1; }
+    rm -f /boot_root/boot/overlay.old || { update_abort "Failed to remove stale saved overlay backup."; return 1; }
+    return 0
+}
+
+apply_local_update() {
+    local update_tar="/share_root/update/update.tar"
+    local update_md5="/share_root/update/update.tar.md5"
+    local expected_md5
+    local actual_md5
+    local md5_output="/tmp/update.md5sum"
+    local md5_error="/tmp/update.md5sum.err"
+
+    [ "${SYSTEM_ROOT_MOUNTED}" = "y" ] || return 0
+
+    mkdir -p /share_root || return 1
+    if ! mount_with_retry "${SHARE_MOUNTARG}" /share_root rw "/userdata update staging" "${devretry}"
+    then
+	echo "Batocera update: SHARE was not available; skipping local update check."
+	return 0
+    fi
+
+    if ! test -f "${update_tar}"
+    then
+	umount /share_root 2>/dev/null
+	return 0
+    fi
+
+    update_screen_start
+    update_line "Found /userdata/update/update.tar."
+
+    if ! test -f "${update_md5}"
+    then
+	update_ignore_and_continue "Missing /userdata/update/update.tar.md5; update was not applied."
+	return 0
+    fi
+
+    update_spinner_start "Checking MD5 checksum"
+    read -r expected_md5 _ < "${update_md5}"
+    update_log "MD5 expected=${expected_md5:-<empty>}"
+    rm -f "${md5_output}" "${md5_error}"
+    if ! md5sum "${update_tar}" > "${md5_output}" 2>"${md5_error}"
+    then
+	update_spinner_stop "Checking MD5 checksum" "failed"
+	while IFS= read -r line
+	do
+	    update_log "md5sum: ${line}"
+	done < "${md5_error}" 2>/dev/null
+	rm -f "${md5_output}" "${md5_error}"
+	update_ignore_and_continue "Unable to read update.tar for MD5 verification; update was not applied."
+	return 0
+    fi
+    update_spinner_stop "Checking MD5 checksum" "OK"
+    set -- $(cat "${md5_output}")
+    actual_md5="${1}"
+    rm -f "${md5_output}" "${md5_error}"
+    update_log "MD5 actual=${actual_md5:-<empty>}"
+
+    if test -z "${expected_md5}" || test "${expected_md5}" != "${actual_md5}"
+    then
+	update_ignore_and_continue "MD5 mismatch; update was not applied."
+	return 0
+    fi
+
+    mount -o remount,rw /boot_root || { update_abort "Failed to remount boot partition read-write."; return 1; }
+    mount -o remount,rw /system_root || { update_abort "Failed to remount system partition read-write."; return 1; }
+    cleanup_stale_update_state || return 1
+
+    mkdir -p /update_root/boot /update_root/system || { update_abort "Failed to prepare update staging mount points."; return 1; }
+    mount --bind /boot_root /update_root/boot || { update_abort "Failed to bind boot partition for update."; return 1; }
+    mount --bind /system_root /update_root/system || { update_abort "Failed to bind system partition for update."; return 1; }
+
+    update_spinner_start "Updating system partition"
+    if ! tar -xf "${update_tar}" -C /update_root system
+    then
+	update_spinner_stop "Updating system partition" "failed"
+	update_line "Failed while extracting the SYSTEM payload."
+	finish_update_attempt
+	umount /share_root 2>/dev/null
+	update_screen_finish
+	return 1
+    fi
+    update_spinner_stop "Updating system partition" "OK"
+
+    if ! test -f /system_root/batocera.update
+    then
+	update_line "update.tar did not contain system/batocera.update."
+	finish_update_attempt
+	umount /share_root 2>/dev/null
+	update_screen_finish
+	return 1
+    fi
+
+    update_spinner_start "Updating boot partition"
+    if ! tar -xf "${update_tar}" -C /update_root boot
+    then
+	update_spinner_stop "Updating boot partition" "failed"
+	update_line "Failed while extracting boot files."
+	finish_update_attempt
+	umount /share_root 2>/dev/null
+	update_screen_finish
+	return 1
+    fi
+    update_spinner_stop "Updating boot partition" "OK"
+
+    if test -e /boot_root/boot/overlay
+    then
+	update_line "Moving saved overlay aside for the new system."
+	mv /boot_root/boot/overlay /boot_root/boot/overlay.old || { update_abort "Failed to move saved overlay aside."; return 1; }
+    fi
+
+    update_spinner_start "Activating new system image"
+    rm -f /system_root/batocera.old || { update_abort "Failed to remove old backup system image."; return 1; }
+    if test -e /system_root/batocera
+    then
+	mv /system_root/batocera /system_root/batocera.old || { update_abort "Failed to back up current system image."; return 1; }
+    fi
+    mv /system_root/batocera.update /system_root/batocera || { update_abort "Failed to activate new system image."; return 1; }
+    rm -f /system_root/batocera.old || { update_abort "Failed to remove backup system image."; return 1; }
+    update_spinner_stop "Activating new system image" "OK"
+
+    rm -f /share_root/update/update.tar.applied /share_root/update/update.tar.md5.applied
+    mv "${update_tar}" /share_root/update/update.tar.applied || { update_abort "Failed to mark update.tar as applied."; return 1; }
+    mv "${update_md5}" /share_root/update/update.tar.md5.applied || { update_abort "Failed to mark update.tar.md5 as applied."; return 1; }
+
+    update_spinner_start "Syncing disks"
+    sync
+    update_spinner_stop "Syncing disks" "OK"
+    finish_update_attempt
+    umount /share_root 2>/dev/null
+    update_line "Update complete. Continuing boot."
+    update_screen_finish
+    return 0
+}
+
 do_root() {
-    mkdir -p /boot_root /new_root /overlay_root /sys /proc || return 1
+    local boot_mount_options
+
+    mkdir -p /boot_root /system_root /new_root /overlay_root /sys /proc /tmp || return 1
     mount -t proc  -o nodev,noexec,nosuid proc  /proc  	|| return 1
     mount -t sysfs -o nodev,noexec,nosuid sysfs /sys 	|| return 1
     mount -t devtmpfs none /dev
@@ -21,61 +318,52 @@ do_root() {
     # how many times to retry before moving on to the next dev/label/uuid
     devretry=5
     for param in ${cmdline} ; do
-        case ${param} in
-            devretry=*) devretry=${param#devretry=};;
-        esac
+	case ${param} in
+	    devretry=*) devretry=${param#devretry=};;
+	esac
     done
 
-    MOUNTARG=none
-    boot_root_mounted=n
-    MOUNTOPTIONS=none
-    while [ $boot_root_mounted = n ]
-    do
-        for param in ${cmdline}
-        do
-            MOUNTOPTIONS=${param#*:} # gets everything after the first colon :
-            param=${param%%:*} # gets everything before the first colon :
-            [ "$MOUNTOPTIONS" == "$param" ] && MOUNTOPTIONS= #in case there is no colon :, set MOUNTOPTIONS to nothing
+    parse_mount_args
 
-            case ${param} in
-                dev=*)      MOUNTARG=${param#dev=};;
-                label=*)    MOUNTARG=LABEL=${param#label=};;
-                uuid=*)     MOUNTARG=UUID=${param#uuid=};;
-                *)          continue;;
-            esac
-            for i in $(seq $devretry)
-            do
-                if do_mount "${MOUNTARG}" "${MOUNTOPTIONS}"
-                then
-                    echo "Mounted ${MOUNTARG} as /boot_root"
-                    boot_root_mounted=y
-                    break
-                fi
-                echo "Waiting for the root device ${MOUNTARG}"
-                sleep 1
-            done
-            if [ $boot_root_mounted = y ]
-            then
-                break
-            fi
-        done
-    done
+    boot_mount_options=ro
+    [ -n "${BOOT_MOUNTOPTIONS}" ] && boot_mount_options="ro,${BOOT_MOUNTOPTIONS}"
+    if ! mount_with_retry "${BOOT_MOUNTARG}" /boot_root "${boot_mount_options}" /boot "${devretry}"
+    then
+	return 1
+    fi
 
-    # update the squashfs
-    for SIMG in batocera rufomaculata
-    do
-	if test -e /boot_root/boot/${SIMG}.update
+    SYSTEM_ROOT_MOUNTED=n
+    ROOT_SQUASHFS=/boot_root/boot/batocera
+    if test -n "${SYSTEM_MOUNTARG}"
+    then
+	if ! mount_with_retry "${SYSTEM_MOUNTARG}" /system_root ro /system "${devretry}"
 	then
-	    mount -o remount,rw /boot_root || return 1
-	    mv /boot_root/boot/${SIMG}.update /boot_root/boot/${SIMG} || return 1
-	    # remove the overlay when updating
-	    if test -e /boot_root/boot/overlay
-	    then
-		mv /boot_root/boot/overlay /boot_root/boot/overlay.old      || return 1
-	    fi
-	    mount -o remount,ro /boot_root || return 1
+	    return 1
 	fi
-    done
+	SYSTEM_ROOT_MOUNTED=y
+	ROOT_SQUASHFS=/system_root/batocera
+    fi
+
+    apply_local_update || return 1
+
+    # update the squashfs on legacy single-FAT layouts
+    if test "${SYSTEM_ROOT_MOUNTED}" != "y"
+    then
+	for SIMG in batocera rufomaculata
+	do
+	    if test -e /boot_root/boot/${SIMG}.update
+	    then
+		mount -o remount,rw /boot_root || return 1
+		mv /boot_root/boot/${SIMG}.update /boot_root/boot/${SIMG} || return 1
+		# remove the overlay when updating
+		if test -e /boot_root/boot/overlay
+		then
+		    mv /boot_root/boot/overlay /boot_root/boot/overlay.old || return 1
+		fi
+		mount -o remount,ro /boot_root || return 1
+	    fi
+	done
+    fi
 
     # create an overlay on memory
     mount -t tmpfs -o size=256M tmpfs /overlay_root || return 1
@@ -93,24 +381,37 @@ do_root() {
     fi
 
     # mount the squashfs
-    mount /boot_root/boot/batocera /overlay_root/base || return 1
+    mount "${ROOT_SQUASHFS}" /overlay_root/base || return 1
 
     EXTRALAYERS=
-    if test -e /boot_root/boot/rufomaculata
+    if test "${SYSTEM_ROOT_MOUNTED}" != "y" && test -e /boot_root/boot/rufomaculata
     then
 	mount /boot_root/boot/rufomaculata /overlay_root/base2 || return 1
 	EXTRALAYERS=":/overlay_root/base2"
     fi
 
+    ROOT_IS_OVERLAY=n
     # mount the future root in read write
-    if ! mount -t overlay overlay -o rw,lowerdir=/overlay_root/base$EXTRALAYERS,upperdir=/overlay_root/overlay,workdir=/overlay_root/work /new_root
+    if mount -t overlay overlay -o rw,lowerdir=/overlay_root/base$EXTRALAYERS,upperdir=/overlay_root/overlay,workdir=/overlay_root/work /new_root
     then
+	ROOT_IS_OVERLAY=y
+    else
 	# mount only as squashfs, no overlay (xu4 doesn't support overlayfs)
-	mount /boot_root/boot/batocera /new_root || return 1
+	mount "${ROOT_SQUASHFS}" /new_root || return 1
     fi
 
     # moving current mounts
     mount --move /boot_root    /new_root/boot    || return 1
+    if test "${SYSTEM_ROOT_MOUNTED}" = "y"
+    then
+	if test "${ROOT_IS_OVERLAY}" = "y"
+	then
+	    mkdir -p /new_root/system || return 1
+	    mount --move /system_root /new_root/system || return 1
+	else
+	    umount /system_root || return 1
+	fi
+    fi
     mount --move /overlay_root /new_root/overlay || return 1
     mount --move /sys  	       /new_root/sys  	 || return 1
     mount --move /proc 	       /new_root/proc 	 || return 1

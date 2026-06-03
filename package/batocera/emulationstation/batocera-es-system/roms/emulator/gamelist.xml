@@ -45,6 +45,11 @@
     <name>Configure PPSSPP</name>
     <image>./images/ppsspp.png</image>
   </game>
+  <game>
+    <path>./Configure_RetroArch.sh</path>
+    <name>Configure RetroArch</name>
+    <image>./images/retroarch.png</image>
+  </game>
     <game>
     <path>./Configure_RPCS3.sh</path>
     <name>Configure RPCS3</name>
@@ -81,8 +86,18 @@
     <image>./images/xenia-canary.png</image>
   </game>
   <game>
+    <path>./Configure_Xenia_Edge.sh</path>
+    <name>Configure Xenia Edge</name>
+    <image>./images/xenia-edge.png</image>
+  </game>
+  <game>
     <path>./File_Manager.sh</path>
     <name>File Manager</name>
     <image>./images/filemanagerlauncher.png</image>
+  </game>
+  <game>
+    <path>./Install_Batocera_Internal.sh</path>
+    <name>Install Batocera Internal</name>
+    <image>./images/install-internal.svg</image>
   </game>
 </gameList>

@@ -4,5 +4,6 @@
     <path>./Start Music Player.sh</path>
     <name>Start Music Player</name>
     <desc>Open GMU Music Player.</desc>
+    <image>./images/music.png</image>
   </game>
 </gameList>

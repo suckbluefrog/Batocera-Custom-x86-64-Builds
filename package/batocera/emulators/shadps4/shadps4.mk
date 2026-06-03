@@ -17,7 +17,7 @@
 #
 ################################################################################
 
-SHADPS4_VERSION = v.0.15.0
+SHADPS4_VERSION = v.0.16.0
 SHADPS4_SITE = https://github.com/shadps4-emu/shadPS4
 SHADPS4_SITE_METHOD = git
 SHADPS4_GIT_SUBMODULES = YES

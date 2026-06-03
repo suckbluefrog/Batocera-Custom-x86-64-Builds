@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera build fix <noreply@batocera.org>
+Date: Sun, 17 May 2026 06:00:00 +0300
+Subject: [PATCH] intel/jay: avoid fixed underlying enum syntax in C
+
+GCC 13 rejects C declarations using the C23/C++ fixed underlying enum
+syntax, such as `enum jay_predication : uint8_t`.  The Jay IR still
+needs the field to occupy one byte to preserve the packed jay_inst
+layout, so keep the named enum for constants and store the instruction
+field as uint8_t.
+
+Upstream: pending
+Signed-off-by: Batocera build fix <noreply@batocera.org>
+---
+ src/intel/compiler/jay/jay_ir.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/intel/compiler/jay/jay_ir.h b/src/intel/compiler/jay/jay_ir.h
+index 86cbb67f0a9..4fca0f16f23 100644
+--- a/src/intel/compiler/jay/jay_ir.h
++++ b/src/intel/compiler/jay/jay_ir.h
+@@ -579,7 +579,7 @@ jay_type_is_any_float(enum jay_type t)
+    return jay_base_type(t) == JAY_TYPE_F || jay_base_type(t) == JAY_TYPE_BF;
+ }
+ 
+-enum jay_predication : uint8_t {
++enum jay_predication {
+    /** No predication. */
+    JAY_NOT_PREDICATED = 0,
+ 
+@@ -634,7 +634,7 @@ typedef struct jay_inst {
+    bool decrement_dep:1;
+    unsigned padding  :12;
+ 
+-   enum jay_predication predication;
++   uint8_t predication;
+    enum jay_conditional_mod conditional_mod;
+ 
+    jay_def cond_flag; /**< conditional flag */
+-- 
+2.43.0

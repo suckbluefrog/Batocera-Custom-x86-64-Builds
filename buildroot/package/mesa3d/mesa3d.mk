@@ -5,7 +5,7 @@
 ################################################################################
 # batocera - remove 0001 patch file with bump
 # When updating the version, please also update mesa3d-headers
-MESA3D_VERSION = 26.0.6
+MESA3D_VERSION = 26.1.1
 MESA3D_SOURCE = mesa-$(MESA3D_VERSION).tar.xz
 MESA3D_SITE = https://archive.mesa3d.org
 MESA3D_LICENSE = MIT, SGI, Khronos
@@ -395,6 +395,7 @@ endif
 HOST_MESA3D_DEPENDENCIES = \
 	host-libclc \
 	host-libdrm \
+	host-patchelf \
 	host-python-mako \
 	host-python-pyyaml \
 	host-spirv-tools
@@ -408,6 +409,8 @@ define HOST_MESA3D_INSTALL_CMDS
 	$(INSTALL) -D -m 0755 $(@D)/build/src/compiler/clc/mesa_clc $(HOST_DIR)/bin/mesa_clc
 	$(INSTALL) -D -m 0755 $(@D)/build/src/compiler/spirv/vtn_bindgen2 $(HOST_DIR)/bin/vtn_bindgen2
 	$(HOST_MESA3D_INSTALL_PANFROST_COMPILE)
+	$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' $(HOST_DIR)/bin/mesa_clc
+	$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' $(HOST_DIR)/bin/vtn_bindgen2
 endef
 
 $(eval $(meson-package))

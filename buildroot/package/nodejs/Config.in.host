@@ -1,7 +1,6 @@
 config BR2_PACKAGE_HOST_NODEJS_BIN_ARCH_SUPPORTS
 	bool
 	default y if BR2_HOSTARCH = "aarch64"
-	default y if BR2_HOSTARCH = "arm"
 	default y if BR2_HOSTARCH = "ppc64le"
 	default y if BR2_HOSTARCH = "x86_64"
 

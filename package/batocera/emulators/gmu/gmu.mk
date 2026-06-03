@@ -44,6 +44,8 @@ define GMU_INSTALL_TARGET_CMDS
 	    $(TARGET_DIR)/usr/share/batocera/datainit/roms/music/Start\ Music\ Player.sh
 	$(INSTALL) -D -m 0644 $(GMU_PKGDIR)/datainit/gamelist.xml \
 	    $(TARGET_DIR)/usr/share/batocera/datainit/roms/music/gamelist.xml
+	$(INSTALL) -D -m 0644 $(GMU_PKGDIR)/datainit/images/music.png \
+	    $(TARGET_DIR)/usr/share/batocera/datainit/roms/music/images/music.png
 endef
 
 $(eval $(generic-package))

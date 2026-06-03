@@ -1,11 +1,12 @@
 #!/bin/sh
 
 # the only partition we know when booting from linux is the root device on which linux booted.
-# by convention, the share partition is the next partition on the same disk
+# by convention, older images put the share partition next on the same disk.
+# Newer images may insert a SYSTEM partition, so prefer the SHARE label.
 
 # batocera.linux has 2 partitions
 # 1 : the boot partition
-# 2 : the share partition (user data)
+# 2 : the share partition (user data), or SYSTEM on layouts with 3 partitions
 #
 # from the root device partition the partitions can be determined
 # the root partition is not always /dev/mmcblk0p1, mainly in case you boot from an usb stick or a hard drive
@@ -19,6 +20,13 @@ determine_boot_part() {
 }
 
 determine_default_share_part() {
+    SHAREPART=$(blkid -L SHARE 2>/dev/null)
+    if test -n "${SHAREPART}"
+    then
+	echo "${SHAREPART}"
+	return 0
+    fi
+
     BOOTPART=$(determine_boot_part)
     XBOOT=$(echo "${BOOTPART}" | sed -e s+'^.*\([0-9]\)$'+'\1'+)
 
@@ -33,6 +41,15 @@ determine_default_share_part() {
 }
 
 determine_default_share_part_num() {
+    SHAREPART=$(determine_default_share_part)
+    XSHARE=$(echo "${SHAREPART}" | sed -e s+'^.*\([0-9]\)$'+'\1'+)
+
+    if echo "${XSHARE}" | grep -qE '^[0-9]$'
+    then
+	echo "${XSHARE}"
+	return 0
+    fi
+
     BOOTPART=$(determine_boot_part)
     XBOOT=$(echo "${BOOTPART}" | sed -e s+'^.*\([0-9]\)$'+'\1'+)
 

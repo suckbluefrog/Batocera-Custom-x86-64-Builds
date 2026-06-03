@@ -41,7 +41,13 @@ cat "${BROUTPUTDIR}/images/batocera/batocera.version"
 echo "</h1>"
 echo "<h2>Files</h2>"
 echo "<ul>"
-echo "<li>""<a href=\"boot.tar.xz\">boot.tar.xz</a></li>"
+for UPDATEFILE in update.tar boot.tar.xz
+do
+    if test -f "${BROUTPUTDIR}/images/batocera/images/${BOARD}/${UPDATEFILE}"
+    then
+	echo "<li>""<a href=\"${UPDATEFILE}\">${UPDATEFILE}</a></li>"
+    fi
+done
 ls "${BROUTPUTDIR}/images/batocera/images/${BOARD}/"*.gz |
     while read FILE
     do

@@ -19,10 +19,6 @@ HOST_NODEJS_BIN_PROVIDES = host-nodejs
 
 ifeq ($(HOSTARCH),aarch64)
 NODEJS_BIN_ARCH = arm64
-else ifeq ($(HOSTARCH),arm)
-# We assume that if someone does a build on ARM, it will be on an
-# ARMv7 machine
-NODEJS_BIN_ARCH = armv7l
 else ifeq ($(HOSTARCH),ppc64le)
 NODEJS_BIN_ARCH = ppc64le
 else ifeq ($(HOSTARCH),x86_64)

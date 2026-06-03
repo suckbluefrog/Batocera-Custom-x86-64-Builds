@@ -1,0 +1,24 @@
+From 56f66436b73b4eee7eaa937eb39c70f82c5eb863 Mon Sep 17 00:00:00 2001
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Tue, 2 Jun 2026 18:19:48 +0000
+Subject: [PATCH] fix Kronos libretro width
+
+---
+ yabause/src/core/video/opengl/compute_shader/src/yglcs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/yabause/src/core/video/opengl/compute_shader/src/yglcs.c b/yabause/src/core/video/opengl/compute_shader/src/yglcs.c
+index 6ff9f37..71f1c6e 100644
+--- a/yabause/src/core/video/opengl/compute_shader/src/yglcs.c
++++ b/yabause/src/core/video/opengl/compute_shader/src/yglcs.c
+@@ -268,7 +268,7 @@
+     scale = MAX(w/_Ygl->rwidth, h/_Ygl->rheight);
+ #else
+   //Libretro is taking care to the resize
+-  w = width;
++  w = _Ygl->width;
+   h = _Ygl->height;
+   x = y = 0;
+ #endif
+-- 
+2.49.0

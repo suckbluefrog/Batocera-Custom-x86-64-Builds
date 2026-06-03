@@ -120,7 +120,9 @@ class EdenGenerator(Generator):
         else:
             command_array = ["/usr/bin/eden", "-platform", "xcb"]
 
-        if not launch_menu:
+        if launch_menu:
+            command_array.append("-qlaunch")
+        else:
             command_array.extend(["-f", "-g", str(rom)])
 
         lsfg.apply_lsfg_vk(system, env, backend_key="eden_backend", process_name="eden")
@@ -183,7 +185,8 @@ class EdenGenerator(Generator):
         source_dir = EdenGenerator._resolve_bios_firmware_dir()
         if source_dir is None:
             return
-        EdenGenerator._copy_tree_if_updated(source_dir, target_registered_dir)
+        for source, target_name in EdenGenerator._registered_firmware_entries(source_dir):
+            EdenGenerator._copy_if_updated(source, target_registered_dir / target_name)
 
     @staticmethod
     def _resolve_bios_firmware_dir() -> Path | None:
@@ -198,10 +201,25 @@ class EdenGenerator(Generator):
             if candidate.is_dir():
                 return candidate
 
-        if firmware_root.is_dir() and any(child.is_file() for child in firmware_root.iterdir()):
+        if firmware_root.is_dir() and any(EdenGenerator._is_registered_firmware_entry(child) for child in firmware_root.iterdir()):
             return firmware_root
 
         return None
+
+    @staticmethod
+    def _is_registered_firmware_entry(path: Path) -> bool:
+        if path.is_file():
+            return True
+
+        return path.is_dir() and path.name.endswith(".nca") and (path / "00").is_file()
+
+    @staticmethod
+    def _registered_firmware_entries(source_dir: Path):
+        for child in sorted(source_dir.iterdir()):
+            if child.is_file():
+                yield child, child.name
+            elif child.is_dir() and child.name.endswith(".nca") and (child / "00").is_file():
+                yield child / "00", child.name
 
     @staticmethod
     def _copy_tree_if_updated(source_dir: Path, target_dir: Path) -> None:
@@ -215,6 +233,9 @@ class EdenGenerator(Generator):
 
     @staticmethod
     def _copy_if_updated(source: Path, destination: Path) -> None:
+        if destination.is_dir():
+            shutil.rmtree(destination)
+
         if destination.exists():
             source_stat = source.stat()
             destination_stat = destination.stat()

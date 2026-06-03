@@ -111,26 +111,18 @@ case ${1,,} in
     ;;
 
     --version|--arch|--update)
-        [[ ${2,,} == "butterfly" ]] && BRANCH=butterfly || BRANCH=stable
         [[ -f /usr/share/batocera/batocera.version ]] && { VER=$(cat /usr/share/batocera/batocera.version); ret=$?; } || { VER="UNKNOWN"; ret=1; }
         [[ -f /boot/boot/batocera.board ]] &&            { BOARD=$(cat /boot/boot/batocera.board); ret=$(($?+ret)); } || { BOARD="UNKNOWN"; ret=1; }
-          test "${BOARD}" = "rpi4" && BOARD=rpi464 # "temporarily" download on rpi464 for rpi4
 
         if [[ "${1,,}" == "--update" && $ret -eq 0 ]]; then
-            URL="https://updates.batocera.org/$BOARD/$BRANCH/last/batocera.version"
-            NET_VER=$(wget -q -O - "$URL")
-            [[ $? -eq 0 ]] || NET_VER="Connection failed!"
             echo "Installed:   $VER"
-            echo "Webversion:  $NET_VER"
-            echo "Update URL:  $(dirname $URL)"
-            echo "Branch:      ${BRANCH^^}-branch searched"
             echo "Used arch:   $BOARD"
-            if [[ $(version_update "$VER") -lt $(version_update "$NET_VER") ]]; then
-                echo "Status:      Possible Update found!"
+            if batocera-upgrade --check; then
+                echo "Status:      Local update.tar is ready to apply on reboot."
                 ret=0
             else
-                echo "Status:      No Update found!"
-                ret=1
+                ret=$?
+                [[ $ret -eq 12 ]] && echo "Status:      No local update.tar staged."
             fi
         else
             [[ ${1,,} == "--version" ]] && batocera-version

@@ -22,12 +22,32 @@ do
     TMP_CONFIGS="${TMP_DIR}/configs"
     mkdir -p "${TMP_CONFIG}" "${TMP_CONFIGS}" || exit 1
 
-    # generate the defconfig
-    "${BR2_EXTERNAL_BATOCERA_PATH}/configs/createDefconfig.sh" "${BR2_EXTERNAL_BATOCERA_PATH}/configs/batocera-${ARCH}"
+    if ! test -e "${BR2_EXTERNAL_BATOCERA_PATH}/configs/batocera-${ARCH}.board"
+    then
+	echo "skipping ${ARCH}: board file not found" >&2
+	continue
+    fi
 
-    (make O="${TMP_CONFIG}" -C ${BR_DIR} BR2_EXTERNAL="${BR2_EXTERNAL_BATOCERA_PATH}" "batocera-${ARCH}_defconfig" > /dev/null) || exit 1
+    # generate the defconfig
+    if ! "${BR2_EXTERNAL_BATOCERA_PATH}/configs/createDefconfig.sh" "${BR2_EXTERNAL_BATOCERA_PATH}/configs/batocera-${ARCH}"
+    then
+	echo "skipping ${ARCH}: defconfig generation failed" >&2
+	continue
+    fi
+
+    if ! (make O="${TMP_CONFIG}" -C ${BR_DIR} BR2_EXTERNAL="${BR2_EXTERNAL_BATOCERA_PATH}" "batocera-${ARCH}_defconfig" > /dev/null)
+    then
+	echo "skipping ${ARCH}: Buildroot defconfig target failed" >&2
+	continue
+    fi
     cp "${TMP_CONFIG}/.config" "${TMP_CONFIGS}/config_${ARCH}" || exit 1
 done
+
+if ! compgen -G "${TMP_CONFIGS}/config_*" > /dev/null
+then
+    echo "no generated configs for systems report" >&2
+    exit 1
+fi
 
 # reporting
 ES_YML="${BR2_EXTERNAL_BATOCERA_PATH}/package/batocera/emulationstation/batocera-es-system/es_systems.yml"

@@ -5,19 +5,42 @@
 ################################################################################
 
 RYUJINX_VERSION = 1.3.3
-RYUJINX_SITE = https://git.ryujinx.app/api/v4/projects/1/packages/generic/Ryubing/$(RYUJINX_VERSION)
+RYUJINX_SITE = https://git.ryujinx.app/ryubing/ryujinx.git
+RYUJINX_SITE_METHOD = git
 RYUJINX_LICENSE = MIT
-RYUJINX_DEPENDENCIES = sdl2 openal hicolor-icon-theme adwaita-icon-theme librsvg
+RYUJINX_LICENSE_FILES = LICENSE.txt
+RYUJINX_DEPENDENCIES = host-dotnet-sdk-bin sdl2 openal hicolor-icon-theme \
+	adwaita-icon-theme librsvg
 
 ifeq ($(BR2_x86_64),y)
-RYUJINX_SOURCE = ryujinx-$(RYUJINX_VERSION)-linux_x64.tar.gz
+RYUJINX_RUNTIME_IDENTIFIER = linux-x64
 else ifeq ($(BR2_aarch64),y)
-RYUJINX_SOURCE = ryujinx-$(RYUJINX_VERSION)-linux_arm64.tar.gz
+RYUJINX_RUNTIME_IDENTIFIER = linux-arm64
 endif
 
-define RYUJINX_EXTRACT_CMDS
-	mkdir -p $(@D)/target && cd $(@D)/target && \
-	    tar xf $(DL_DIR)/$(RYUJINX_DL_SUBDIR)/$(RYUJINX_SOURCE)
+RYUJINX_DOTNET_ENV = \
+	DOTNET_CLI_HOME=$(@D)/.dotnet \
+	DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+	DOTNET_NOLOGO=1 \
+	DOTNET_ROOT=$(HOST_DIR)/opt/dotnet \
+	DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+	HOME=$(@D)/.dotnet \
+	NUGET_PACKAGES=$(@D)/.nuget/packages \
+	PATH=$(HOST_DIR)/bin:$(BR_PATH)
+
+define RYUJINX_BUILD_CMDS
+	mkdir -p $(@D)/.dotnet $(@D)/.nuget/packages $(@D)/target/publish
+	cd $(@D) && \
+	    $(RYUJINX_DOTNET_ENV) \
+	    dotnet publish src/Ryujinx/Ryujinx.csproj \
+		-c Release \
+		-r $(RYUJINX_RUNTIME_IDENTIFIER) \
+		--self-contained true \
+		--disable-build-servers \
+		-p:DebugSymbols=false \
+		-p:DebugType=none \
+		-p:Version=$(RYUJINX_VERSION) \
+		-o $(@D)/target/publish
 endef
 
 define RYUJINX_INSTALL_TARGET_CMDS
