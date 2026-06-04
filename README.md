@@ -37,7 +37,7 @@ Latest Build: June 4, 2026
 This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.  Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer
 
 - NVIDIA Proprietary driver support has been added with 580 and 590 drivers. Limited testing has reported success. Maxwell (9xx/750ti) and higher boards are supported
-- Gamescope compatibilty and performance on Nvidia boards may vary
+- Gamescope compatibility and performance on Nvidia boards may vary
 -  No official support is provided
 - Based on Batocera's "zen3" (a misnomer) wayland build 
 
