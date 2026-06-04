@@ -36,11 +36,10 @@ Latest Build: June 4, 2026
 
 This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.  Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer
 
-- NVIDIA support is **experimental and untested**
-- May function on **RTX 2000-series (Turing) and newer GPUs** using NVK drivers. Expect stutter and worse performance than proprietary Nvidia on Xorg/X11
-- Stability is **not guaranteed**
-- No official support is provided
-- Based on Batocera's "zen3" (a misnomer) build 
+- NVIDIA Proprietary driver support has been added with 580 and 590 drivers. Limited testing has reported success. Maxwell (9xx/750ti) and higher boards are supported/
+- Gamescope compatibilty and performance on Nvidia boards may vary
+-  No official support is provided
+- Based on Batocera's "zen3" (a misnomer) wayland build 
 
 This variant includes additional integrated components and tooling beyond the standard distribution and is designed for users comfortable troubleshooting their own systems.
 
@@ -91,15 +90,15 @@ Includes:
 
 Steam is integrated directly into the base system.
 
-Note: patched issues since recent runtime update from previous image
+
 
 - Integrated with EmulationStation (ES)
 - Custom configgens (Advanced ES settings) and launchers
-- Full  Gamescope support in steamdeck mode (note first launch in SteamDeck mode may show blank display during runtime download
+- Full  Gamescope support in steamOS mode 
 - No Flatpak required
 - No container add-ons required
 - Network icon / Wi-Fi detection handled via custom DBus integration in steam deck mode
-- Reboot / Shutdown from gamepadui supported
+- Shutdown from gamepadui supported
 - Automatically parses Steam games into ES
 - Steam data stored in: `~/steam`
 
@@ -226,6 +225,7 @@ Includes:
 ---
 ## Other Additions
 - TouchHLE is added (IOS emulator -- currently up to IOS 3.0)
+- Applewin
 - 86box
 - Gopher 64
 - lr-azahar
@@ -235,6 +235,7 @@ Includes:
 - FreeJ2ME
 - Extra ES options for various emulators
 - embedded wine tools
+- N64 Recomp
 - steam tools like rom manager and proton-up
   
 
@@ -333,8 +334,8 @@ Not intended for beginners.
 
 ## Notes
 
-- Approx. 5.5GB compressed image size
-- Uses an 18GB Batocera partition to allow room for future updates
+- Approx. 6.5GB compressed image size
+- Uses an 14GB System partition to allow room for future updates
 
 
 
@@ -343,23 +344,7 @@ Not intended for beginners.
 
 # How to Upgrade
 
-1. Create the upgrade directory: `/userdata/system/upgrade`
-2. put `boot.tar.xz` in it
-3. run `batocera-upgrade manual`
-4. reboot   
-
-If your Batocera partition is too small to upgrade, you may need to resize it.
-
-See the ModHacks guide:
-
-https://www.youtube.com/watch?v=lYOOFJO8y_k
-
-Recommended size:
-
-**At least 15GB Batocera partition**
-
----
-
+See Enclose instructions with files
 
 
 ## ⚠️ Unofficial Build Notice
