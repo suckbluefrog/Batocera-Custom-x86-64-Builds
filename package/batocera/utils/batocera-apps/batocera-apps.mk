@@ -162,12 +162,14 @@ define BATOCERA_APPS_INSTALL_TARGET_CMDS
 	install -D -m 0755 \
 		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-apps/batocera-app-geforcenow \
 		$(TARGET_DIR)/usr/bin/batocera-app-geforcenow
+	install -D -m 0755 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-apps/batocera-app-protonupqt \
+		$(TARGET_DIR)/usr/bin/batocera-app-protonupqt
 
 	mkdir -p $(TARGET_DIR)/usr/bin
 	printf '%s\n' '#!/bin/sh' 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/vacuumtube.AppImage vacuumtube 1 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-vacuumtube
 	printf '%s\n' '#!/bin/sh' 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/chrome.AppImage chrome 1 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-chrome
 	printf '%s\n' '#!/bin/sh' 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/firefox.AppImage firefox 0 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-firefox
-	printf '%s\n' '#!/bin/sh' 'set -e' 'batocera-mouse show' "trap 'batocera-mouse hide' EXIT" 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/protonupqt.AppImage protonupqt 1 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-protonupqt
 	printf '%s\n' '#!/bin/sh' 'set -e' 'batocera-mouse show' "trap 'batocera-mouse hide' EXIT" 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/steamrommanager.AppImage steamrommanager 1 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-steamrommanager
 	printf '%s\n' '#!/bin/sh' 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/greenlight.AppImage greenlight 1 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-greenlight
 	printf '%s\n' '#!/bin/sh' 'exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/moonlight.AppImage moonlight 0 "$$@"' > $(TARGET_DIR)/usr/bin/batocera-app-moonlight

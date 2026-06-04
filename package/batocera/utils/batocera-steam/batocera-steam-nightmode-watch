@@ -3,12 +3,21 @@ set -u
 
 LOG="/userdata/system/logs/steam.log"
 STEAM_CONFIG="${STEAM_CONFIG:-/userdata/system/steam/config/config.vdf}"
-RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+USER_RUNTIME_DIR="/run/user/$(id -u)"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-${USER_RUNTIME_DIR}}"
+if [[ "${RUNTIME_DIR}" != "${USER_RUNTIME_DIR}" && -d "${USER_RUNTIME_DIR}" ]]; then
+    RUNTIME_DIR="${USER_RUNTIME_DIR}"
+fi
 STATE_FILE="${RUNTIME_DIR}/batocera-steam-nightmode.state"
 WARM_LOOK="${BATOCERA_STEAM_NIGHTMODE_LOOK:-/usr/share/batocera/steam/looks/night-mode-warm.cube}"
 INTERVAL="${BATOCERA_STEAM_NIGHTMODE_INTERVAL:-2}"
+REASSERT_INTERVAL="${BATOCERA_STEAM_NIGHTMODE_REASSERT_INTERVAL:-10}"
 
 mkdir -p "$(dirname "${LOG}")" "${RUNTIME_DIR}" 2>/dev/null || true
+
+if ! [[ "${REASSERT_INTERVAL}" =~ ^[0-9]+$ ]]; then
+    REASSERT_INTERVAL=10
+fi
 
 log() {
     echo "steam-nightmode: $*" >> "${LOG}"
@@ -29,6 +38,10 @@ vdf_value() {
 
 positive_float() {
     awk -v value="${1:-0}" 'BEGIN { exit !((value + 0) > 0) }'
+}
+
+config_stamp() {
+    stat -c '%Y:%s' "${STEAM_CONFIG}" 2>/dev/null || printf 'missing'
 }
 
 night_mode_enabled() {
@@ -93,6 +106,32 @@ resolve_gamescope_display() {
     return 1
 }
 
+reset_gamescope_color_workarounds() {
+    local display="$1"
+    local key
+
+    for key in \
+        drm_debug_disable_color_encoding \
+        drm_debug_disable_color_range \
+        drm_debug_disable_ctm \
+        drm_debug_disable_degamma_tf \
+        drm_debug_disable_regamma_tf \
+        drm_debug_disable_output_tf \
+        drm_debug_disable_shaper_and_3dlut \
+        drm_debug_disable_blend_tf \
+        composite_force; do
+        XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
+            GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+            gamescopectl "${key}" 0 >/dev/null 2>&1 || true
+    done
+}
+
+set_composition_for_clear_look() {
+    local display="$1"
+
+    reset_gamescope_color_workarounds "${display}"
+}
+
 apply_look() {
     local display
     local label="$1"
@@ -114,9 +153,7 @@ apply_look() {
         XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
             GAMESCOPE_WAYLAND_DISPLAY="${display}" \
             gamescopectl set_look >/dev/null 2>&1 || true
-        XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
-            GAMESCOPE_WAYLAND_DISPLAY="${display}" \
-            gamescopectl composite_force 0 >/dev/null 2>&1 || true
+        set_composition_for_clear_look "${display}"
     fi
 
     printf '%s\n' "${label}" > "${STATE_FILE}"
@@ -130,9 +167,7 @@ clear_look() {
     XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
         GAMESCOPE_WAYLAND_DISPLAY="${display}" \
         gamescopectl set_look >/dev/null 2>&1 || true
-    XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
-        GAMESCOPE_WAYLAND_DISPLAY="${display}" \
-        gamescopectl composite_force 0 >/dev/null 2>&1 || true
+    set_composition_for_clear_look "${display}"
 
     rm -f "${STATE_FILE}" 2>/dev/null || true
     log "cleared night look on ${display}"
@@ -162,7 +197,11 @@ gamescope_running() {
 main() {
     local current
     local desired
-    local look
+    local force
+    local last_apply=0
+    local last_config_stamp=""
+    local now
+    local stamp
 
     if ! command -v gamescopectl >/dev/null 2>&1; then
         log "gamescopectl is not installed"
@@ -181,18 +220,26 @@ main() {
             desired="off"
         fi
 
+        stamp="$(config_stamp)"
+        force=0
+        if [[ "${stamp}" != "${last_config_stamp}" ]]; then
+            last_config_stamp="${stamp}"
+            force=1
+        fi
+
+        now="$(date +%s)"
         current="$(cat "${STATE_FILE}" 2>/dev/null || true)"
         case "${desired}:${current}" in
-            night:night|off:"")
+            night:night|off:off)
+                if (( force || now - last_apply >= REASSERT_INTERVAL )); then
+                    apply_look "${desired}" && last_apply="${now}" || true
+                fi
                 ;;
             night:*)
-                apply_look "night" || true
-                ;;
-            off:night)
-                clear_look || true
+                apply_look "night" && last_apply="${now}" || true
                 ;;
             off:*)
-                rm -f "${STATE_FILE}" 2>/dev/null || true
+                apply_look "off" && last_apply="${now}" || clear_look || true
                 ;;
         esac
 

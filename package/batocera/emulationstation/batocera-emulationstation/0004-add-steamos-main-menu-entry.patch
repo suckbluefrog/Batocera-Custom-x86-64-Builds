@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Thu, 04 Jun 2026 10:24:21 +0000
+Subject: [PATCH] Add SteamOS mode to the main menu
+
+diff --git a/es-app/src/ApiSystem.cpp b/es-app/src/ApiSystem.cpp
+index 91d84a2..d0bb8e8 100644
+--- a/es-app/src/ApiSystem.cpp
++++ b/es-app/src/ApiSystem.cpp
+@@ -463,0 +464,29 @@ bool ApiSystem::launchKodi(Window *window)
++#ifdef BATOCERA
++bool ApiSystem::launchSteamOS(Window *window)
++{
++	LOG(LogDebug) << "ApiSystem::launchSteamOS";
++
++	std::string command =
++		"BATOCERA_STEAM_MODE=steamos "
++		"BATOCERA_STEAM_GAMEPADUI=1 "
++		"BATOCERA_STEAM_USE_GAMESCOPE=1 "
++		"BATOCERA_STEAM_VISIBLE_UPDATE_PREFLIGHT=1 "
++		"BATOCERA_STEAM_UPDATE_TERMINAL=0 ";
++
++	if (Utils::FileSystem::exists("/usr/bin/steam-direct-session.sh"))
++		command += "/usr/bin/steam-direct-session.sh";
++	else
++		command += "/usr/bin/batocera-steam";
++
++	ApiSystem::launchExternalWindow_before(window);
++
++	int exitCode = system(command.c_str());
++	if (WIFEXITED(exitCode))
++		exitCode = WEXITSTATUS(exitCode);
++
++	ApiSystem::launchExternalWindow_after(window);
++
++	return exitCode == 0;
++}
++#endif
++
+diff --git a/es-app/src/ApiSystem.h b/es-app/src/ApiSystem.h
+index e8d3dc2..93f0858 100644
+--- a/es-app/src/ApiSystem.h
++++ b/es-app/src/ApiSystem.h
+@@ -211,0 +212,3 @@ public:
++#ifdef BATOCERA
++    virtual bool launchSteamOS(Window *window);
++#endif
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index c55df20..ca02c26 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -159,0 +160,12 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
++#ifdef BATOCERA
++	if (Utils::FileSystem::exists("/usr/bin/steam-direct-session.sh") || Utils::FileSystem::exists("/usr/bin/batocera-steam"))
++		addEntry(_("STEAMOS MODE").c_str(), false, [this]
++	{
++		Window *window = mWindow;
++		delete this;
++		if (!ApiSystem::getInstance()->launchSteamOS(window))
++			LOG(LogWarning) << "SteamOS mode terminated with non-zero result!";
++
++	}, "iconSteamOS");
++#endif
++

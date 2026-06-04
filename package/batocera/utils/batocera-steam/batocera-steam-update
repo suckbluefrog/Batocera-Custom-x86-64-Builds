@@ -49,8 +49,10 @@ es_add_game() {
     local game_image="$3"
     local game_emulator="${4:-}"
     local game_core="${5:-}"
+    local game_hidden="${6:-false}"
     local emulator_xml=""
     local core_xml=""
+    local hidden_xml=""
 
     if [[ -n "${game_emulator}" ]]; then
         emulator_xml="  <emulator>$(xml_escape "${game_emulator}")</emulator>"
@@ -58,6 +60,10 @@ es_add_game() {
 
     if [[ -n "${game_core}" ]]; then
         core_xml="  <core>$(xml_escape "${game_core}")</core>"
+    fi
+
+    if [[ "${game_hidden}" == "true" ]]; then
+        hidden_xml="  <hidden>true</hidden>"
     fi
 
     cat >> "${tmp_xml}" <<EOF
@@ -74,9 +80,33 @@ es_add_game() {
   <image>$(xml_escape "${game_image}")</image>
 ${emulator_xml}
 ${core_xml}
+${hidden_xml}
   <manual></manual>
   <video></video>
 </game>
+EOF
+}
+
+write_steam_gamepadui_keys() {
+    local keys_file="$1"
+
+    cat > "${keys_file}" <<'EOF'
+{
+    "actions_player1": [
+        {
+            "trigger": ["hotkey", "a"],
+            "type": "key",
+            "target": [ "KEY_LEFTCTRL", "KEY_2" ],
+            "description": "Steam Quick Access Menu"
+        },
+        {
+            "trigger": ["select", "a"],
+            "type": "key",
+            "target": [ "KEY_LEFTCTRL", "KEY_2" ],
+            "description": "Steam Quick Access Menu"
+        }
+    ]
+}
 EOF
 }
 
@@ -111,24 +141,29 @@ desktop_appid() {
     return 1
 }
 
-contains_blacklisted_word() {
+is_hidden_steam_helper() {
     local game_name="$1"
     local word=""
+    local normalized="${game_name,,}"
     local -a blacklist=(
-        "Runtime"
-        "Proton"
-        "SDK"
-        "Dedicated"
-        "Workshop"
-        "Big Picture"
-        "Source"
-        "Linux Runtime"
-        "Redistributables"
-        "Desktop Mode"
+        "big picture"
+        "common redistributable"
+        "dedicated server"
+        "desktop mode"
+        "pressure vessel"
+        "pressure-vessel"
+        "pressurevessel"
+        "proton"
+        "redistributable"
+        "runtime"
+        "sdk"
+        "source sdk"
+        "steamworks shared"
+        "workshop tools"
     )
 
     for word in "${blacklist[@]}"; do
-        if [[ "${game_name}" == *"${word}"* ]]; then
+        if [[ "${normalized}" == *"${word}"* ]]; then
             return 0
         fi
     done
@@ -296,12 +331,14 @@ EOF
     if [[ -n "${gamepadui_command}" ]]; then
         printf '%s' "${gamepadui_command}" >> "${roms_dir}/SteamOS Mode.steam"
     fi
+    write_steam_gamepadui_keys "${roms_dir}/SteamOS Mode.steam.keys"
 
     cat > "${roms_dir}/Steam GamepadUI No Gamescope.steam" <<'EOF'
 mode=gamepadui
 gamepadui=1
 gamescope=0
 EOF
+    write_steam_gamepadui_keys "${roms_dir}/Steam GamepadUI No Gamescope.steam.keys"
 
     cat > "${roms_dir}/Steam Desktop.steam" <<'EOF'
 mode=desktop
@@ -325,6 +362,7 @@ es_add_game "./Steam Desktop.steam" "Desktop Mode" "${generic_image_rel}"
 declare -A seen_libraries=()
 declare -A seen_appids=()
 declare -i game_count=0
+declare -i hidden_count=0
 
 while IFS= read -r library; do
     if [[ -z "${library}" || -n "${seen_libraries["${library}"]+x}" ]]; then
@@ -343,6 +381,12 @@ while IFS= read -r library; do
         if [[ -z "${name}" ]]; then
             name="Steam App ${appid}"
         fi
+        game_hidden="false"
+        if is_hidden_steam_helper "${name}"; then
+            game_hidden="true"
+            hidden_count+=1
+            echo "Marking hidden Steam helper entry: ${name}" >> "${log}"
+        fi
 
         launcher_name="steam-app-${appid}.steam"
         cat > "${roms_dir}/${launcher_name}" <<EOF
@@ -350,7 +394,7 @@ appid=${appid}
 EOF
 
         image_rel="$(copy_game_image "${appid}")"
-        es_add_game "./${launcher_name}" "${name}" "${image_rel}"
+        es_add_game "./${launcher_name}" "${name}" "${image_rel}" "" "" "${game_hidden}"
         game_count+=1
     done < <(find "${library}" -maxdepth 1 -type f -name 'appmanifest_*.acf' -print0 2>/dev/null)
 done < <(discover_libraries)
@@ -370,9 +414,11 @@ while IFS= read -r -d '' desktop_file; do
         name="$(basename "${desktop_file}" .desktop)"
     fi
 
-    if contains_blacklisted_word "${name}"; then
-        echo "Skipping blacklisted Steam entry: ${name}" >> "${log}"
-        continue
+    game_hidden="false"
+    if is_hidden_steam_helper "${name}"; then
+        game_hidden="true"
+        hidden_count+=1
+        echo "Marking hidden Steam helper entry: ${name}" >> "${log}"
     fi
 
     seen_appids["${appid}"]=1
@@ -382,9 +428,9 @@ appid=${appid}
 EOF
 
     image_rel="$(copy_game_image "${appid}")"
-    es_add_game "./${launcher_name}" "${name}" "${image_rel}"
+    es_add_game "./${launcher_name}" "${name}" "${image_rel}" "" "" "${game_hidden}"
     game_count+=1
 done < <(discover_desktop_files)
 
-echo "Steam launcher update complete: ${game_count} installed game(s) indexed." >> "${log}"
+echo "Steam launcher update complete: ${game_count} installed game(s) indexed, ${hidden_count} hidden helper(s)." >> "${log}"
 es_add_game_end

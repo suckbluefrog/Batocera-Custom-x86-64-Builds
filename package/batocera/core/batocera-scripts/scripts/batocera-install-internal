@@ -249,6 +249,7 @@ set_boot_conf_key() {
 main() {
     local system_source
     local system_size_bytes
+    local live_system_gb
     local min_system_gb
     local target_disk
     local target_size_bytes
@@ -289,8 +290,10 @@ main() {
     [ -f "${system_source}" ] || die "System source ${system_source} is not a file."
 
     system_size_bytes="$(stat -c '%s' "${system_source}")"
-    min_system_gb=$(((system_size_bytes + GIB - 1) / GIB))
-    [ "${min_system_gb}" -lt 1 ] && min_system_gb=1
+    live_system_gb=$(((system_size_bytes + GIB - 1) / GIB))
+    [ "${live_system_gb}" -lt 1 ] && live_system_gb=1
+    min_system_gb=$(((system_size_bytes * 21 + (10 * GIB) - 1) / (10 * GIB)))
+    [ "${min_system_gb}" -lt "${live_system_gb}" ] && min_system_gb="${live_system_gb}"
 
     dialog_msg "Install Batocera Internal" \
 "This installer wipes an entire selected PC disk and creates:
@@ -317,11 +320,11 @@ The live /boot, /system, and /userdata disks are hidden from the target list."
         "${MIN_BOOT_GB}" "${max_boot_gb}" "${MIN_BOOT_GB}")" || exit 0
 
     max_system_gb=$((target_gb - boot_gb - MIN_SHARE_GB))
-    default_system_gb=$((min_system_gb + 4))
+    default_system_gb="${min_system_gb}"
     [ "${default_system_gb}" -gt "${max_system_gb}" ] && default_system_gb="${max_system_gb}"
     system_gb="$(prompt_gb \
         "SYSTEM Partition Size" \
-        "Enter ext4 SYSTEM partition size in GB.\n\nCurrent live squashfs needs at least ${min_system_gb} GB.\nChoosing a size close to the minimum can make future update.tar installs fail until the partition is manually resized." \
+        "Enter ext4 SYSTEM partition size in GB.\n\nCurrent live squashfs rounds up to ${live_system_gb} GB.\nMinimum/default: ${min_system_gb} GB, calculated as 2.1x the current squashfs size so there is staging room for an update.tar with a squashfs of the same size.\n\nIncrease this if you want more room for future update.tar images that may become larger." \
         "${min_system_gb}" "${max_system_gb}" "${default_system_gb}")" || exit 0
 
     share_gb=$((target_gb - boot_gb - system_gb))

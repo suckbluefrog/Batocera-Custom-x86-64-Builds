@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera <batocera@local>
+Date: Thu, 4 Jun 2026 10:55:00 +0300
+Subject: [PATCH] set: add systemconfig field_testing default
+
+QLaunch queries systemconfig/field_testing through the generic settings
+key/value API. Eden already exposes the same value through
+GetFieldTestingFlag(), so add the generic setting entry and return false.
+---
+ src/core/hle/service/set/system_settings_server.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/core/hle/service/set/system_settings_server.cpp b/src/core/hle/service/set/system_settings_server.cpp
+--- a/src/core/hle/service/set/system_settings_server.cpp
++++ b/src/core/hle/service/set/system_settings_server.cpp
+@@ -730,6 +730,7 @@ static Settings GetSettings() {
+ 
+     // Settings
+     ret["settings_debug"]["is_debug_mode_enabled"] = ToBytes(bool{false});
++    ret["systemconfig"]["field_testing"] = ToBytes(bool{false});
+ 
+     // Error
+     ret["err"]["applet_auto_close"] = ToBytes(bool{false});
+-- 
+2.43.0

@@ -158,6 +158,7 @@ class RyujinxGenerator(Generator):
         conf["enable_discord_integration"] = False
         conf["check_updates_on_start"] = False
         conf["show_confirm_exit"] = False
+        conf["skip_user_profiles"] = system.config.get_bool("ryujinx_skip_user_profiles", True)
         conf["hide_cursor"] = 1
         conf["game_dirs"] = [str(ROMS / "switch")]
         conf["start_fullscreen"] = True
@@ -325,8 +326,6 @@ class RyujinxGenerator(Generator):
         if not configure_emulator(rom):
             if conf.get("start_fullscreen", True):
                 launch_args.append("--fullscreen")
-            if conf.get("start_no_ui", True):
-                launch_args.append("--no-gui")
 
         if configure_emulator(rom):
             base_command = [ryujinxExec]
@@ -640,6 +639,22 @@ def _registered_firmware_entries(source_dir):
             yield child / "00", child.name
 
 
+def _prune_stale_firmware_entries(target_registered_dir, expected_names):
+    if not target_registered_dir.is_dir():
+        return
+
+    for child in target_registered_dir.iterdir():
+        if not child.name.endswith(".nca") or child.name in expected_names:
+            continue
+
+        if child.is_symlink() or child.is_file():
+            child.unlink()
+        elif child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink(missing_ok=True)
+
+
 def _bootstrap_firmware_registered_from_firmware_dir(bis_root):
     """
     Shared Switch firmware dumps live in /userdata/bios/switch/firmware.
@@ -652,23 +667,26 @@ def _bootstrap_firmware_registered_from_firmware_dir(bis_root):
     registered = bis_root / "system" / "Contents" / "registered"
     registered.mkdir(parents=True, exist_ok=True)
 
-    for nca, target_name in _registered_firmware_entries(source_dir):
-        target = registered / target_name
+    entries = list(_registered_firmware_entries(source_dir))
+    expected_names = {target_name for _, target_name in entries}
+    _prune_stale_firmware_entries(registered, expected_names)
 
-        # Replace symlinks with regular files/hardlinks for tools that skip symlink entries.
-        if target.is_symlink():
-            try:
-                if target.resolve() == nca.resolve():
-                    continue
-            except FileNotFoundError:
-                pass
-            target.unlink(missing_ok=True)
-        elif target.is_dir():
-            shutil.rmtree(target)
-        elif target.exists() and filecmp.cmp(nca, target, shallow=False):
+    for nca, target_name in entries:
+        target_dir = registered / target_name
+        target = target_dir / "00"
+
+        # Ryujinx enumerates registered firmware as <content>.nca/00 directories.
+        if target_dir.is_symlink() or target_dir.is_file():
+            target_dir.unlink(missing_ok=True)
+        elif target_dir.exists() and not target_dir.is_dir():
+            target_dir.unlink(missing_ok=True)
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        if target.exists() and filecmp.cmp(nca, target, shallow=False):
             continue
-        elif target.exists():
-            target.unlink()
+        if target.exists() or target.is_symlink():
+            target.unlink(missing_ok=True)
 
         try:
             os.link(nca, target)
@@ -700,12 +718,17 @@ def _bootstrap_firmware_registered_from_flat_nand(nand_root, bis_root):
         return
 
     for nca in loose_ncas:
-        target = registered / nca.name
+        target_dir = registered / nca.name
+        target = target_dir / "00"
 
-        # Replace symlinks with regular files/hardlinks for tools that skip symlink entries.
-        if target.is_symlink():
-            target.unlink(missing_ok=True)
-        elif target.exists():
+        if target_dir.is_symlink() or target_dir.is_file():
+            target_dir.unlink(missing_ok=True)
+        elif target_dir.exists() and not target_dir.is_dir():
+            target_dir.unlink(missing_ok=True)
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        if target.exists():
             continue
 
         try:

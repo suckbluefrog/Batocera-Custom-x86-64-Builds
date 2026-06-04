@@ -185,7 +185,12 @@ class EdenGenerator(Generator):
         source_dir = EdenGenerator._resolve_bios_firmware_dir()
         if source_dir is None:
             return
-        for source, target_name in EdenGenerator._registered_firmware_entries(source_dir):
+
+        entries = list(EdenGenerator._registered_firmware_entries(source_dir))
+        expected_names = {target_name for _, target_name in entries}
+        EdenGenerator._prune_stale_firmware_entries(target_registered_dir, expected_names)
+
+        for source, target_name in entries:
             EdenGenerator._copy_if_updated(source, target_registered_dir / target_name)
 
     @staticmethod
@@ -220,6 +225,20 @@ class EdenGenerator(Generator):
                 yield child, child.name
             elif child.is_dir() and child.name.endswith(".nca") and (child / "00").is_file():
                 yield child / "00", child.name
+
+    @staticmethod
+    def _prune_stale_firmware_entries(target_registered_dir: Path, expected_names: set[str]) -> None:
+        if not target_registered_dir.is_dir():
+            return
+
+        for child in target_registered_dir.iterdir():
+            if not child.name.endswith(".nca") or child.name in expected_names:
+                continue
+
+            if child.is_dir():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
 
     @staticmethod
     def _copy_tree_if_updated(source_dir: Path, target_dir: Path) -> None:

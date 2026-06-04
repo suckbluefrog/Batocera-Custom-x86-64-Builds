@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera <batocera@local>
+Date: Thu, 4 Jun 2026 09:45:00 +0300
+Subject: [PATCH] hid: implement GetAppletFooterUiType
+
+QLaunch on newer firmware calls hid:sys command 314. Eden already tracks
+the footer UI type and exposes it through GetAppletDetailedUiType, so return
+the same footer value directly for the older footer-only command.
+---
+ src/core/hle/service/hid/hid_system_server.cpp | 17 ++++++++++++++++-
+ src/core/hle/service/hid/hid_system_server.h   |  1 +
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/src/core/hle/service/hid/hid_system_server.cpp b/src/core/hle/service/hid/hid_system_server.cpp
+index 3b369d6a0..f0bff72d1 100644
+--- a/src/core/hle/service/hid/hid_system_server.cpp
++++ b/src/core/hle/service/hid/hid_system_server.cpp
+@@ -54,7 +54,7 @@ IHidSystemServer::IHidSystemServer(Core::System& system_, std::shared_ptr<Resour
+         {310, &IHidSystemServer::GetMaskedSupportedNpadStyleSet, "GetMaskedSupportedNpadStyleSet"},
+         {311, nullptr, "SetNpadPlayerLedBlinkingDevice"},
+         {312, &IHidSystemServer::SetSupportedNpadStyleSetAll, "SetSupportedNpadStyleSetAll"},
+         {313, &IHidSystemServer::GetNpadCaptureButtonAssignment, "GetNpadCaptureButtonAssignment"},
+-        {314, nullptr, "GetAppletFooterUiType"},
++        {314, &IHidSystemServer::GetAppletFooterUiType, "GetAppletFooterUiType"},
+         {315, &IHidSystemServer::GetAppletDetailedUiType, "GetAppletDetailedUiType"},
+         {316, &IHidSystemServer::GetNpadInterfaceType, "GetNpadInterfaceType"},
+         {317, &IHidSystemServer::GetNpadLeftRightInterfaceType, "GetNpadLeftRightInterfaceType"},
+@@ -402,6 +402,21 @@ void IHidSystemServer::GetNpadCaptureButtonAssignment(HLERequestContext& ctx) {
+     rb.Push(list_size);
+ }
+ 
++void IHidSystemServer::GetAppletFooterUiType(HLERequestContext& ctx) {
++    IPC::RequestParser rp{ctx};
++    const auto npad_id_type{rp.PopEnum<Core::HID::NpadIdType>()};
++
++    LOG_DEBUG(Service_HID, "called, npad_id_type={}",
++              npad_id_type); // Spams a lot when controller applet is running
++
++    const AppletFooterUiType applet_footer_ui_type =
++        GetResourceManager()->GetNpad()->GetAppletDetailedUiType(npad_id_type).footer;
++
++    IPC::ResponseBuilder rb{ctx, 3};
++    rb.Push(ResultSuccess);
++    rb.PushEnum(applet_footer_ui_type);
++}
++
+ void IHidSystemServer::GetAppletDetailedUiType(HLERequestContext& ctx) {
+     IPC::RequestParser rp{ctx};
+     const auto npad_id_type{rp.PopEnum<Core::HID::NpadIdType>()};
+diff --git a/src/core/hle/service/hid/hid_system_server.h b/src/core/hle/service/hid/hid_system_server.h
+index a51cd7592..46959884d 100644
+--- a/src/core/hle/service/hid/hid_system_server.h
++++ b/src/core/hle/service/hid/hid_system_server.h
+@@ -35,6 +35,7 @@ private:
+     void GetNpadFullKeyGripColor(HLERequestContext& ctx);
+     void GetMaskedSupportedNpadStyleSet(HLERequestContext& ctx);
+     void SetSupportedNpadStyleSetAll(HLERequestContext& ctx);
+     void GetNpadCaptureButtonAssignment(HLERequestContext& ctx);
++    void GetAppletFooterUiType(HLERequestContext& ctx);
+     void GetAppletDetailedUiType(HLERequestContext& ctx);
+     void GetNpadInterfaceType(HLERequestContext& ctx);
+     void GetNpadLeftRightInterfaceType(HLERequestContext& ctx);
+-- 
+2.43.0

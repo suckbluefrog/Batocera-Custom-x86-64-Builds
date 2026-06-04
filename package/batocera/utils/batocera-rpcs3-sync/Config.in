@@ -1,6 +1,7 @@
 config BR2_PACKAGE_BATOCERA_RPCS3_SYNC
     bool "batocera-rpcs3-sync"
     depends on BR2_x86_64
+    select BR2_PACKAGE_PYTHON3
     help
       Sync installed PSN-style RPCS3 titles from the RPCS3 hdd0 game
       directory into Batocera's PS3 rom listing.

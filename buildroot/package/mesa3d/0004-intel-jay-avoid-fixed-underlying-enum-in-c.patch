@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Batocera build fix <noreply@batocera.org>
-Date: Sun, 17 May 2026 06:00:00 +0300
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Sun, 17 May 2026 03:00:00 +0000
 Subject: [PATCH] intel/jay: avoid fixed underlying enum syntax in C
 
 GCC 13 rejects C declarations using the C23/C++ fixed underlying enum
@@ -10,7 +10,7 @@ layout, so keep the named enum for constants and store the instruction
 field as uint8_t.
 
 Upstream: pending
-Signed-off-by: Batocera build fix <noreply@batocera.org>
+Signed-off-by: suckbluefrog <suckbluefrog@proton.me>
 ---
  src/intel/compiler/jay/jay_ir.h | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

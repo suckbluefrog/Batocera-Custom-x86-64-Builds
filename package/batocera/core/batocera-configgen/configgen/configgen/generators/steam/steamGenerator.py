@@ -378,6 +378,13 @@ class SteamGenerator(Generator):
             if gameId is not None:
                 commandArray.append(gameId)
 
+        gamescope_mangoapp = system.config.get_bool("gamescope_mangoapp", True, return_values=("1", "0"))
+        mangoapp_color_workaround = system.config.get_bool(
+            "gamescope_mangoapp_color_workaround",
+            False,
+            return_values=("1", "0"),
+        )
+
         env = {
             "SDL_JOYSTICK_HIDAPI_XBOX": "0",
             "BATOCERA_STEAM_MODE": mode,
@@ -394,7 +401,8 @@ class SteamGenerator(Generator):
             "BATOCERA_STEAM_GS_DISABLE_DAMAGE_TRACKING": system.config.get_bool("gamescope_disable_damage_tracking", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_DISABLE_HW_COMPOSITION": system.config.get_bool("gamescope_disable_hw_composition", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_FORCE_COMPOSITION_PIPELINE": system.config.get_bool("gamescope_force_composition_pipeline", False, return_values=("1", "0")),
-            "BATOCERA_STEAM_GS_MANGOAPP": system.config.get_bool("gamescope_mangoapp", True, return_values=("1", "0")),
+            "BATOCERA_STEAM_GS_MANGOAPP": gamescope_mangoapp,
+            "BATOCERA_STEAM_MANGOAPP_COLOR_WORKAROUND": mangoapp_color_workaround,
             "BATOCERA_STEAM_GS_FORCE_WINDOWS_FULLSCREEN": system.config.get_bool("gamescope_force_windows_fullscreen", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_IMMEDIATE_FLIPS": system.config.get_bool("gamescope_immediate_flips", False, return_values=("1", "0")),
             "BATOCERA_STEAM_GS_DISABLE_COLOR_MANAGEMENT": system.config.get_bool("gamescope_disable_color_management", False, return_values=("1", "0")),

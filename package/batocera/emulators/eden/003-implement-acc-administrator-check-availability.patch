@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera <batocera@local>
+Date: Thu, 4 Jun 2026 10:35:00 +0300
+Subject: [PATCH] acc: implement administrator CheckAvailability
+
+QLaunch on newer firmware asks the BAAS account administrator service for
+availability. Eden already stubs this successfully on the system manager
+service, so mirror that behavior for IAdministrator to avoid fataling during
+home-menu startup.
+---
+ src/core/hle/service/acc/acc.cpp | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/core/hle/service/acc/acc.cpp b/src/core/hle/service/acc/acc.cpp
+--- a/src/core/hle/service/acc/acc.cpp
++++ b/src/core/hle/service/acc/acc.cpp
+@@ -181,7 +181,7 @@ public:
+         : ServiceFramework{system_, "IAdministrator"} {
+         // clang-format off
+         static const FunctionInfo functions[] = {
+-            {0, nullptr, "CheckAvailability"},
++            {0, D<&IAdministrator::CheckAvailability>, "CheckAvailability"},
+             {1, nullptr, "GetAccountId"},
+             {2, nullptr, "EnsureIdTokenCacheAsync"},
+             {3, nullptr, "LoadIdTokenCache"},
+@@ -225,6 +225,11 @@ public:
+     }
+ 
+ private:
++    Result CheckAvailability() {
++        LOG_WARNING(Service_ACC, "(STUBBED) called");
++        R_SUCCEED();
++    }
++
+     void IsLinkedWithNintendoAccount(HLERequestContext& ctx) {
+         IPC::ResponseBuilder rb{ctx, 3};
+         rb.Push(ResultSuccess);
+-- 
+2.43.0

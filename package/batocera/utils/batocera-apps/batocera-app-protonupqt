@@ -1,0 +1,66 @@
+#!/bin/sh
+set -eu
+
+app_home="/userdata/saves/apps/protonupqt"
+batocera_home="/userdata/system"
+steam_root="/userdata/system/steam"
+heroic_root="/userdata/saves/heroic"
+lutris_root="/userdata/saves/lutris"
+
+ensure_dir() {
+    mkdir -p "$1" 2>/dev/null || true
+}
+
+link_dir_if_absent() {
+    target="$1"
+    link="$2"
+
+    ensure_dir "$target"
+    ensure_dir "$(dirname "$link")"
+
+    if [ -L "$link" ]; then
+        return 0
+    fi
+    if [ -e "$link" ]; then
+        return 0
+    fi
+
+    ln -s "$target" "$link" 2>/dev/null || true
+}
+
+seed_protonup_locations() {
+    ensure_dir "$app_home/.config"
+    ensure_dir "$app_home/.local/share"
+    ensure_dir "$app_home/.cache"
+
+    ensure_dir "$steam_root/compatibilitytools.d"
+    ensure_dir "$batocera_home/.steam"
+    link_dir_if_absent "$steam_root" "$batocera_home/.steam/root"
+    link_dir_if_absent "$steam_root" "$batocera_home/.steam/steam"
+
+    ensure_dir "$heroic_root/.config/heroic/tools/proton"
+    ensure_dir "$heroic_root/.config/heroic/tools/wine"
+    link_dir_if_absent "$heroic_root/.config/heroic" "$batocera_home/.config/heroic"
+
+    ensure_dir "$lutris_root/.config/lutris"
+    ensure_dir "$lutris_root/.local/share/lutris/runners/wine"
+    link_dir_if_absent "$lutris_root/.config/lutris" "$batocera_home/.config/lutris"
+    link_dir_if_absent "$lutris_root/.local/share/lutris" "$batocera_home/.local/share/lutris"
+}
+
+seed_protonup_locations
+
+if [ "${BATOCERA_PROTONUP_SEED_ONLY:-0}" = "1" ]; then
+    exit 0
+fi
+
+export BATOCERA_APPS_HOME="${BATOCERA_APPS_HOME:-$batocera_home}"
+export BATOCERA_APPS_LOCAL_APPIMAGE="${BATOCERA_APPS_LOCAL_APPIMAGE:-$app_home/protonupqt.AppImage}"
+export XDG_CONFIG_HOME="$app_home/.config"
+export XDG_DATA_HOME="$app_home/.local/share"
+export XDG_CACHE_HOME="$app_home/.cache"
+
+batocera-mouse show
+trap 'batocera-mouse hide' EXIT
+
+exec /usr/libexec/batocera-appimage-launcher /usr/share/batocera/apps/protonupqt.AppImage protonupqt 1 "$@"

@@ -377,6 +377,14 @@ run_in_terminal() {
             draw_status "${baseline}" "Steam runtime is up-to-date. Waiting for Steam client readiness..." "${preflight_log_baseline}" "${console_log_baseline}"
         fi
         if update_finished "${baseline}" "${console_log_baseline}" || verification_complete "${baseline}" "${console_log_baseline}"; then
+            if ! steam_update_child_active; then
+                log "Steam verification/update completed and no updater child is active; starting gamescope"
+                draw_status "${baseline}" "Steam verification completed. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
+                clear_first_run_pending
+                sleep 3
+                stop_steam_stack
+                return 0
+            fi
             update_observed=1
             break
         fi
@@ -409,6 +417,14 @@ run_in_terminal() {
     waited=0
     while (( waited < max_secs )); do
         draw_status "${baseline}" "Steam is checking, downloading, or installing an update." "${preflight_log_baseline}" "${console_log_baseline}"
+        if { update_finished "${baseline}" "${console_log_baseline}" || verification_complete "${baseline}" "${console_log_baseline}"; } && ! steam_update_child_active; then
+            log "Steam verification/update completed and no updater child is active; starting gamescope"
+            draw_status "${baseline}" "Steam verification completed. Starting gamescope next..." "${preflight_log_baseline}" "${console_log_baseline}"
+            clear_first_run_pending
+            sleep 3
+            stop_steam_stack
+            return 0
+        fi
         if update_finished "${baseline}" "${console_log_baseline}"; then
             draw_status "${baseline}" "Steam updater finished; waiting for Steam client readiness..." "${preflight_log_baseline}" "${console_log_baseline}"
         fi
