@@ -1,0 +1,4 @@
+# SPDX-FileCopyrightText: 2026 suckbluefrog
+# 32-bit i386 library build for the zen3-xorg x86_64 target.
+
+include batocera-zen3_i386_libs.board

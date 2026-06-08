@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-XENIA_CANARY_VERSION = fbd620c22b44638b66a70bba80d6f30d55a10924
+XENIA_CANARY_VERSION = 9478cda5d643f31ce5eddaa3a698282887515439
 XENIA_CANARY_SITE = https://github.com/xenia-canary/xenia-canary.git
 XENIA_CANARY_SITE_METHOD = git
 XENIA_CANARY_GIT_SUBMODULES = YES

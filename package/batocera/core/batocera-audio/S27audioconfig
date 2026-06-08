@@ -32,7 +32,13 @@ apply_audioconfig() {
     if test -n "${PROFILE}" && [ "${PROFILE}" != "auto" ]; then
         log "info" "Applying profile: ${PROFILE}"
         ERR=$(batocera-audio set-profile "${PROFILE}" 2>&1)
-        [ $? -ne 0 ] && log "err" "Profile failed: $ERR" && EXITCODE=1
+        if [ $? -ne 0 ]; then
+            log "err" "Profile failed: $ERR"
+            EXITCODE=1
+        else
+            CURRENT_SINKS=$(pactl list sinks short | awk '{print $2}' | xargs)
+            log "info" "Available sinks after profile: $CURRENT_SINKS"
+        fi
     fi
 
     if test -n "${DEVICE}" && [ "${DEVICE}" != "auto" ]; then

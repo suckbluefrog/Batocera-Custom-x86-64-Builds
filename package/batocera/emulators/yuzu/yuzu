@@ -104,5 +104,4 @@ enable_lsfg_vk() {
 }
 
 enable_lsfg_vk "$@"
-chmod +x /usr/share/yuzu/yuzu.AppImage 2>/dev/null
-exec /usr/share/yuzu/yuzu.AppImage "$@"
+exec /usr/libexec/yuzu/yuzu "$@"

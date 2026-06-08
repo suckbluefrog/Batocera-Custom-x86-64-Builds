@@ -14,6 +14,12 @@ ALLY_DEFAULT_MAP="${ALLY_SYSTEM_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 
 echo "[$(date +%F\ %T)] desktop-launcher: process start" >> "${log}"
 
+close_inherited_frontend_lock() {
+    { exec 9>&-; } 2>/dev/null || true
+}
+
+close_inherited_frontend_lock
+
 steam_stack_alive() {
     pgrep -x batocera-steam >/dev/null 2>&1 || \
     pgrep -f "${steam_session_pattern}" >/dev/null 2>&1 || \
@@ -81,10 +87,113 @@ wait_for_desktop_steam() {
     return 1
 }
 
+frontend_ready() {
+    pgrep -x emulationstation >/dev/null 2>&1 || \
+    pgrep -f '(^|/)emulationstation-standalone([[:space:]]|$)' >/dev/null 2>&1 || \
+    pgrep -x labwc >/dev/null 2>&1 || \
+    pgrep -x sway >/dev/null 2>&1 || \
+    pgrep -x openbox >/dev/null 2>&1
+}
+
+emulationstation_ready() {
+    pgrep -x emulationstation >/dev/null 2>&1 || \
+    pgrep -f '(^|/)emulationstation-standalone([[:space:]]|$)' >/dev/null 2>&1 || \
+    pgrep -x labwc >/dev/null 2>&1 || \
+    pgrep -x sway >/dev/null 2>&1
+}
+
+xorg_frontend_running() {
+    pgrep -x X >/dev/null 2>&1 || \
+    pgrep -x Xorg >/dev/null 2>&1 || \
+    pgrep -x xinit >/dev/null 2>&1 || \
+    pgrep -x startx >/dev/null 2>&1
+}
+
+clear_stale_xorg_locks() {
+    if xorg_frontend_running; then
+        return 0
+    fi
+
+    rm -f /tmp/.X[0-9]*-lock /tmp/.X11-unix/X[0-9]* 2>/dev/null || true
+}
+
+clear_stale_frontend_locks() {
+    if frontend_ready || xorg_frontend_running; then
+        return 0
+    fi
+
+    rm -f /run/emulationstation-standalone.lock /var/run/emulationstation-standalone.lock 2>/dev/null || true
+}
+
+stop_stale_xorg_frontend() {
+    local i
+
+    echo "[$(date +%F\ %T)] desktop-launcher: stopping stale Xorg frontend before desktop handoff" >> "${log}"
+    pkill -TERM -x openbox >/dev/null 2>&1 || true
+    pkill -TERM -x xinit >/dev/null 2>&1 || true
+    pkill -TERM -x startx >/dev/null 2>&1 || true
+    pkill -TERM -x X >/dev/null 2>&1 || true
+    pkill -TERM -x Xorg >/dev/null 2>&1 || true
+
+    for i in $(seq 1 30); do
+        if ! xorg_frontend_running; then
+            clear_stale_xorg_locks
+            return 0
+        fi
+        sleep 0.1
+    done
+
+    pkill -KILL -x openbox >/dev/null 2>&1 || true
+    pkill -KILL -x xinit >/dev/null 2>&1 || true
+    pkill -KILL -x startx >/dev/null 2>&1 || true
+    pkill -KILL -x X >/dev/null 2>&1 || true
+    pkill -KILL -x Xorg >/dev/null 2>&1 || true
+    clear_stale_xorg_locks
+    clear_stale_frontend_locks
+}
+
+wait_for_frontend_ready() {
+    local max_tries="${1:-80}"
+    local i
+
+    for i in $(seq 1 "${max_tries}"); do
+        if frontend_ready; then
+            return 0
+        fi
+        sleep 0.25
+    done
+
+    return 1
+}
+
+ensure_frontend_ready_for_desktop() {
+    if wait_for_frontend_ready 80; then
+        echo "[$(date +%F\ %T)] desktop-launcher: frontend ready for desktop steam" >> "${log}"
+        return 0
+    fi
+
+    if xorg_frontend_running; then
+        stop_stale_xorg_frontend
+    fi
+    clear_stale_frontend_locks
+
+    if [[ -x "${es_service}" ]]; then
+        echo "[$(date +%F\ %T)] desktop-launcher: starting frontend before desktop steam" >> "${log}"
+        "${es_service}" start >/dev/null 2>&1 || "${es_service}" restart >/dev/null 2>&1 || true
+        if wait_for_frontend_ready 80; then
+            echo "[$(date +%F\ %T)] desktop-launcher: frontend ready after start" >> "${log}"
+            return 0
+        fi
+    fi
+
+    echo "[$(date +%F\ %T)] desktop-launcher: frontend not ready before desktop steam" >> "${log}"
+    return 1
+}
+
 restore_frontend() {
     local i
 
-    if pgrep -x emulationstation >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then
+    if emulationstation_ready; then
         echo "[$(date +%F\ %T)] desktop-launcher: frontend already running after desktop steam exit" >> "${log}"
         return 0
     fi
@@ -93,7 +202,7 @@ restore_frontend() {
         echo "[$(date +%F\ %T)] desktop-launcher: starting EmulationStation after desktop steam exit" >> "${log}"
         "${es_service}" restart >/dev/null 2>&1 || "${es_service}" start >/dev/null 2>&1 || true
         for i in $(seq 1 30); do
-            if pgrep -x emulationstation >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then
+            if emulationstation_ready; then
                 return 0
             fi
             sleep 0.2
@@ -129,6 +238,11 @@ if ! wait_for_stack_exit 100; then
 fi
 
 sleep 0.5
+if ! ensure_frontend_ready_for_desktop; then
+    recover_hotkeys_force
+    exit 1
+fi
+
 echo "[$(date +%F\ %T)] desktop-launcher: launching desktop steam" >> "${log}"
 
 if ! launch_desktop_steam_supervised; then

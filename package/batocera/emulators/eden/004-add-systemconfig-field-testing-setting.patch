@@ -1,11 +1,13 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Batocera <batocera@local>
-Date: Thu, 4 Jun 2026 10:55:00 +0300
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Thu, 04 Jun 2026 11:03:19 +0000
 Subject: [PATCH] set: add systemconfig field_testing default
 
 QLaunch queries systemconfig/field_testing through the generic settings
 key/value API. Eden already exposes the same value through
 GetFieldTestingFlag(), so add the generic setting entry and return false.
+
+Signed-off-by: suckbluefrog <suckbluefrog@proton.me>
 ---
  src/core/hle/service/set/system_settings_server.cpp | 1 +
  1 file changed, 1 insertion(+)

@@ -13,12 +13,13 @@
 #
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
 from pathlib import Path
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import toml
 
@@ -32,6 +33,137 @@ if TYPE_CHECKING:
     from ...types import HotkeysContext
 
 _logger = logging.getLogger(__name__)
+
+_SHADPS4_DEFAULT_USERS: dict[str, Any] = {
+    "Users": {
+        "user": [
+            {
+                "user_id": 1000,
+                "user_color": 1,
+                "user_name": "shadPS4",
+                "player_index": 1,
+                "shadnet_npid": "",
+                "shadnet_password": "",
+                "shadnet_token": "",
+                "shadnet_email": "",
+                "shadnet_enabled": False,
+            },
+            {
+                "user_id": 1001,
+                "user_color": 2,
+                "user_name": "shadPS4-2",
+                "player_index": 2,
+                "shadnet_npid": "",
+                "shadnet_password": "",
+                "shadnet_token": "",
+                "shadnet_email": "",
+                "shadnet_enabled": False,
+            },
+            {
+                "user_id": 1002,
+                "user_color": 3,
+                "user_name": "shadPS4-3",
+                "player_index": 3,
+                "shadnet_npid": "",
+                "shadnet_password": "",
+                "shadnet_token": "",
+                "shadnet_email": "",
+                "shadnet_enabled": False,
+            },
+            {
+                "user_id": 1003,
+                "user_color": 4,
+                "user_name": "shadPS4-4",
+                "player_index": 4,
+                "shadnet_npid": "",
+                "shadnet_password": "",
+                "shadnet_token": "",
+                "shadnet_email": "",
+                "shadnet_enabled": False,
+            },
+        ],
+        "commit_hash": "GITDIR-NOTFOUND",
+    }
+}
+
+
+def _load_json_file(path: Path) -> dict[str, Any]:
+    if path.is_file():
+        try:
+            with path.open(encoding="utf-8") as json_file:
+                data = json.load(json_file)
+            if isinstance(data, dict):
+                return data
+        except Exception as e:
+            _logger.warning("Failed to load shadps4 JSON config %s: %s", path, e)
+
+    return {}
+
+
+def _write_json_file(path: Path, data: dict[str, Any]) -> None:
+    with path.open("w", encoding="utf-8") as json_file:
+        json.dump(data, json_file, indent=2)
+        json_file.write("\n")
+
+
+def _ensure_users_json(userConfigPath: Path) -> None:
+    users_file = userConfigPath / "users.json"
+    users = _load_json_file(users_file)
+    users_section = users.get("Users")
+
+    if isinstance(users_section, dict) and isinstance(users_section.get("user"), list):
+        return
+
+    _logger.info("Creating default shadps4 users at %s", users_file)
+    _write_json_file(users_file, _SHADPS4_DEFAULT_USERS)
+
+    for user_id in ("1000", "1001", "1002", "1003"):
+        for subdir in ("savedata", "trophy", "inputs"):
+            mkdir_if_not_exists(userConfigPath / "home" / user_id / subdir)
+
+
+def _update_v016_config_json(
+    json_file: Path,
+    system,
+    gameResolution,
+    romDir: Path,
+    dlcPath: Path,
+    discrete_index: int,
+) -> None:
+    config = _load_json_file(json_file)
+
+    general_config = config.setdefault("General", {})
+    general_config["install_dirs"] = [{"path": str(romDir), "enabled": True}]
+    general_config["addon_install_dir"] = str(dlcPath)
+    general_config["discord_rpc_enabled"] = False
+    general_config["neo_mode"] = system.config.get_bool("shadps4_ps4pro", False)
+    general_config["show_splash"] = system.config.get_bool("shadps4_show_splash", False)
+    general_config["console_language"] = int(system.config.get("shadps4_console_lang", 1))
+
+    input_config = config.setdefault("Input", {})
+    input_config["motion_controls_enabled"] = True
+    input_config["use_unified_input_config"] = True
+
+    gpu_config = config.setdefault("GPU", {})
+    gpu_config["window_width"] = int(gameResolution["width"])
+    gpu_config["window_height"] = int(gameResolution["height"])
+    gpu_config["full_screen"] = True
+    gpu_config["full_screen_mode"] = "Fullscreen (Borderless)"
+    gpu_config["hdr_allowed"] = system.config.get_bool("shadps4_hdr", False)
+    gpu_config["copy_gpu_buffers"] = system.config.get_bool("shadps4_copy_gpu_buffers", False)
+    gpu_config["patch_shaders"] = system.config.get_bool("shadps4_patch_shaders", True)
+
+    vulkan_config = config.setdefault("Vulkan", {})
+    vulkan_config["gpu_id"] = int(discrete_index)
+    vulkan_config["vkvalidation_enabled"] = False
+    vulkan_config["vkvalidation_sync_enabled"] = False
+    vulkan_config["vkvalidation_gpu_enabled"] = False
+    vulkan_config["vkcrash_diagnostic_enabled"] = False
+    vulkan_config["vkhost_markers"] = False
+    vulkan_config["vkguest_markers"] = False
+
+    _write_json_file(json_file, config)
+
 
 class shadPS4Generator(Generator):
 
@@ -48,6 +180,7 @@ class shadPS4Generator(Generator):
         userConfigPath = configPath / "user"
         customTrophyPath = userConfigPath / "custom_trophy"
         toml_file = userConfigPath / "config.toml"
+        json_file = userConfigPath / "config.json"
         savesPath = Path("/userdata/saves/shadps4")
         romDir = Path("/userdata/roms/ps4")
         dlcPath = romDir / "DLC"
@@ -238,6 +371,13 @@ class shadPS4Generator(Generator):
         # Now write the updated toml
         with toml_file.open("w") as f:
             toml.dump(config, f)
+
+        # shadPS4 v0.16+ loads config.json and blocks on an interactive
+        # migration dialog when only the old config.toml exists.
+        _update_v016_config_json(
+            json_file, system, gameResolution, romDir, dlcPath, discrete_index
+        )
+        _ensure_users_json(userConfigPath)
 
         # Change to the configPath directory before running
         os.chdir(configPath)

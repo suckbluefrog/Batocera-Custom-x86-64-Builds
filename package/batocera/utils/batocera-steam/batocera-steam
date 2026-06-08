@@ -8,6 +8,12 @@ mkdir -p "$(dirname "$log")"
 GAME_ID="${1:-}"
 MODE="${BATOCERA_STEAM_MODE:-}"
 
+close_inherited_frontend_lock() {
+    { exec 9>&-; } 2>/dev/null || true
+}
+
+close_inherited_frontend_lock
+
 if [[ -z "${MODE}" ]]; then
     MODE="$(batocera-settings-get steam.session.mode 2>/dev/null || true)"
 fi
@@ -99,6 +105,18 @@ frontend_env_value() {
     tr '\0' '\n' < "/proc/${pid}/environ" | sed -n "s/^${key}=//p" | head -n 1
 }
 
+wayland_socket_exists() {
+    local candidate="$1"
+
+    [[ -n "${candidate}" ]] || return 1
+    if [[ "${candidate}" == /* ]]; then
+        [[ -S "${candidate}" ]]
+        return
+    fi
+
+    [[ -n "${XDG_RUNTIME_DIR:-}" && -S "${XDG_RUNTIME_DIR}/${candidate}" ]]
+}
+
 capture_frontend_env() {
     local pid
     local -a candidates=()
@@ -119,6 +137,8 @@ capture_frontend_env() {
     done < <(
         {
             pgrep -o -x labwc
+            pgrep -o -x sway
+            pgrep -o -x openbox
             pgrep -o -f 'emulationstation --exit-on-reboot-required'
             pgrep -o -f 'emulationstation-standalone'
         } 2>/dev/null | awk 'NF && !seen[$0]++'
@@ -149,6 +169,9 @@ sanitize_frontend_env() {
     local wayland_display=""
     local sway_sock=""
     local runtime_dir=""
+    local session_type=""
+    local current_desktop=""
+    local session_desktop=""
 
     capture_frontend_env || true
     uid="$(id -u)"
@@ -186,7 +209,14 @@ sanitize_frontend_env() {
         ensure_runtime_dir
     fi
 
-    wayland_display="${FRONTEND_WAYLAND_DISPLAY:-wayland-0}"
+    wayland_display="${FRONTEND_WAYLAND_DISPLAY:-}"
+    if [[ -n "${wayland_display}" ]] && ! wayland_socket_exists "${wayland_display}"; then
+        wayland_display=""
+    fi
+    if [[ -z "${wayland_display}" && -n "${XDG_RUNTIME_DIR:-}" && -S "${XDG_RUNTIME_DIR}/wayland-0" ]]; then
+        wayland_display="wayland-0"
+    fi
+
     sway_sock="${FRONTEND_SWAYSOCK:-}"
     if [[ -z "${sway_sock}" && -n "${XDG_RUNTIME_DIR:-}" && -S "${XDG_RUNTIME_DIR}/sway-ipc.0.sock" ]]; then
         sway_sock="${XDG_RUNTIME_DIR}/sway-ipc.0.sock"
@@ -211,9 +241,26 @@ sanitize_frontend_env() {
         unset XAUTHORITY
     fi
     export WLR_XWAYLAND_NO_AUTH="${FRONTEND_WLR_XWAYLAND_NO_AUTH:-1}"
-    export XDG_SESSION_TYPE="${FRONTEND_XDG_SESSION_TYPE:-wayland}"
-    export XDG_CURRENT_DESKTOP="${FRONTEND_XDG_CURRENT_DESKTOP:-labwc}"
-    export XDG_SESSION_DESKTOP="${FRONTEND_XDG_SESSION_DESKTOP:-${XDG_CURRENT_DESKTOP}}"
+    if [[ -n "${wayland_display}" ]]; then
+        session_type="${FRONTEND_XDG_SESSION_TYPE:-wayland}"
+        current_desktop="${FRONTEND_XDG_CURRENT_DESKTOP:-labwc}"
+    else
+        session_type="${FRONTEND_XDG_SESSION_TYPE:-x11}"
+        current_desktop="${FRONTEND_XDG_CURRENT_DESKTOP:-openbox}"
+        if [[ "${session_type}" == "wayland" ]]; then
+            session_type="x11"
+        fi
+        if [[ "${current_desktop}" == "labwc" || "${current_desktop}" == "sway" ]]; then
+            current_desktop="openbox"
+        fi
+    fi
+    session_desktop="${FRONTEND_XDG_SESSION_DESKTOP:-${current_desktop}}"
+    if [[ -z "${wayland_display}" && ( "${session_desktop}" == "labwc" || "${session_desktop}" == "sway" ) ]]; then
+        session_desktop="${current_desktop}"
+    fi
+    export XDG_SESSION_TYPE="${session_type}"
+    export XDG_CURRENT_DESKTOP="${current_desktop}"
+    export XDG_SESSION_DESKTOP="${session_desktop}"
     export DBUS_SESSION_BUS_ADDRESS="${FRONTEND_DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/dbus/system_bus_socket}"
     export DBUS_SYSTEM_BUS_ADDRESS="${FRONTEND_DBUS_SYSTEM_BUS_ADDRESS:-unix:path=/run/dbus/system_bus_socket}"
 
@@ -399,7 +446,7 @@ launch_frontend_mode() {
         show_mouse=1
     fi
 
-    echo "Launching Steam in frontend ${ui_mode} mode under the active ES/labwc session" >> "${log}"
+    echo "Launching Steam in frontend ${ui_mode} mode under the active frontend session" >> "${log}"
     set +e
     "${STEAM_SH}" "${steam_args[@]}"
     launcher_rc=$?

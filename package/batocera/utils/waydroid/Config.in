@@ -1,5 +1,6 @@
 config BR2_PACKAGE_WAYDROID
 	bool "waydroid"
+	depends on BR2_PACKAGE_BATOCERA_WAYLAND
 	depends on BR2_PACKAGE_PYTHON3
 	depends on BR2_USE_MMU
 	depends on BR2_TOOLCHAIN_HAS_THREADS
@@ -15,5 +16,5 @@ config BR2_PACKAGE_WAYDROID
 
 	  https://github.com/waydroid/waydroid
 
-comment "waydroid needs python3, MMU and threads"
-	depends on !BR2_PACKAGE_PYTHON3 || !BR2_USE_MMU || !BR2_TOOLCHAIN_HAS_THREADS
+comment "waydroid needs Batocera Wayland, python3, MMU and threads"
+	depends on !BR2_PACKAGE_BATOCERA_WAYLAND || !BR2_PACKAGE_PYTHON3 || !BR2_USE_MMU || !BR2_TOOLCHAIN_HAS_THREADS

@@ -11,6 +11,9 @@ BATOCERA_USERDATAINIT_SOURCE=
 define BATOCERA_USERDATAINIT_INSTALL_TARGET_CMDS
 	mkdir -p $(TARGET_DIR)/usr/share/batocera
 	rsync -arv $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-userdatainit/datainit/ $(TARGET_DIR)/usr/share/batocera/datainit/
+	if [ "$(BR2_PACKAGE_WAYDROID)" != "y" ]; then \
+		rm -f $(TARGET_DIR)/usr/share/batocera/datainit/roms/tools/Start_Waydroid.sh; \
+	fi
 endef
 
 $(eval $(generic-package))

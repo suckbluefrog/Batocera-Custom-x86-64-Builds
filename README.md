@@ -12,6 +12,13 @@ Latest Build: June 4, 2026
 
 ---
 
+  ## 📜 Changelog 8-6-2026
+
+  ### Latest
+  - Added experimental xorg v3 build.
+
+  ---
+
   ## 📜 Changelog 4-6-2026
 
   ### Latest

@@ -164,6 +164,54 @@ diff -ur ./scripts/src/osd/modules.lua /home/romain/batocera.linux/output/odroid
  	if _OPTIONS["NO_USE_PORTAUDIO"]=="1" then
  		defines {
  			"NO_USE_PORTAUDIO",
+diff -ur ./scripts/src/osd/sdl_cfg.lua /home/romain/batocera.linux/output/odroidn2/build/mame-mame0226/scripts/src/osd/sdl_cfg.lua
+--- a/scripts/src/osd/sdl_cfg.lua	2025-05-27 22:03:56.000000000 +0300
++++ b/scripts/src/osd/sdl_cfg.lua	2026-06-06 22:46:00.000000000 +0300
+@@ -139,9 +139,11 @@
+-	if _OPTIONS["QT_HOME"]~=nil then
+-		buildoptions {
+-			"-I" .. backtick(_OPTIONS["QT_HOME"] .. "/bin/qmake -query QT_INSTALL_HEADERS"),
+-		}
+-	else
+-		buildoptions {
+-			"-I$(shell qmake6 -query QT_INSTALL_HEADERS)",
+-		}
+-	end
++	if _OPTIONS["USE_QTDEBUG"]=="1" then
++		if _OPTIONS["QT_HOME"]~=nil then
++			buildoptions {
++				"-I" .. backtick(_OPTIONS["QT_HOME"] .. "/bin/qmake -query QT_INSTALL_HEADERS"),
++			}
++		else
++			buildoptions {
++				"-I$(shell qmake6 -query QT_INSTALL_HEADERS)",
++			}
++		end
++	end
+diff -ur ./scripts/src/osd/sdl3_cfg.lua /home/romain/batocera.linux/output/odroidn2/build/mame-mame0226/scripts/src/osd/sdl3_cfg.lua
+--- a/scripts/src/osd/sdl3_cfg.lua	2025-05-27 22:03:56.000000000 +0300
++++ b/scripts/src/osd/sdl3_cfg.lua	2026-06-06 22:46:00.000000000 +0300
+@@ -130,9 +130,11 @@
+-	if _OPTIONS["QT_HOME"]~=nil then
+-		buildoptions {
+-			"-I" .. backtick(_OPTIONS["QT_HOME"] .. "/bin/qmake -query QT_INSTALL_HEADERS"),
+-		}
+-	else
+-		buildoptions {
+-			"-I$(shell qmake6 -query QT_INSTALL_HEADERS)",
+-		}
+-	end
++	if _OPTIONS["USE_QTDEBUG"]=="1" then
++		if _OPTIONS["QT_HOME"]~=nil then
++			buildoptions {
++				"-I" .. backtick(_OPTIONS["QT_HOME"] .. "/bin/qmake -query QT_INSTALL_HEADERS"),
++			}
++		else
++			buildoptions {
++				"-I$(shell qmake6 -query QT_INSTALL_HEADERS)",
++			}
++		end
++	end
 diff -ur ./scripts/toolchain.lua /home/romain/batocera.linux/output/odroidn2/build/mame-mame0226/scripts/toolchain.lua
 --- a/scripts/toolchain.lua	2020-10-27 02:00:36.000000000 +0100
 +++ b/scripts/toolchain.lua	2020-11-09 19:09:29.890677516 +0100

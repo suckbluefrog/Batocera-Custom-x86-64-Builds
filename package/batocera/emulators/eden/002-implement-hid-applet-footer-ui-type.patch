@@ -1,11 +1,13 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Batocera <batocera@local>
-Date: Thu, 4 Jun 2026 09:45:00 +0300
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Thu, 04 Jun 2026 11:03:19 +0000
 Subject: [PATCH] hid: implement GetAppletFooterUiType
 
 QLaunch on newer firmware calls hid:sys command 314. Eden already tracks
 the footer UI type and exposes it through GetAppletDetailedUiType, so return
 the same footer value directly for the older footer-only command.
+
+Signed-off-by: suckbluefrog <suckbluefrog@proton.me>
 ---
  src/core/hle/service/hid/hid_system_server.cpp | 17 ++++++++++++++++-
  src/core/hle/service/hid/hid_system_server.h   |  1 +

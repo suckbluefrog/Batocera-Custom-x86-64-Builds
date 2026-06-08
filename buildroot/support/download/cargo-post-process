@@ -55,6 +55,24 @@ else
     locked_arg="--locked"
 fi
 
+if [ -n "${BR_CARGO_UPDATE_PRECISE:-}" ]; then
+    for update in ${BR_CARGO_UPDATE_PRECISE}; do
+        package="${update%%=*}"
+        version="${update#*=}"
+        if [ "${package}" = "${version}" ]; then
+            error "invalid BR_CARGO_UPDATE_PRECISE entry '%s', expected package=version\n" "${update}"
+        fi
+
+        printf 'Note: pinning Cargo dependency %s to %s\n' "${package}" "${version}" >&2
+        flock "${CARGO_HOME}"/.br-lock \
+        cargo update \
+            --manifest-path "${real_manifest}" \
+            "${package}" \
+            --precise "${version}"
+    done
+    locked_arg="--locked"
+fi
+
 flock "${CARGO_HOME}"/.br-lock \
 cargo vendor \
     --manifest-path "${real_manifest}" \

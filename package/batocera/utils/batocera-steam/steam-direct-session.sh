@@ -11,6 +11,12 @@ log() {
     echo "steam-direct-session: $*" >> "${LOG}"
 }
 
+close_inherited_frontend_lock() {
+    { exec 9>&-; } 2>/dev/null || true
+}
+
+close_inherited_frontend_lock
+
 UPDATE_TERMINAL_DISPLAY="${DISPLAY:-}"
 UPDATE_TERMINAL_WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}"
 UPDATE_TERMINAL_XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
@@ -93,9 +99,70 @@ ensure_cef_remote_debugging_markers() {
 
 frontend_running() {
     pgrep -x emulationstation >/dev/null 2>&1 || \
+    pgrep -f '(^|/)emulationstation-standalone([[:space:]]|$)' >/dev/null 2>&1 || \
     pgrep -x labwc >/dev/null 2>&1 || \
     pgrep -x sway >/dev/null 2>&1 || \
     pgrep -x openbox >/dev/null 2>&1
+}
+
+xorg_frontend_running() {
+    pgrep -x X >/dev/null 2>&1 || \
+    pgrep -x Xorg >/dev/null 2>&1 || \
+    pgrep -x xinit >/dev/null 2>&1 || \
+    pgrep -x startx >/dev/null 2>&1
+}
+
+clear_stale_xorg_locks() {
+    if xorg_frontend_running; then
+        return 0
+    fi
+
+    rm -f /tmp/.X[0-9]*-lock /tmp/.X11-unix/X[0-9]* 2>/dev/null || true
+}
+
+clear_stale_frontend_locks() {
+    if frontend_running || xorg_frontend_running; then
+        return 0
+    fi
+
+    rm -f /run/emulationstation-standalone.lock /var/run/emulationstation-standalone.lock 2>/dev/null || true
+}
+
+stop_xorg_frontend_for_drm() {
+    local i
+    local backend="${BATOCERA_STEAM_GS_BACKEND:-drm}"
+
+    [[ "${backend}" == "drm" || "${backend}" == "auto" ]] || return 0
+
+    if xorg_frontend_running; then
+        log "stopping leftover Xorg frontend before raw DRM Gamescope launch"
+    fi
+
+    pkill -TERM -x openbox >/dev/null 2>&1 || true
+    pkill -TERM -x xinit >/dev/null 2>&1 || true
+    pkill -TERM -x startx >/dev/null 2>&1 || true
+    pkill -TERM -x X >/dev/null 2>&1 || true
+    pkill -TERM -x Xorg >/dev/null 2>&1 || true
+
+    for i in $(seq 1 30); do
+        if ! xorg_frontend_running; then
+            clear_stale_xorg_locks
+            return 0
+        fi
+        sleep 0.1
+    done
+
+    if xorg_frontend_running; then
+        log "force-killing leftover Xorg frontend before raw DRM Gamescope launch"
+        pkill -KILL -x openbox >/dev/null 2>&1 || true
+        pkill -KILL -x xinit >/dev/null 2>&1 || true
+        pkill -KILL -x startx >/dev/null 2>&1 || true
+        pkill -KILL -x X >/dev/null 2>&1 || true
+        pkill -KILL -x Xorg >/dev/null 2>&1 || true
+    fi
+
+    clear_stale_xorg_locks
+    clear_stale_frontend_locks
 }
 
 wait_for_frontend_stop() {
@@ -144,6 +211,10 @@ restore_frontend() {
         return 0
     fi
 
+    stop_xorg_frontend_for_drm
+    clear_stale_xorg_locks
+    clear_stale_frontend_locks
+
     if [[ -x "${ES_SERVICE}" ]]; then
         log "starting EmulationStation service after Steam exit"
         clear_frontend_restore_env
@@ -163,9 +234,34 @@ recover_frontend_with_supervisor() {
     batocera-steam-session-supervisor recover "direct-cleanup" >/dev/null 2>&1 || true
 }
 
+detach_from_frontend_session() {
+    local child_pid
+    local child_rc
+
+    [[ "${BATOCERA_STEAM_DIRECT_SESSION_DETACHED:-0}" != "1" ]] || return 0
+    command -v setsid >/dev/null 2>&1 || return 0
+
+    log "detaching direct Steam session from frontend process group"
+    export BATOCERA_STEAM_DIRECT_SESSION_DETACHED=1
+
+    set +e
+    nohup setsid "$0" "$@" >> "${LOG}" 2>&1 </dev/null &
+    child_pid="$!"
+    wait "${child_pid}"
+    child_rc="$?"
+    exit "${child_rc}"
+}
+
 run_visible_update_preflight() {
+    local backend="${BATOCERA_STEAM_GS_BACKEND:-drm}"
+
     [[ "${BATOCERA_STEAM_VISIBLE_UPDATE_PREFLIGHT:-0}" != "0" ]] || return 0
     [[ -x /usr/bin/batocera-steam-update-preflight ]] || return 0
+
+    if [[ "${backend}" == "drm" || "${backend}" == "auto" ]] && xorg_frontend_running; then
+        log "skipping visible Steam updater preflight before raw DRM Gamescope on Xorg"
+        return 0
+    fi
 
     log "running visible Steam updater preflight before Gamescope"
     if /usr/bin/batocera-steam-update-preflight launch >> "${LOG}" 2>&1; then
@@ -184,18 +280,24 @@ cleanup() {
     exit "${rc}"
 }
 
+detach_from_frontend_session "$@"
+
 trap cleanup EXIT INT TERM
 
 log "requested direct Steam session launch"
+
+export BATOCERA_STEAM_GS_BACKEND="${BATOCERA_STEAM_GS_BACKEND:-drm}"
 
 run_visible_update_preflight
 
 if [[ -x "${ES_SERVICE}" ]]; then
     log "stopping EmulationStation frontend before Steam launch"
     "${ES_SERVICE}" stop >/dev/null 2>&1 || true
+    stop_xorg_frontend_for_drm
     if ! wait_for_frontend_stop; then
         log "frontend did not stop cleanly before Steam launch"
     fi
+    clear_stale_frontend_locks
 fi
 
 start_session_supervisor

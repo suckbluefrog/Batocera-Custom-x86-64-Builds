@@ -1,12 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Batocera <batocera@local>
-Date: Thu, 4 Jun 2026 10:35:00 +0300
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Thu, 04 Jun 2026 11:03:19 +0000
 Subject: [PATCH] acc: implement administrator CheckAvailability
 
 QLaunch on newer firmware asks the BAAS account administrator service for
 availability. Eden already stubs this successfully on the system manager
 service, so mirror that behavior for IAdministrator to avoid fataling during
 home-menu startup.
+
+Signed-off-by: suckbluefrog <suckbluefrog@proton.me>
 ---
  src/core/hle/service/acc/acc.cpp | 7 ++++++-
  1 file changed, 6 insertions(+), 1 deletion(-)
