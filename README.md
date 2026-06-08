@@ -1,5 +1,5 @@
 # Batocera v44 –  x86-64-v3 Multilib (Beta) 
-## Wayland Build
+## Wayland & Xorg Builds
 
 > Unofficial community variant built on Batocera v44.  
 > Not affiliated with or supported by the Batocera team.
@@ -7,7 +7,7 @@
 ---
 
 **Download:** 
-Latest Build: June 4, 2026
+Latest Build: June 8, 2026
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
@@ -16,6 +16,7 @@ Latest Build: June 4, 2026
 
   ### Latest
   - Added experimental xorg v3 build.
+  - Bumped Mame to 0.288
 
   ---
 
@@ -41,10 +42,10 @@ Latest Build: June 4, 2026
 
 ## ⚠️ Target Audience
 
-This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland support.  Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer
+This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland or Xorg support.  Wayland works Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer. NVIDIA users should stick to Xorg.
 
 - NVIDIA Proprietary driver support has been added with 580 and 590 drivers. Limited testing has reported success. Maxwell (9xx/750ti) and higher boards are supported
-- Gamescope compatibility and performance on Nvidia boards may vary
+- Gamescope compatibility and performance on Nvidia boards may vary. Direct DRM/KMS gamescope sessions on nvidia devices are not validated. 
 -  No official support is provided
 - Based on Batocera's "zen3" (a misnomer) wayland build 
 
@@ -85,7 +86,7 @@ Includes:
   - DOS  
   - Cemu  
   - Ports  
-  - Steam (Steam runs gamescope direct without nesting)
+  - Steam (Steam runs gamescope direct vis DRM/KMS without nesting on both builds)
 
 <img width="1923" height="1253" alt="image" src="https://github.com/user-attachments/assets/2409f71f-f340-4f24-8661-7596dfada222" />
 
