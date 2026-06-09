@@ -11,7 +11,8 @@ Latest Build: June 8, 2026
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
-
+## Video Preview:
+https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so Batocera recorder could capture.
 
   ## 📜 Changelog 9-6-2026
 
@@ -251,6 +252,7 @@ Includes:
 - lr-azahar
 - Nanoboy Advance
 - Skyemu / lr-skyemu
+- Unleashed Recomp, Dusk, and OpenGoal Engines
 - Wine enhancements like UMU-Launcher & Dgvoodoo2
 - FreeJ2ME
 - Extra ES options for various emulators
