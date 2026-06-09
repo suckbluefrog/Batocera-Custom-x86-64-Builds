@@ -12,6 +12,17 @@ Latest Build: June 8, 2026
 
 ---
 
+
+  ## 📜 Changelog 9-6-2026
+
+  ### Latest
+  - Fixes EAC games loading in Steam.
+  - Added Decky TDP loader to wine tools meu
+  - Improved SteamOS return to desktop after gamescope drm/kms session ends on wayland build
+
+
+---
+
   ## 📜 Changelog 8-6-2026
 
   ### Latest
@@ -96,7 +107,11 @@ Includes:
 
 ## Native Steam Integration
 
+
 Steam is integrated directly into the base system.
+
+<img width="1240" height="775" alt="image" src="https://github.com/user-attachments/assets/33312040-62e4-40ec-b30c-d1984c9e3c9f" />
+
 
 
 
@@ -119,11 +134,7 @@ Steam is integrated directly into the base system.
 
 ### Optional
 
-```
-batocera-steam-decky-install
-```
-
-Installs Decky Loader support.
+Decky Loader installer in wine-gui tools menu.
 
 
 
@@ -167,7 +178,7 @@ Includes:
 
 
 
-# Waydroid (Android Subsystem)
+# Waydroid (Android Subsystem - wayland build only)
 
 Waydroid is included with support for **aarch64 Android applications**.
 
@@ -182,6 +193,7 @@ Features:
 - Wayland-native integration
 - Controller-friendly launcher support
 - aarch64 Android application compatibility
+
 
 ### Google Play Services
 
@@ -235,7 +247,7 @@ Includes:
 - TouchHLE is added (IOS emulator -- currently up to IOS 3.0)
 - Applewin
 - 86box
-- Gopher 64
+- Gopher64
 - lr-azahar
 - Nanoboy Advance
 - Skyemu / lr-skyemu
@@ -352,7 +364,7 @@ Not intended for beginners.
 
 # How to Upgrade
 
-See Enclose instructions with files
+See Enclosed instructions with files
 
 
 ## ⚠️ Unofficial Build Notice
