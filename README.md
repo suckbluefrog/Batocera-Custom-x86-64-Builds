@@ -428,3 +428,4 @@ Thanks to:
 - Contributors from batocera.pro whose work was integrated
 
 ---
+x86-64 builds are here: https://github.com/suckbluefrog/Batocera-Multilib
