@@ -145,6 +145,13 @@ ifeq ($(BR2_PACKAGE_N64RECOMP_LAUNCHER),y)
   BATOCERA_DESKTOPAPPS_ICONS   += n64recomp-launcher.png
 endif
 
+# waydroid
+ifeq ($(BR2_PACKAGE_WAYDROID),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += Waydroid.sh
+  BATOCERA_DESKTOPAPPS_APPS    += waydroid.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += waydroid.png
+endif
+
 # bundled desktop apps
 ifeq ($(BR2_PACKAGE_BATOCERA_APPS),y)
   BATOCERA_DESKTOPAPPS_APPS    += vacuumtube.desktop
@@ -266,6 +273,19 @@ ifeq ($(BR2_PACKAGE_LINDBERGH_LOADER),y)
   BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-lindbergh
 endif
 
+# EKA2L1
+ifeq ($(BR2_PACKAGE_EKA2L1),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += batocera-config-eka2l1
+  BATOCERA_DESKTOPAPPS_APPS    += eka2l1-config.desktop
+endif
+
+# 86Box
+ifeq ($(BR2_PACKAGE_86BOX),y)
+  BATOCERA_DESKTOPAPPS_SCRIPTS += 86Box.sh
+  BATOCERA_DESKTOPAPPS_APPS    += 86box.desktop
+  BATOCERA_DESKTOPAPPS_ICONS   += 86box.png
+endif
+
 ## Context Menu Actions
 
 # wine
@@ -313,6 +333,11 @@ define BATOCERA_DESKTOPAPPS_INSTALL_TARGET_CMDS
 	# menu
 	$(INSTALL) -D -m 0644 $(BATOCERA_DESKTOPAPPS_PKGDIR)/menu/batocera-applications.menu \
 		$(TARGET_DIR)/etc/xdg/menus/batocera-applications.menu
+	if [ "$(BR2_PACKAGE_WAYDROID)" != "y" ]; then \
+		rm -f $(TARGET_DIR)/usr/bin/Waydroid.sh; \
+		rm -f $(TARGET_DIR)/usr/share/applications/waydroid.desktop; \
+		rm -f $(TARGET_DIR)/usr/share/icons/batocera/waydroid.png; \
+	fi
 endef
 
 $(eval $(generic-package))

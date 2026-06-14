@@ -145,6 +145,9 @@ for FILE in music bios extractions kodi library saves screenshots recordings spl
             system/pacman/pacman.conf \
             bios/mame2003 \
             bios/dolphin-emu \
+            bios/86box \
+            bios/eka2l1 \
+            bios/symbian \
             roms/iortcw/main \
             bios/ps2 \
             system/configs/pironman5/config.json \

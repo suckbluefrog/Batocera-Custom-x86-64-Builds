@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-LABWC_VERSION = 0.9.7
+LABWC_VERSION = 0.20.0
 LABWC_SITE = $(call github,labwc,labwc,$(LABWC_VERSION))
 LABWC_LICENSE = GPLv2
 LABWC_LICENSE_FILES = LICENSE
@@ -19,7 +19,7 @@ ifeq ($(BR2_PACKAGE_XORG7),y)
 LABWC_DEPENDENCIES += libxcb
 endif
 
-ifeq ($(BR2_PACKAGE_XWAYLAND),y)
+ifeq ($(BR2_PACKAGE_WLROOTS_XWAYLAND),y)
 LABWC_CONF_OPTS += -Dxwayland=enabled
 LABWC_DEPENDENCIES += xwayland
 else

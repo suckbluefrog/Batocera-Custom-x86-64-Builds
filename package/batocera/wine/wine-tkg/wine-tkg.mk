@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-WINE_TKG_VERSION = 11.4
+WINE_TKG_VERSION = 11.10
 WINE_TKG_SOURCE = wine-$(WINE_TKG_VERSION)-staging-tkg-amd64-wow64.tar.xz
 WINE_TKG_SITE = https://github.com/Kron4ek/Wine-Builds/releases/download/$(WINE_TKG_VERSION)
 

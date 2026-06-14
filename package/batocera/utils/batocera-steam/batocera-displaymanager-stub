@@ -12,7 +12,7 @@ from gi.repository import GLib
 
 
 LOG = "/userdata/system/logs/displaymanager-stub.log"
-SWITCH_BIN = "/usr/bin/batocera-steam-desktop-switch"
+SESSION_SELECT = "/usr/bin/steamos-session-select"
 BUS_NAME = "org.freedesktop.DisplayManager"
 SEAT_PATH = "/org/freedesktop/DisplayManager/Seat0"
 
@@ -53,10 +53,15 @@ class Seat(dbus.service.Object):
         self._do_switch()
 
     def _do_switch(self):
-        if os.path.exists(SWITCH_BIN) and os.access(SWITCH_BIN, os.X_OK):
-            subprocess.Popen([SWITCH_BIN], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.path.exists(SESSION_SELECT) and os.access(SESSION_SELECT, os.X_OK):
+            subprocess.Popen(
+                [SESSION_SELECT, "desktop"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            log(f"routed desktop switch request to {SESSION_SELECT} desktop")
         else:
-            log(f"switch bin missing or not executable: {SWITCH_BIN}")
+            log(f"session selector missing or not executable: {SESSION_SELECT}")
 
 
 class DisplayManager(dbus.service.Object):

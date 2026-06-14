@@ -3,12 +3,12 @@
 # libdmdutil
 #
 ################################################################################
-# Version: Commits on Apr 29, 2026
-LIBDMDUTIL_VERSION = 019548288a80e5b37475febe6bb446b28f290f2e
+# Version: Commits on Jun 10, 2026
+LIBDMDUTIL_VERSION = 5879c321e75c2ca3c5dd9cde5d7c49f0075d1f16
 LIBDMDUTIL_SITE = $(call github,vpinball,libdmdutil,$(LIBDMDUTIL_VERSION))
 LIBDMDUTIL_LICENSE = BSD-3-Clause
 LIBDMDUTIL_LICENSE_FILES = LICENSE
-LIBDMDUTIL_DEPENDENCIES = libusb libserialport sockpp cargs libzedmd libserum libvni libpupdmd
+LIBDMDUTIL_DEPENDENCIES = libusb libserialport sockpp cargs libzedmd libserum libvni libpupdmd libframeutil
 LIBDMDUTIL_SUPPORTS_IN_SOURCE_BUILD = NO
 # Install to staging to build Visual Pinball Standalone
 LIBDMDUTIL_INSTALL_STAGING = YES

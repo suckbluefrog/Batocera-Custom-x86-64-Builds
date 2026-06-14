@@ -773,8 +773,39 @@ scummvm:
     86box:
       86box: { requireAnyOf: [BR2_PACKAGE_86BOX] }
   comment_en: |
-    Put each VM in /userdata/roms/86box as either a directory with an 86box.cfg file or a .cfg file.
-    Floppy images can also be launched directly and are attached to the selected floppy drive.
+    86Box emulates specific IBM PC compatible machines. It is closer to configuring a real PC than launching a single ROM.
+
+    BIOS ROMs:
+    Put 86Box machine BIOS ROMs in /userdata/bios/86box.
+    Batocera passes this directory to 86Box as --rompath for both EmulationStation launches and the F1 desktop 86Box launcher.
+    Keep the ROM set layout expected by 86Box inside this directory. Do not put VM config files here.
+
+    Recommended setup flow:
+    1. Open 86Box from F1 Applications, or launch Tools/Start_86Box.sh.
+    2. Create the machine, choose the motherboard, CPU, video, sound, disk controller, hard disk, floppy, CD-ROM, and boot order.
+    3. Save the machine configuration as 86box.cfg inside a VM directory under /userdata/roms/86box.
+    4. Launch that VM directory from EmulationStation.
+
+    VM directory example:
+    /userdata/roms/86box/Windows 98 Pentium II/86box.cfg
+    /userdata/roms/86box/Windows 98 Pentium II/hdd.img
+    /userdata/roms/86box/Windows 98 Pentium II/install.iso
+
+    Direct .cfg example:
+    /userdata/roms/86box/DOS 6.22.cfg
+
+    Floppy image example:
+    /userdata/roms/86box/bootdisk.ima
+    Launching a floppy image creates or uses a VM path under /userdata/saves/86box and attaches the image to the selected floppy drive.
+
+    Useful Batocera options:
+    86box_rom_path can override the default BIOS ROM path.
+    86box_settings_only opens 86Box settings instead of booting the VM.
+    86box_clear_nvram can clear cmos, flash, or both when a VM gets stuck after hardware changes.
+    86box_keyboard_hook can be set to nohook if the keyboard is being captured badly.
+
+    Logs:
+    Check /userdata/system/logs/es_launch_stdout.log and /userdata/system/logs/es_launch_stderr.log after a failed launch.
 
 dos:
   name:       Dos (x86)
@@ -2223,6 +2254,9 @@ ps3:
     PS3 roms are directories must be renamed to end with .ps3.
     PSN digital games are installed in rpcs3-config, create a text file ending with .psn that contains the game's ID.
     First time you load a game, it takes time (a progress bar is visible). It doesn't happen next times.
+    Batocera includes an initial RPCS3 game profile database for the "RPCS3 Database (Game Profile)" advanced options.
+    To update it, open rpcs3-config from menu>f1>Applications, then right-click the RPCS3 game list and choose Download Config Database.
+    The updated database is saved to /userdata/system/configs/rpcs3/GuiConfigs/config_database.dat.
 
     For more info: https://wiki.batocera.org/systems:ps3
   comment_fr: |
@@ -4714,6 +4748,10 @@ ngage:
   emulators:
     eka2l1:
       eka2l1: { requireAnyOf: [BR2_PACKAGE_EKA2L1] }
+  comment_en: |
+    This system is handled by EKA2L1.
+    The EKA2L1 entry uses /userdata/roms/n-gage and contains the detailed device, BIOS, and game-format notes.
+    If this /userdata/roms/ngage folder is created on your system, use the EKA2L1 /userdata/roms/n-gage folder unless your local es_systems configuration points here.
 
 eka2l1:
   name: EKA2L1
@@ -4728,6 +4766,64 @@ eka2l1:
   emulators:
     eka2l1:
       eka2l1: { requireAnyOf: [BR2_PACKAGE_EKA2L1] }
+  comment_en: |
+    EKA2L1 emulates Symbian devices. The selected game format must match the selected device firmware.
+
+    Device data and firmware:
+    Put EKA2L1 device packs in /userdata/bios/eka2l1 or /userdata/bios/symbian.
+    Batocera seeds missing device data into /userdata/saves/eka2l1/EKA2L1/data before launch.
+    Supported seed layouts:
+    - /userdata/bios/eka2l1/devices.yml plus matching drives and roms directories.
+    - /userdata/bios/eka2l1/EKA2L1/devices.yml plus matching drives and roms directories.
+    - /userdata/bios/eka2l1/Data/devices.yml plus matching drives and roms directories.
+    - a .zip archive in /userdata/bios/eka2l1, /userdata/bios/symbian, or a clearly named top-level BIOS archive such as Nokia N-Gage & N-Gage QD (S60v1).zip.
+
+    Seed example:
+    /userdata/bios/eka2l1/devices.yml
+    /userdata/bios/eka2l1/drives/z/NEM-4/System/...
+    /userdata/bios/eka2l1/roms/NEM-4/SYM.ROM
+
+    Game files:
+    Put launchable files in /userdata/roms/n-gage.
+
+    Original N-Gage card dump folder example:
+    /userdata/roms/n-gage/Example Game/System/Apps/Example/Example.app
+    /userdata/roms/n-gage/Example Game/System/Apps/Example/Example.rsc
+
+    Original N-Gage card zip example:
+    /userdata/roms/n-gage/Example Game.zip
+    The zip must contain the card filesystem, normally including System/Apps.
+
+    SIS/SISX example:
+    /userdata/roms/n-gage/Example.sis
+    /userdata/roms/n-gage/Example.sisx
+    SIS/SISX files install into the currently selected device. They are not the same thing as a mounted N-Gage card dump.
+
+    .n-gage package warning:
+    Later .n-gage installer packages are usually Symbian OS 9.x/N-Gage 2.0 packages.
+    They are MIME installer packages, not original N-Gage card dumps.
+    Batocera opens the EKA2L1 GUI for these files instead of trying to mount them as cards.
+    They require matching S60v3 or newer device data and the appropriate N-Gage 2.0 environment, not the original NEM-4/RH-29 N-Gage or N-Gage QD profile.
+
+    Common symptom:
+    If the EKA2L1 GUI says "no non-system app installed on this device", the device booted but there is no compatible user app installed or mounted for that selected device.
+    Use a compatible card folder or zip, install a compatible SIS/SISX, or provide a device pack that matches the game generation.
+
+    Launch modes:
+    Auto mounts card folders or valid zip dumps, installs SIS/SISX files, and opens the GUI for unsupported .n-gage installer packages.
+    Open GUI starts EKA2L1 without a game argument.
+    Mount card only mounts a card dump and stops there.
+    Mount and run N-Gage mounts a card dump and starts the N-Gage app.
+    Install SIS installs a SIS/SISX into the selected device.
+    Run app only uses the optional RUN APP field to start an app name, UID, or virtual executable path.
+
+    GUI access:
+    Open EKA2L1 from F1 Applications or from Tools/Start_EKA2L1.sh.
+    Use the GUI when importing new firmware, switching devices, checking installed apps, or debugging a package that does not auto-launch.
+
+    Logs and saved state:
+    EKA2L1 data lives under /userdata/saves/eka2l1/EKA2L1.
+    Check /userdata/saves/eka2l1/EKA2L1/EKA2L1.log and /userdata/system/logs/es_launch_stderr.log after a failed launch.
 
 odcommander:
   name: OD-Commander

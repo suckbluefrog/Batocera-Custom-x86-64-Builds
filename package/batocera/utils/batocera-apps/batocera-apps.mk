@@ -214,14 +214,17 @@ define BATOCERA_APPS_INSTALL_TARGET_CMDS
 	install -D -m 0644 \
 		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-apps/gamelist.xml \
 		$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/gamelist.xml
-	if [ "$(BR2_PACKAGE_WAYDROID)" = "y" ]; then \
-		printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'exec /usr/bin/batocera-waydroid-session' > $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/Waydroid.sh; \
-		sed -i '/<\/gameList>/i\  <game>\n    <path>./Waydroid.sh</path>\n    <name>Waydroid</name>\n    <image>./images/waydroid.png</image>\n  </game>' \
-			$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/gamelist.xml; \
-		install -D -m 0644 \
-			$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-desktopapps/icons/waydroid.png \
-			$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/waydroid.png; \
-	fi
+		if [ "$(BR2_PACKAGE_WAYDROID)" = "y" ]; then \
+			printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'exec /usr/bin/batocera-waydroid-session' > $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/Waydroid.sh; \
+			sed -i '/<\/gameList>/i\  <game>\n    <path>./Waydroid.sh</path>\n    <name>Waydroid</name>\n    <image>./images/waydroid.png</image>\n  </game>' \
+				$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/gamelist.xml; \
+			install -D -m 0644 \
+				$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-desktopapps/icons/waydroid.png \
+				$(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/waydroid.png; \
+		else \
+			rm -f $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/Waydroid.sh; \
+			rm -f $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/images/waydroid.png; \
+		fi
 	if [ "$(BR2_PACKAGE_VIRT_MANAGER)" = "y" ]; then \
 		printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'batocera-mouse show' "trap 'batocera-mouse hide' EXIT" 'if [ -x /usr/bin/VirtManager.sh ]; then' '    exec /usr/bin/VirtManager.sh "$$@"' 'fi' 'batocera-services start libvirt >/dev/null 2>&1 || true' 'exec /usr/bin/virt-manager --no-fork --connect "$${VIRT_MANAGER_URI:-qemu:///system}" "$$@"' > $(TARGET_DIR)/usr/share/batocera/datainit/roms/apps/VirtManager.sh; \
 		sed -i '/<\/gameList>/i\  <game>\n    <path>./VirtManager.sh</path>\n    <name>Virtual Machine Manager</name>\n    <image>./images/virt-manager.png</image>\n  </game>' \

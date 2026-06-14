@@ -1,5 +1,5 @@
 From d7d913db44c3a9e89834f669618d2f47e4d8d544 Mon Sep 17 00:00:00 2001
-From: Batocera Builder <noreply@batocera.org>
+From: suckbluefrog <suckbluefrog@proton.me>
 Date: Sun, 15 Feb 2026 10:10:00 +0000
 Subject: [PATCH] emu: use vmrs/vmsr instead of arm fpscr builtins
 

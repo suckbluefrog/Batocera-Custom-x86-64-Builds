@@ -105,6 +105,11 @@ frontend_running() {
     pgrep -x openbox >/dev/null 2>&1
 }
 
+emulationstation_running() {
+    pgrep -x emulationstation >/dev/null 2>&1 || \
+    pgrep -f '(^|/)emulationstation-standalone([[:space:]]|$)' >/dev/null 2>&1
+}
+
 xorg_frontend_running() {
     pgrep -x X >/dev/null 2>&1 || \
     pgrep -x Xorg >/dev/null 2>&1 || \
@@ -206,8 +211,8 @@ clear_frontend_restore_env() {
 }
 
 restore_frontend() {
-    if frontend_running; then
-        log "frontend already running after Steam exit"
+    if emulationstation_running; then
+        log "EmulationStation already running after Steam exit"
         return 0
     fi
 

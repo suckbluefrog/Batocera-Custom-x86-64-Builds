@@ -48,17 +48,26 @@ run_es_cmd() {
 resume_es() {
     local i
 
-    if pgrep -x emulationstation >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then
+    if pgrep -x emulationstation >/dev/null 2>&1; then
         return 0
     fi
 
-    if [[ -x /etc/init.d/S31emulationstation ]]; then
-        echo "Restoring EmulationStation via restart/start" >> "${log}"
-        sleep 2
-        run_es_cmd /etc/init.d/S31emulationstation restart || \
-            run_es_cmd /etc/init.d/S31emulationstation start || true
+    if pgrep -f '(^|/)emulationstation-standalone([[:space:]]|$)' >/dev/null 2>&1; then
         for i in $(seq 1 30); do
-            if pgrep -x emulationstation >/dev/null 2>&1 || pgrep -x labwc >/dev/null 2>&1; then
+            if pgrep -x emulationstation >/dev/null 2>&1; then
+                return 0
+            fi
+            sleep 0.2
+        done
+    fi
+
+    if [[ -x /etc/init.d/S31emulationstation ]]; then
+        echo "Restoring EmulationStation via start/restart" >> "${log}"
+        sleep 2
+        run_es_cmd /etc/init.d/S31emulationstation start || \
+            run_es_cmd /etc/init.d/S31emulationstation restart || true
+        for i in $(seq 1 30); do
+            if pgrep -x emulationstation >/dev/null 2>&1; then
                 return 0
             fi
             sleep 0.2

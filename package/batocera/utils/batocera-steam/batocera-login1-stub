@@ -16,7 +16,6 @@ LOG = "/userdata/system/logs/login1-stub.log"
 BUS_NAME = "org.freedesktop.login1"
 MANAGER_PATH = "/org/freedesktop/login1"
 SWISSKNIFE = "/usr/bin/batocera-es-swissknife"
-DESKTOP_SWITCH = "/usr/bin/batocera-steam-desktop-switch"
 
 
 def log(msg: str) -> None:
@@ -70,40 +69,6 @@ def run_power_action(action: str) -> None:
     log(f"power action failed: unsupported action {action}")
 
 
-def steam_session_active() -> bool:
-    patterns = [
-        r"(^|/)batocera-steam-session([[:space:]]|$)",
-        r"(^|/)batocera-steam([[:space:]]|$)",
-        r"/userdata/system/steam/steam\.sh .* -gamepadui",
-        r"gamescope .*--steam",
-    ]
-
-    for pattern in patterns:
-        if (
-            subprocess.run(
-                ["pgrep", "-f", pattern],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            ).returncode
-            == 0
-        ):
-            return True
-    return False
-
-
-def run_desktop_switch(source: str) -> bool:
-    if not (os.path.exists(DESKTOP_SWITCH) and os.access(DESKTOP_SWITCH, os.X_OK)):
-        return False
-
-    if not steam_session_active():
-        return False
-
-    subprocess.Popen([DESKTOP_SWITCH], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    log(f"{source}: routed to desktop switch via {DESKTOP_SWITCH}")
-    return True
-
-
 class Manager(dbus.service.Object):
     def __init__(self, bus):
         super().__init__(bus, MANAGER_PATH)
@@ -150,8 +115,6 @@ class Manager(dbus.service.Object):
 
     def _do_reboot(self, source: str) -> None:
         log(source)
-        if run_desktop_switch(source):
-            return
         run_power_action("--reboot")
 
     @dbus.service.method("org.freedesktop.DBus.Properties", in_signature="ss", out_signature="v")

@@ -1,5 +1,5 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Batocera <noreply@batocera.org>
+From: suckbluefrog <suckbluefrog@proton.me>
 Date: Sun, 31 May 2026 12:00:00 +0000
 Subject: [PATCH] configure: remove obsolete XIPH_PATH_OGG fallback
 

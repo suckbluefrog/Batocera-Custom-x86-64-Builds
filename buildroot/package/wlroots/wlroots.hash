@@ -1,5 +1,5 @@
-# Generated locally, after checking https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.19.2/downloads/wlroots-0.19.2.tar.gz.sig
-sha256  09a0a8d60104c8b0772fee4f60ba76a89aed7e59dff7659d00960fba06bdf267  wlroots-0.19.2.tar.gz
+# Generated locally, after downloading https://gitlab.freedesktop.org/wlroots/wlroots/-/releases/0.20.1/downloads/wlroots-0.20.1.tar.gz
+sha256  a8541187baecaa2620938afacde88266cb7efa5928cb09d579d8efb07bc4901b  wlroots-0.20.1.tar.gz
 
 # Hashes for license files:
 sha256  ffd3737a478b83a8b51b42757d3bf909ef36694508355879722e11fc1fa6736b  LICENSE

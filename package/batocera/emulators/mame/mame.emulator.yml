@@ -31,6 +31,61 @@ custom_features:
     choices:
       Off (Default): 0
       "On": 1
+  sound:
+    group: AUDIO
+    prompt: AUDIO BACKEND
+    description: Select MAME's sound output module.
+    choices:
+      PipeWire (Default): pipewire
+      MAME Detect: auto
+      PortAudio: portaudio
+      PulseAudio: pulse
+      SDL: sdl
+      None: none
+  audiodriver:
+    group: AUDIO
+    prompt: SDL AUDIO DRIVER
+    description: Select the SDL audio driver when using the SDL audio backend.
+    choices:
+      Auto (Do not force): ""
+      PipeWire: pipewire
+      PulseAudio: pulseaudio
+      ALSA: alsa
+      JACK: jack
+      DSP: dsp
+      Disk: disk
+      Dummy: dummy
+  mame_audio_latency:
+    group: AUDIO
+    prompt: AUDIO LATENCY
+    description: MAME audio latency in 20ms frames. 0 uses the selected backend default.
+    choices:
+      Default: 0.0
+      20ms: 1.0
+      40ms: 2.0
+      80ms: 4.0
+      160ms: 8.0
+  lowlatency:
+    group: LATENCY/SYNC
+    prompt: LOW LATENCY
+    description: Draw a new frame before throttling to reduce input latency.
+    choices:
+      Off (Default): 0
+      "On": 1
+  emusync:
+    group: LATENCY/SYNC
+    prompt: EMULATION SYNC
+    description: Enable MAME emulation sync when supported by this build.
+    choices:
+      Off (Default): 0
+      "On": 1
+  audiosync:
+    group: LATENCY/SYNC
+    prompt: AUDIO SYNC
+    description: Enable MAME audio sync when supported by this build.
+    choices:
+      Off (Default): 0
+      "On": 1
   bgfxshaders:
     group: ADVANCED OPTIONS
     prompt: BGFX VIDEO FILTER

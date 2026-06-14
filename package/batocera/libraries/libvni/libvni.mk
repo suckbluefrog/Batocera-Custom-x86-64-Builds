@@ -3,12 +3,12 @@
 # libvni
 #
 ################################################################################
-# Version: Commits on Apr 13, 2026
-LIBVNI_VERSION = aec04d88f70c3ef642df9f68c4b41c9418fdf704
+# Version: Commits on Jun 10, 2026
+LIBVNI_VERSION = 7258e2fa0d086e1224d6510d44a61879e6b344b1
 LIBVNI_SITE = $(call github,PPUC,libvni,$(LIBVNI_VERSION))
 LIBVNI_LICENSE = GPLv2
 LIBVNI_LICENSE_FILES = LICENSE.md
-LIBVNI_DEPENDENCIES =
+LIBVNI_DEPENDENCIES = libframeutil
 LIBVNI_SUPPORTS_IN_SOURCE_BUILD = NO
 LIBVNI_INSTALL_STAGING = YES
 

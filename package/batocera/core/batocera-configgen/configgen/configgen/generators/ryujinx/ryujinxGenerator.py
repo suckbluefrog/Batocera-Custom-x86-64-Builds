@@ -17,6 +17,7 @@ except Exception:
 from ... import Command
 from ...batoceraPaths import BIOS, CACHE, CONFIGS, ROMS, SAVES, configure_emulator, mkdir_if_not_exists
 from ...controller import generate_sdl_game_controller_config
+from ...utils import lsfg
 from ..Generator import Generator
 
 if TYPE_CHECKING:
@@ -37,6 +38,125 @@ ryujinxExec: Final = ryujinxConf / "ryujinx"
 # 819 = ~80% utilization floor, forces scheduler to use big cores
 UCLAMP_MIN = 819
 UCLAMP_MAX = 1024
+
+
+def _choice(value: Any, valid_values: set[str], default: str) -> str:
+    string_value = str(value)
+    return string_value if string_value in valid_values else default
+
+
+def _mapped_int(value: Any, aliases: dict[str, int], default: int) -> int:
+    string_value = str(value)
+    return aliases.get(string_value, aliases.get(string_value.lower(), default))
+
+
+def _bool_or_default(value: Any, default: bool) -> bool:
+    if value in (None, "", "auto", "Auto"):
+        return default
+    if isinstance(value, str):
+        return value.lower() in {"1", "true", "on", "enabled"}
+    return bool(value)
+
+
+def _backend_threading(value: Any) -> str:
+    string_value = str(value)
+    if string_value in {"true", "1"}:
+        return "Auto"
+    if string_value in {"false", "0"}:
+        return "Off"
+    return _choice(string_value, {"Auto", "On", "Off"}, "Auto")
+
+
+def _graphics_backend(value: Any) -> str:
+    aliases = {
+        "0": "OpenGl",
+        "OpenGL": "OpenGl",
+        "1": "Vulkan",
+    }
+    string_value = str(value)
+    return aliases.get(string_value, _choice(string_value, {"OpenGl", "Vulkan"}, "Vulkan"))
+
+
+def _hide_cursor_mode(value: Any) -> int:
+    return _mapped_int(
+        value,
+        {
+            "Never": 0,
+            "never": 0,
+            "0": 0,
+            "OnIdle": 1,
+            "onidle": 1,
+            "1": 1,
+            "Always": 2,
+            "always": 2,
+            "2": 2,
+        },
+        1,
+    )
+
+
+def _vsync_mode(value: Any) -> int:
+    return _mapped_int(
+        value,
+        {
+            "Switch": 0,
+            "switch": 0,
+            "true": 0,
+            "on": 0,
+            "Unbounded": 1,
+            "unbounded": 1,
+            "0": 1,
+            "false": 1,
+            "off": 1,
+            "1": 0,
+            "Custom": 2,
+            "custom": 2,
+            "2": 2,
+        },
+        1,
+    )
+
+
+def _dram_size(value: Any) -> int:
+    return _mapped_int(
+        value,
+        {
+            "MemoryConfiguration4GiB": 0,
+            "memoryconfiguration4gib": 0,
+            "0": 0,
+            "MemoryConfiguration6GiB": 1,
+            "memoryconfiguration6gib": 1,
+            "1": 1,
+            "MemoryConfiguration8GiB": 2,
+            "memoryconfiguration8gib": 2,
+            "2": 2,
+            "MemoryConfiguration12GiB": 3,
+            "memoryconfiguration12gib": 3,
+            "3": 3,
+        },
+        0,
+    )
+
+
+def _set_resolution_scale(conf: dict[str, Any], value: Any) -> None:
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        scale = 1.0
+
+    if scale.is_integer() and 1 <= int(scale) <= 4:
+        conf["res_scale"] = int(scale)
+        conf["res_scale_custom"] = 1.0
+    else:
+        conf["res_scale"] = -1
+        conf["res_scale_custom"] = scale
+
+
+def _percent_to_unit(value: int, default: int = 100) -> float:
+    if value < 0 or value > 100:
+        value = default
+    return value / 100
+
 
 ryujinxCtrl: dict[str, Any] = {
         "left_joycon_stick": {
@@ -159,14 +279,19 @@ class RyujinxGenerator(Generator):
         conf["check_updates_on_start"] = False
         conf["show_confirm_exit"] = False
         conf["skip_user_profiles"] = system.config.get_bool("ryujinx_skip_user_profiles", True)
-        conf["hide_cursor"] = 1
+        conf["hide_cursor"] = _hide_cursor_mode(system.config.get("ryujinx_hide_cursor", "OnIdle"))
         conf["game_dirs"] = [str(ROMS / "switch")]
         conf["start_fullscreen"] = True
         conf["show_title_bar"] = system.config.get_bool("ryujinx_show_title_bar", False)
         conf["remember_window_state"] = False
         conf["use_input_global_config"] = False
-        conf["start_no_ui"] = system.config.get_bool("ryujinx_no_ui", not configure_emulator(rom))
-        conf["audio_volume"] = 1
+        conf["start_no_ui"] = _bool_or_default(system.config.get("ryujinx_no_ui", ""), not configure_emulator(rom))
+        conf["focus_lost_action_type"] = _choice(
+            system.config.get("ryujinx_focus_lost", "DoNothing"),
+            {"DoNothing", "BlockInput", "MuteAudio", "BlockInputAndMuteAudio", "PauseEmulation"},
+            "DoNothing",
+        )
+        conf["audio_volume"] = _percent_to_unit(system.config.get_int("ryujinx_audio_volume", 100))
         conf["window_startup"] = {
             "window_size_width": int(gameResolution["width"]),
             "window_size_height": int(gameResolution["height"]),
@@ -174,13 +299,13 @@ class RyujinxGenerator(Generator):
             "window_position_y": 0,
             "window_maximized": True
         }
-        
+
         # set ryujinx app language
         conf["language_code"] = getLangFromEnvironment()
 
         # Console language
         conf["system_language"] = system.config.get("ryujinx_language", "AmericanEnglish")
-        
+
         # Console region
         conf["system_region"] = system.config.get("ryujinx_region", "USA")
 
@@ -193,28 +318,25 @@ class RyujinxGenerator(Generator):
 
         # ==================== GRAPHICS ====================
         # Graphics backend
-        graphics_backend = system.config.get("ryujinx_api", "Vulkan")
+        graphics_backend = _graphics_backend(system.config.get("ryujinx_api", "Vulkan"))
         conf["graphics_backend"] = graphics_backend
-        
+
         # Internal resolution scale
-        res_scale = system.config.get("ryujinx_scale", "1")
-        # Handle float values like 0.5, 0.8
-        try:
-            conf["res_scale"] = float(res_scale) if '.' in str(res_scale) else int(res_scale)
-        except (ValueError, TypeError):
-            conf["res_scale"] = 1
-        
+        _set_resolution_scale(conf, system.config.get("ryujinx_scale", "1"))
+
         # Aspect ratio
         conf["aspect_ratio"] = system.config.get("ryujinx_ratio", "Fixed16x9")
-        
+
         # Anisotropic filtering
         conf["max_anisotropy"] = system.config.get_int("ryujinx_filtering", -1)
-        
+
         # VSync mode
-        vsync_mode = system.config.get_int("ryujinx_vsync", 0)
-        conf["enable_vsync"] = vsync_mode != 0
+        vsync_mode = _vsync_mode(system.config.get("ryujinx_vsync", "Unbounded"))
+        conf["enable_vsync"] = vsync_mode != 1
         conf["vsync_mode"] = vsync_mode
-        
+        conf["enable_custom_vsync_interval"] = vsync_mode == 2
+        conf["custom_vsync_interval"] = system.config.get_int("ryujinx_custom_vsync_interval", 120)
+
         # Backend threading + shader cache.
         # Vulkan can use a combined ES toggle for async GPU/shader behavior.
         async_gpu_shader = system.config.get("ryujinx_async_gpu_shader", "")
@@ -223,37 +345,57 @@ class RyujinxGenerator(Generator):
             conf["backend_threading"] = "Auto" if enable_async_gpu_shader else "Off"
             conf["enable_shader_cache"] = enable_async_gpu_shader
         else:
-            if system.config.get_bool("ryujinx_backend_threading", True):
-                conf["backend_threading"] = "Auto"
-            else:
-                conf["backend_threading"] = "Off"
+            conf["backend_threading"] = _backend_threading(system.config.get("ryujinx_backend_threading", "Auto"))
             conf["enable_shader_cache"] = system.config.get_bool("ryujinx_shader_cache", True)
-        
+
         # Scaling filter
-        conf["scaling_filter"] = system.config.get("ryujinx_scaling_filter", "Bilinear")
-        
+        conf["scaling_filter"] = _choice(
+            system.config.get("ryujinx_scaling_filter", "Bilinear"),
+            {"Bilinear", "Nearest", "Fsr", "Area"},
+            "Bilinear",
+        )
+        conf["scaling_filter_level"] = system.config.get_int("ryujinx_scaling_filter_level", 80)
+
         # Anti-aliasing
-        conf["anti_aliasing"] = system.config.get("ryujinx_antialiasing", "None")
-        
+        conf["anti_aliasing"] = _choice(
+            system.config.get("ryujinx_antialiasing", "None"),
+            {"None", "Fxaa", "SmaaLow", "SmaaMedium", "SmaaHigh", "SmaaUltra"},
+            "None",
+        )
+
         # Texture recompression
         conf["enable_texture_recompression"] = system.config.get_bool("ryujinx_texture_recompression", False)
+        conf["enable_macro_hle"] = system.config.get_bool("ryujinx_macro_hle", True)
+        conf["enable_color_space_passthrough"] = system.config.get_bool("ryujinx_color_space_passthrough", False)
 
         # ==================== EMULATION ====================
         # Enable PPTC (Profiled Persistent Translation Cache)
         conf["enable_ptc"] = system.config.get_bool("ryujinx_enable_ptc", True)
-        
+        conf["enable_low_power_ptc"] = system.config.get_bool("ryujinx_low_power_ptc", False)
+
         # FS integrity checks
         conf["enable_fs_integrity_checks"] = system.config.get_bool("ryujinx_fs_integrity", True)
-        
+
         # Memory manager mode
-        conf["memory_manager_mode"] = system.config.get("ryujinx_memory_manager", "HostMappedUnsafe")
-        
+        conf["memory_manager_mode"] = _choice(
+            system.config.get("ryujinx_memory_manager", "HostMappedUnsafe"),
+            {"SoftwarePageTable", "HostMapped", "HostMappedUnsafe"},
+            "HostMappedUnsafe",
+        )
+        conf["dram_size"] = _dram_size(system.config.get("ryujinx_dram_size", "MemoryConfiguration4GiB"))
+        conf["tick_scalar"] = system.config.get_int("ryujinx_tick_scalar", 50)
+
         # Ignore missing services
         conf["ignore_missing_services"] = system.config.get_bool("ryujinx_ignore_missing", False)
+        conf["ignore_applet"] = system.config.get_bool("ryujinx_ignore_applet", False)
 
         # ==================== AUDIO ====================
         # Audio backend
-        conf["audio_backend"] = system.config.get("ryujinx_audio_backend", "OpenAl")
+        conf["audio_backend"] = _choice(
+            system.config.get("ryujinx_audio_backend", "OpenAl"),
+            {"Dummy", "OpenAl", "SoundIo", "SDL2"},
+            "OpenAl",
+        )
 
         # ==================== NETWORK ====================
         # Multiplayer/LAN mode
@@ -265,6 +407,7 @@ class RyujinxGenerator(Generator):
             conf["multiplayer_mode"] = 2
         else:
             conf["multiplayer_mode"] = 0
+        conf["enable_internet_access"] = system.config.get_bool("ryujinx_internet", False)
 
         conf["input_config"] = []
 
@@ -286,7 +429,11 @@ class RyujinxGenerator(Generator):
 
             # Shared per-player settings
             padtype_key = f"ryujinx_padtype{nplayer}"
-            ctrlConf["controller_type"] = system.config.get(padtype_key, "ProController")
+            ctrlConf["controller_type"] = _choice(
+                system.config.get(padtype_key, system.config.get("ryujinx_padtype", "ProController")),
+                {"ProController", "JoyconPair", "JoyconLeft", "JoyconRight"},
+                "ProController",
+            )
             ctrlConf["player_index"] = f"Player{nplayer}"
             ctrlConf["deadzone_left"] = system.config.get_float("ryujinx_deadzone_left", 0)
             ctrlConf["deadzone_right"] = system.config.get_float("ryujinx_deadzone_right", 0)
@@ -353,9 +500,7 @@ class RyujinxGenerator(Generator):
         RyujinxGenerator._write_xdg_open_wrapper(xdg_open_wrapper)
         xdg_path = f"{ryujinxConf}:/sbin:/usr/sbin:/bin:/usr/bin"
 
-        return Command.Command(
-            array=commandArray,
-            env={"XDG_CONFIG_HOME": CONFIGS,
+        env = {"XDG_CONFIG_HOME": CONFIGS,
             "XDG_DATA_HOME": SAVES / "switch",
             "XDG_CACHE_HOME": CACHE,
             "XDG_MENU_PREFIX": "batocera-",
@@ -365,8 +510,11 @@ class RyujinxGenerator(Generator):
             "PATH": xdg_path,
             "SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers),
             "SDL_JOYSTICK_HIDAPI": "0"
-            }
-        )
+        }
+        if graphics_backend == "Vulkan":
+            lsfg.apply_lsfg_vk(system, env, process_names=["ryujinx", "Ryujinx"], config_name="ryujinx")
+
+        return Command.Command(array=commandArray, env=env)
 
     @staticmethod
     def _write_runtime_wrapper(
@@ -407,7 +555,7 @@ apply_uclamp() {{
         # Main process
         [ -e /proc/$pid/sched_util_min ] && echo $UCLAMP_MIN > /proc/$pid/sched_util_min
         [ -e /proc/$pid/sched_util_max ] && echo $UCLAMP_MAX > /proc/$pid/sched_util_max
-        
+
         # All threads
         for tid in /proc/$pid/task/*/; do
             tid=$(basename "$tid")
@@ -474,7 +622,7 @@ exit $EXIT_CODE
 '''
         with open(wrapper_path, 'w') as f:
             f.write(script_content)
-        
+
         os.chmod(wrapper_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
 
     @staticmethod

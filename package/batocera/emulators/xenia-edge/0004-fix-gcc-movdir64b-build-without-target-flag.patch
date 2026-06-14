@@ -1,4 +1,4 @@
-From: Batocera Linux Team <batocera@batocera.linux>
+From: suckbluefrog <suckbluefrog@proton.me>
 Date: Fri, 2 May 2026 00:00:00 +0000
 Subject: [PATCH 4/4] fix: use inline asm movdir64b wrapper with GCC
 
@@ -8,7 +8,7 @@ of the movdir64b implementation through runtime CPU feature detection, so
 avoid requiring the whole file to be built for that instruction by using
 the same inline assembly wrapper on GCC that is already used on Clang.
 
-Signed-off-by: Batocera Linux Team <batocera@batocera.linux>
+Signed-off-by: suckbluefrog <suckbluefrog@proton.me>
 ---
  src/xenia/base/memory.cc | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

@@ -20,6 +20,63 @@ compositor_running() {
 	return 1
 }
 
+compositor_pid() {
+	local pids
+
+	for COMPOSITOR in labwc sway openbox; do
+		pids="$(pidof "$COMPOSITOR" 2>/dev/null || true)"
+		if [ -n "${pids}" ]; then
+			set -- ${pids}
+			printf '%s\n' "$1"
+			return 0
+		fi
+	done
+	return 1
+}
+
+frontend_env_value() {
+	local pid="$1"
+	local key="$2"
+
+	[ -r "/proc/${pid}/environ" ] || return 1
+	tr '\0' '\n' < "/proc/${pid}/environ" | sed -n "s/^${key}=//p" | head -n 1
+}
+
+export_existing_compositor_env() {
+	local pid
+	local name
+	local value
+	local sock
+
+	pid="$(compositor_pid)"
+	[ -n "${pid}" ] || return 0
+
+	for name in \
+		WAYLAND_DISPLAY \
+		XDG_RUNTIME_DIR \
+		DISPLAY \
+		XAUTHORITY \
+		DBUS_SESSION_BUS_ADDRESS \
+		SWAYSOCK \
+		XDG_CURRENT_DESKTOP \
+		XDG_SESSION_TYPE \
+		XDG_SESSION_DESKTOP \
+		WLR_XWAYLAND_NO_AUTH
+	do
+		value="$(frontend_env_value "${pid}" "${name}" 2>/dev/null || true)"
+		[ -n "${value}" ] && export "${name}=${value}"
+	done
+
+	if [ -z "${WAYLAND_DISPLAY}" ]; then
+		for sock in "${XDG_RUNTIME_DIR:-/var/run}"/wayland-* /var/run/wayland-* /run/wayland-*; do
+			[ -S "${sock}" ] || continue
+			export XDG_RUNTIME_DIR="$(dirname "${sock}")"
+			export WAYLAND_DISPLAY="$(basename "${sock}")"
+			break
+		done
+	fi
+}
+
 clear_runtime_launcher_env() {
 	local name
 
@@ -63,6 +120,7 @@ case "$1" in
 			fi
 
 			if compositor_running; then
+				export_existing_compositor_env
 				emulationstation-standalone &
 			else
 				%BATOCERA_EMULATIONSTATION_CMD% %BATOCERA_EMULATIONSTATION_POSTFIX%

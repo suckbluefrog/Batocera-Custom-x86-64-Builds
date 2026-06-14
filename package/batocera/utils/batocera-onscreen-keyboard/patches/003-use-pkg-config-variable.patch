@@ -1,4 +1,4 @@
-From: Batocera Linux <batocera@batocera.org>
+From: suckbluefrog <suckbluefrog@proton.me>
 Subject: [PATCH] Use PKG_CONFIG variable for cross-compilation support
 
 The Makefile hardcodes 'pkg-config' which breaks cross-compilation.

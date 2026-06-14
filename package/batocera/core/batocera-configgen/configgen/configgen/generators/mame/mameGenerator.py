@@ -60,12 +60,22 @@ def _mame_showusage() -> str:
 
 
 def _mame_supports_option(option: str) -> bool:
-    flag = f"-{option.lstrip('-')}"
-    return any(line.split(maxsplit=1)[0] == flag for line in _mame_showusage().splitlines() if line.startswith("-"))
+    option_name = option.lstrip("-")
+    supported_flags = { f"-{option_name}", f"-[no]{option_name}" }
+    return any(
+        line.split(maxsplit=1)[0] in supported_flags
+        for line in _mame_showusage().splitlines()
+        if line.startswith("-")
+    )
 
 
 def _append_supported_mame_options(command_array: list[str | Path], *options: str) -> None:
     command_array.extend(option for option in options if _mame_supports_option(option))
+
+
+def _append_supported_mame_option_value(command_array: list[str | Path], option: str, value: str) -> None:
+    if _mame_supports_option(option):
+        command_array += [ option, value ]
 
 
 def _mame_supported_sound_methods() -> set[str]:
@@ -84,13 +94,13 @@ def _mame_supported_sound_methods() -> set[str]:
 def _mame_sound_method(system: Emulator) -> str:
     configured_sound = system.config.get("sound", "pipewire")
     if configured_sound == "auto":
-        configured_sound = "pipewire"
+        return configured_sound
 
     supported_methods = _mame_supported_sound_methods()
     if not supported_methods or configured_sound in supported_methods:
         return configured_sound
 
-    for fallback in ("pipewire", "sdl", "none"):
+    for fallback in ("pipewire", "portaudio", "pulse", "sdl", "none"):
         if fallback in supported_methods:
             return fallback
 
@@ -181,10 +191,11 @@ class MameGenerator(Generator):
         # set audio to pipewire by default to fix audio from 0.278
         soundMethod = _mame_sound_method(system)
         commandArray += [ "-sound", soundMethod ]
-        if soundMethod == "sdl" and (audioDriver := system.config.get("audiodriver")):
-            _append_supported_mame_options(commandArray, "-audiodriver")
-            if "-audiodriver" in commandArray:
-                commandArray += [ audioDriver ]
+        if soundMethod == "sdl" and (audioDriver := system.config.get("audiodriver")) and audioDriver != "auto":
+            _append_supported_mame_option_value(commandArray, "-audiodriver", audioDriver)
+        audioLatency = str(system.config.get("mame_audio_latency", "0.0"))
+        if audioLatency not in ("", "0", "0.0"):
+            _append_supported_mame_option_value(commandArray, "-audio_latency", audioLatency)
         # skip game info at start
         commandArray += [ "-skip_gameinfo" ]
 
@@ -294,6 +305,12 @@ class MameGenerator(Generator):
             commandArray += [ "-waitvsync" ]
         if system.config.get_bool("syncrefresh"):
             commandArray += [ "-syncrefresh" ]
+        if system.config.get_bool("lowlatency"):
+            _append_supported_mame_options(commandArray, "-lowlatency")
+        if system.config.get_bool("emusync"):
+            _append_supported_mame_options(commandArray, "-emusync")
+        if system.config.get_bool("audiosync"):
+            _append_supported_mame_options(commandArray, "-audiosync")
 
         # Rotation / TATE options
         if (rotation := system.config.get("rotation")) in ["autoror", "autorol"]:

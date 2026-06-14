@@ -24,6 +24,8 @@ export HOME="/userdata/system"
 export XDG_DATA_HOME="${HOME}/.local/share"
 export XDG_CONFIG_HOME="${HOME}/.config"
 export XDG_CACHE_HOME="${HOME}/.cache"
+# EAC/EOS bootstrapper splash windows use SDL renderer selection under Proton.
+export SDL_RENDER_DRIVER="${SDL_RENDER_DRIVER:-opengl}"
 STEAM_FIRST_RUN_PENDING_STAMP="/userdata/system/.steam-first-run-pending"
 STEAM_FIRST_RUN_WIFI_STAMP="/userdata/system/.steam-first-run-wifi-pending"
 STEAM_FIRST_RUN_PENDING=0

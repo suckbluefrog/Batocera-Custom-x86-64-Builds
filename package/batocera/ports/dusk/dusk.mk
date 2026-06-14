@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-DUSK_VERSION = 764fc0b96fd39fb1fbd159717b51fd3dfd7f00b4
+DUSK_VERSION = a85f8c203d0d68de948f7e5fd79538a226551203
 DUSK_SITE = https://github.com/TwilitRealm/dusk.git
 DUSK_SITE_METHOD = git
 DUSK_GIT_SUBMODULES = YES
@@ -56,6 +56,18 @@ define DUSK_FIX_DAWN_WAYLAND_SURFACE_CHECK
 		$(@D)/buildroot-build/_deps/dawn-src/src/dawn/native/vulkan/SwapChainVk.cpp
 endef
 DUSK_POST_CONFIGURE_HOOKS += DUSK_FIX_DAWN_WAYLAND_SURFACE_CHECK
+
+define DUSK_FIX_DAWN_ABSEIL_BMI2_INCLUDE
+	$(SED) 's|#include <bmi2intrin.h>|#include <x86gprintrin.h>|' \
+		$(@D)/buildroot-build/_deps/dawn-src/third_party/abseil-cpp/absl/container/internal/raw_hash_set.h
+endef
+DUSK_POST_CONFIGURE_HOOKS += DUSK_FIX_DAWN_ABSEIL_BMI2_INCLUDE
+
+define DUSK_FIX_DAWN_ITYP_ARRAY_EQUALITY
+	$(SED) '/constexpr bool operator==(const array<Index, Value, Size>& other) const = default;/c\    constexpr bool operator==(const array<Index, Value, Size>& other) const requires requires(const Value& lhs, const Value& rhs) { lhs == rhs; } { return static_cast<const Base&>(*this) == static_cast<const Base&>(other); }' \
+		$(@D)/buildroot-build/_deps/dawn-src/src/dawn/common/ityp_array.h
+endef
+DUSK_POST_CONFIGURE_HOOKS += DUSK_FIX_DAWN_ITYP_ARRAY_EQUALITY
 
 define DUSK_INSTALL_WRAPPER
 	$(INSTALL) -D -m 0755 $(DUSK_PKGDIR)/dusk-wrapper \

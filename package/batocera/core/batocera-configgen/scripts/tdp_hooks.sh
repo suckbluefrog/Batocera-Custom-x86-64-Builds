@@ -24,8 +24,51 @@
 log="/userdata/system/logs/amd-tdp.log"
 STATE_FILE="/var/run/amd-tdp.changed"
 
+get_tdp_limit_field() {
+    local field=$1
+    local limits
+
+    limits=$(/usr/bin/batocera-amd-tdp --limits 2>/dev/null || true)
+    [ -n "${limits}" ] || return 1
+
+    set -- ${limits}
+    case "${field}" in
+        1) [ -n "${1:-}" ] && printf "%.0f\n" "${1}" ;;
+        2) [ -n "${2:-}" ] && printf "%.0f\n" "${2}" ;;
+        3) [ -n "${3:-}" ] && printf "%.0f\n" "${3}" ;;
+        *) return 1 ;;
+    esac
+}
+
+get_max_tdp() {
+    local max configured
+
+    max=$(get_tdp_limit_field 2 2>/dev/null || true)
+    if [ -n "${max}" ]; then
+        printf "%s\n" "${max}"
+        return 0
+    fi
+
+    configured=$(/usr/bin/batocera-settings-get system.cpu.tdp 2>/dev/null || true)
+    if [ -n "${configured}" ]; then
+        printf "%.0f\n" "${configured}"
+    fi
+}
+
+get_default_tdp() {
+    local default
+
+    default=$(get_tdp_limit_field 3 2>/dev/null || true)
+    if [ -n "${default}" ]; then
+        printf "%s\n" "${default}"
+        return 0
+    fi
+
+    get_max_tdp
+}
+
 # Check we have a max system TDP value
-CPU_TDP=$(/usr/bin/batocera-settings-get system.cpu.tdp)
+CPU_TDP=$(get_max_tdp)
 
 # If not, we exit as the CPU is not supported by the TDP values
 if [ -z "$CPU_TDP" ]; then
@@ -49,7 +92,7 @@ handle_tdp() {
     local ROM_NAME=$2
 
     local MAX_TDP
-    MAX_TDP=$(/usr/bin/batocera-settings-get system.cpu.tdp)
+    MAX_TDP=$(get_max_tdp)
 
     # Check if TDP is defined and non-empty
     if [ -z "$MAX_TDP" ]; then
@@ -117,7 +160,7 @@ do_game_stop() {
         handle_tdp "$TDP_SETTING" "STOP"
     else
         local SYSTEM_TDP
-        SYSTEM_TDP=$(/usr/bin/batocera-settings-get system.cpu.tdp)
+        SYSTEM_TDP=$(get_default_tdp)
         if [ -n "$SYSTEM_TDP" ]; then
             set_tdp "$SYSTEM_TDP" "STOP"
         else

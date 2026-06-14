@@ -1,5 +1,5 @@
 From 2f7a95f6a8483d0eb3f14f10fd04f5ca1a65fe28 Mon Sep 17 00:00:00 2001
-From: batocera <batocera@local>
+From: suckbluefrog <suckbluefrog@proton.me>
 Date: Fri, 13 Feb 2026 11:40:00 +0000
 Subject: [PATCH] configure: handle missing python bz2 module when unused
 

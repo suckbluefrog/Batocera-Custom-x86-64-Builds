@@ -3,24 +3,38 @@
 set -euo pipefail
 
 supports_tdp() {
-    command -v /usr/bin/ryzenadj >/dev/null 2>&1 || return 1
-    /usr/bin/ryzenadj -i 2>/dev/null | head -n 1 | grep -q "unsupported model" && return 1
-    return 0
+    command -v /usr/bin/batocera-amd-tdp >/dev/null 2>&1 || return 1
+    /usr/bin/batocera-amd-tdp --limits >/dev/null 2>&1
 }
 
 get_current_tdp() {
-    local current configured
+    local current requested configured
+
+    current=$(/usr/bin/batocera-amd-tdp --current 2>/dev/null || true)
+    if [ -n "${current}" ]; then
+        printf "%.0f\n" "${current}"
+        return 0
+    fi
 
     current=$(/usr/bin/ryzenadj -i 2>/dev/null | awk '
         /PPT LIMIT FAST/ {
-            if (match($0, /([0-9]+(\.[0-9]+)?)W/, m)) {
-                printf "%.0f\n", m[1]
-                exit
+            for (i = 1; i <= NF; i++) {
+                gsub(/[|W]/, "", $i)
+                if ($i ~ /^[0-9]+(\.[0-9]+)?$/) {
+                    printf "%.0f\n", $i
+                    exit
+                }
             }
         }
     ')
     if [ -n "${current}" ]; then
         printf "%s\n" "${current}"
+        return 0
+    fi
+
+    requested=$(cat /var/run/amd-tdp.current 2>/dev/null || true)
+    if [ -n "${requested}" ]; then
+        printf "%.0f\n" "${requested}"
         return 0
     fi
 
@@ -31,7 +45,17 @@ get_current_tdp() {
 }
 
 get_max_tdp() {
-    local configured
+    local limits configured
+
+    limits=$(/usr/bin/batocera-amd-tdp --limits 2>/dev/null || true)
+    if [ -n "${limits}" ]; then
+        set -- ${limits}
+        if [ -n "${2:-}" ]; then
+            printf "%.0f\n" "${2}"
+            return 0
+        fi
+    fi
+
     configured=$(/usr/bin/batocera-settings-get system.cpu.tdp 2>/dev/null || true)
     if [ -n "${configured}" ]; then
         printf "%.0f\n" "${configured}"

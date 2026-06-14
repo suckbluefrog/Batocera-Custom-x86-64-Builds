@@ -7,7 +7,7 @@
 ---
 
 **Download:** 
-Latest Build: June 8, 2026
+Latest Build: June 14, 2026
 [https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
@@ -23,6 +23,21 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
 
 
 ---
+
+  ## 📜 Changelog 14-6-2026
+
+  ### Latest
+  - Updated the build base to Batocera v44 and refreshed the Wayland stack, including wlroots 0.20.1 and labwc fixes for cursor hiding and XWayland absolute pointer handling.
+  - Improved Steam GamepadUI and desktop switching paths, including cleaner session selection, updated DBus stubs, update/preflight handling, and SDL renderer fixes for Proton/EAC/EOS splash windows.
+  - Added and improved 86Box and EKA2L1 integration, including desktop/config launchers, userdata BIOS notes, Symbian/N-Gage device-pack seeding, and expanded ES documentation.
+  - Added RPCS3 game-profile database support with new ES options for database defaults vs manual compatibility settings.
+  - Bumped and fixed VPinball, Dusk, RPCS3, DuckStation, Solarus, MAME, and other emulator/configgen paths.
+  - Reworked VPinball packaging around system bgfx/libframeutil and updated DMD/pinball support libraries.
+  - Updated Wine/Proton components including Wine Proton 11.0 experimental, Wine-TKG 11.10, VKD3D-Proton 3.0.1, DXVK-NVAPI 0.9.2, and Wine Mono 11.1.0.
+  - Added SimpleDeckyTDP installation support to batocera-wine-tools and improved AMD TDP/control-center hooks.
+  - Improved NVIDIA proprietary driver setup and related runtime handling.
+
+  ---
 
   ## 📜 Changelog 8-6-2026
 
@@ -135,7 +150,14 @@ Steam is integrated directly into the base system.
 
 ### Optional
 
-Decky Loader installer in wine-gui tools menu.
+Decky Loader installer is available in the wine-gui tools menu.
+
+```
+batocera-steam-decky-install
+batocera-steam-decky-tdp
+```
+
+Installs Decky Loader support and the SimpleDeckyTDP Decky plugin.
 
 
 

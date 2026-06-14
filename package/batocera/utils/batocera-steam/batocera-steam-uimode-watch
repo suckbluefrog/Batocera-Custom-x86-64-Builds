@@ -14,7 +14,7 @@ import websockets
 
 LOG = "/userdata/system/logs/steam-uimode-watch.log"
 CDP_LIST_URL = "http://127.0.0.1:8080/json/list"
-SWITCH_BIN = "/usr/bin/batocera-steam-desktop-switch"
+SESSION_SELECT = "/usr/bin/steamos-session-select"
 TRIGGER_MODES = {7}
 DESKTOP_SWITCH_BANNER = "Switching to Desktop..."
 RECONNECT_DELAY_SECS = 1.0
@@ -48,10 +48,10 @@ def steam_stack_active() -> bool:
     return False
 
 
-def desktop_switch_running() -> bool:
+def session_select_running() -> bool:
     return (
         subprocess.run(
-            ("pgrep", "-f", r"(^|/)batocera-steam-desktop-switch([[:space:]]|$)"),
+            ("pgrep", "-f", r"(^|/)steamos-session-select([[:space:]]|$)"),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
@@ -60,22 +60,22 @@ def desktop_switch_running() -> bool:
     )
 
 
-def run_desktop_switch(reason: str) -> bool:
-    if not (os.path.exists(SWITCH_BIN) and os.access(SWITCH_BIN, os.X_OK)):
-        log(f"desktop switch helper missing: {SWITCH_BIN}")
+def run_session_exit(reason: str) -> bool:
+    if not (os.path.exists(SESSION_SELECT) and os.access(SESSION_SELECT, os.X_OK)):
+        log(f"session selector missing: {SESSION_SELECT}")
         return False
 
-    if desktop_switch_running():
-        log(f"desktop switch already running, skipping duplicate trigger ({reason})")
+    if session_select_running():
+        log(f"session selector already running, skipping duplicate trigger ({reason})")
         return False
 
     subprocess.Popen(
-        [SWITCH_BIN],
+        [SESSION_SELECT, "desktop"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    log(f"triggered desktop switch ({reason})")
+    log(f"triggered SteamOS session exit ({reason})")
     return True
 
 
@@ -208,7 +208,7 @@ async def watch_shared_context(shared_ws_url: str) -> None:
 
             now = time.monotonic()
             if mode in TRIGGER_MODES and (now - last_trigger_ts) >= TRIGGER_COOLDOWN_SECS:
-                if run_desktop_switch(f"Steam UI mode {mode}"):
+                if run_session_exit(f"Steam UI mode {mode}"):
                     last_trigger_ts = now
 
             switch_banner_visible = False
@@ -232,7 +232,7 @@ async def watch_shared_context(shared_ws_url: str) -> None:
 
             now = time.monotonic()
             if switch_banner_visible and (now - last_trigger_ts) >= TRIGGER_COOLDOWN_SECS:
-                if run_desktop_switch("Steam desktop switch banner"):
+                if run_session_exit("Steam desktop switch banner"):
                     last_trigger_ts = now
 
             await asyncio.sleep(RECONNECT_DELAY_SECS)

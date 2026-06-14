@@ -810,6 +810,64 @@ install_decky_loader_menu() {
     return "${rc}"
 }
 
+install_decky_tdp_menu() {
+    local output rc summary decky_output decky_summary
+    local decky_bin="/userdata/system/homebrew/services/PluginLoader"
+
+    if ! command -v batocera-steam-decky-tdp >/dev/null 2>&1; then
+        msg_box "SimpleDeckyTDP installer is not available in this image.\n\nInstall or enable Batocera Steam support first."
+        return 1
+    fi
+
+    if ! steam_client_installed; then
+        msg_box "Steam needs to be installed first.\n\nLaunch Steam GamepadUI once and complete its initial setup, then run this SimpleDeckyTDP installer again."
+        return 1
+    fi
+
+    if [[ ! -x "${decky_bin}" ]]; then
+        if ! command -v batocera-steam-decky-install >/dev/null 2>&1; then
+            msg_box "Decky PluginLoader is not installed and the Decky installer is not available in this image.\n\nInstall or enable Batocera Steam support first."
+            return 1
+        fi
+
+        yes_no "Decky PluginLoader needs to be installed before SimpleDeckyTDP.\n\nInstall Decky PluginLoader now and then continue with SimpleDeckyTDP?" || return 1
+
+        info_box "Installing Decky PluginLoader..."
+        decky_output=$(batocera-steam-decky-install 2>&1)
+        rc=$?
+        clear_screen
+        decky_summary="$(printf '%s\n' "${decky_output}" | tail -n 20)"
+
+        if [ "${rc}" -ne 0 ]; then
+            msg_box "Decky PluginLoader install failed:\n\n${decky_summary}"
+            return "${rc}"
+        fi
+
+        if [[ ! -x "${decky_bin}" ]]; then
+            msg_box "Decky PluginLoader installer completed, but ${decky_bin} was not found.\n\n${decky_summary}"
+            return 1
+        fi
+
+        msg_box "Decky PluginLoader installed.\n\nContinuing with SimpleDeckyTDP install.\n\n${decky_summary}"
+    fi
+
+    yes_no "Install or update SimpleDeckyTDP for Decky now?\n\nThe plugin will be installed to /userdata/system/homebrew/plugins/SimpleDeckyTDP." || return 1
+
+    info_box "Installing SimpleDeckyTDP..."
+    output=$(batocera-steam-decky-tdp 2>&1)
+    rc=$?
+    clear_screen
+    summary="$(printf '%s\n' "${output}" | tail -n 20)"
+
+    if [ "${rc}" -eq 0 ]; then
+        msg_box "SimpleDeckyTDP installed.\n\nOpen Steam GamepadUI through Batocera, then open Decky to use the TDP controls.\n\n${summary}"
+    else
+        msg_box "SimpleDeckyTDP install failed:\n\n${summary}"
+    fi
+
+    return "${rc}"
+}
+
 create_autorun_cmd_menu() {
     local prefix file exe_dir exe_file files=() rel_files=()
     prefix=$(select_prefix) || return 1
@@ -1079,14 +1137,15 @@ main_menu() {
             10 "Decompress .wsquashfs / .wtgz back to .wine"
             11 "Add Windows game to Steam"
             12 "Install Decky PluginLoader for Steam"
-            13 "Install free Windows games"
+            13 "Install SimpleDeckyTDP controls for Decky"
+            14 "Install free Windows games"
             99 "Exit"
         )
 
         choice=$(dialog --clear --backtitle "Batocera Wine Tools" \
             --title "batocera-wine-tools" \
             --menu "Choose a Wine management action:" \
-            22 92 12 \
+            23 96 13 \
             "${menu_options[@]}" \
             2>&1 >/dev/tty) || {
                 clear_screen
@@ -1107,7 +1166,8 @@ main_menu() {
             10) decompress_wine_archive ;;
             11) add_windows_game_to_steam_menu ;;
             12) install_decky_loader_menu ;;
-            13) install_free_windows_games_menu ;;
+            13) install_decky_tdp_menu ;;
+            14) install_free_windows_games_menu ;;
             99) break ;;
         esac
     done

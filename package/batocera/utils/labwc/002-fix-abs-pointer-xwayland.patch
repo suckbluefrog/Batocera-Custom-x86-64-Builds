@@ -1,0 +1,20 @@
+diff --git a/src/input/cursor.c b/src/input/cursor.c
+index e8ac7d9..b0f5058 100644
+--- a/src/input/cursor.c
++++ b/src/input/cursor.c
+@@ -990,6 +990,15 @@ handle_motion_absolute(struct wl_listener *listener, void *data)
+ 	double dx = lx - seat->cursor->x;
+ 	double dy = ly - seat->cursor->y;
+ 
++	if (cursor_locked(seat, event->pointer)) {
++		wlr_relative_pointer_manager_v1_send_relative_motion(
++			server.relative_pointer_manager,
++			seat->wlr_seat, (uint64_t)event->time_msec * 1000,
++			dx, dy, dx, dy);
++		wlr_cursor_move(seat->cursor, &event->pointer->base, dx, dy);
++		return;
++	}
++
+ 	preprocess_cursor_motion(seat, event->pointer,
+ 		event->time_msec, dx, dy);
+ }

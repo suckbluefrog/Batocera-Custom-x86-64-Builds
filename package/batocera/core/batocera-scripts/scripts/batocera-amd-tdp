@@ -20,12 +20,25 @@
 log="/userdata/system/logs/amd-tdp.log"
 TDP_INPUT="${1:-}"
 STATE_FILE="/var/run/amd-tdp.current"
+TDP_QUERY=0
+
+case "$TDP_INPUT" in
+    --limits|get-limits|limits|--current|current|get|--status|status|--help|-h|help|"")
+        TDP_QUERY=1
+        ;;
+esac
+
+log_msg() {
+    if (( ! TDP_QUERY )); then
+        echo "$*" >> "$log"
+    fi
+}
 
 mkdir -p "$(dirname "$log")" 2>/dev/null || true
 
 # --- Sanity Checks ---
 if [[ "$(/usr/bin/ryzenadj -i)" =~ "unsupported model" ]]; then
-  echo "Unsupported CPU for RyzenAdj. Aborting." >> "$log"
+  log_msg "Unsupported CPU for RyzenAdj. Aborting."
   exit 1
 fi
 
@@ -34,6 +47,10 @@ declare -A tdp_ranges
 tdp_ranges=(
     ["Loki_Zero"]="AYN Loki Zero;5;20"
     ["83E1"]="Lenovo Legion Go;5;30"
+    ["83L3"]="Lenovo Legion Go S;5;30"
+    ["83N6"]="Lenovo Legion Go S;5;30"
+    ["83Q2"]="Lenovo Legion Go S;5;30"
+    ["83Q3"]="Lenovo Legion Go S;5;30"
     ["AYANEO_2S"]="Ayaneo 2S;15;28"
     ["AIR_Plus"]="Ayaneo Air Plus;5;28"
     ["Jupiter"]="Steam Deck LCD;3;15"
@@ -56,14 +73,14 @@ if [[ -v tdp_ranges["$device_model"] ]]; then
     TDP_MIN=${info[1]}
     BASE_TDP_MAX=${info[2]}
     APPLY_TEMP_LIMIT=1
-    echo "Device: ${info[0]} detected. Standard range: ${TDP_MIN}W - ${BASE_TDP_MAX}W." >> "$log"
+    log_msg "Device: ${info[0]} detected. Standard range: ${TDP_MIN}W - ${BASE_TDP_MAX}W."
 else
     SYSTEM_TDP=$(/usr/bin/batocera-settings-get system.cpu.tdp)
     if [ -n "$SYSTEM_TDP" ]; then
         BASE_TDP_MAX=$SYSTEM_TDP
-        echo "Detected reported max of ${BASE_TDP_MAX}W." >> "$log"
+        log_msg "Detected reported max of ${BASE_TDP_MAX}W."
     else
-        echo "No system TDP defined." >> "$log"
+        log_msg "No system TDP defined."
         exit 1
     fi
 fi
@@ -105,14 +122,14 @@ OC_CEILING=$(awk -v max="$BASE_TDP_MAX" 'BEGIN {printf "%.0f\n", max * 1.20}')
 
 # Use user input, or default to 15W if not provided
 TDP=${TDP_INPUT:-15}
-echo "User input requested: ${TDP}W." >> "$log"
+log_msg "User input requested: ${TDP}W."
 
 # Clamp the values if needed
 if (( TDP < TDP_MIN )); then
-    echo "Request is below minimum. Clamping to ${TDP_MIN}W." >> "$log"
+    log_msg "Request is below minimum. Clamping to ${TDP_MIN}W."
     TDP=$TDP_MIN
 elif (( TDP > OC_CEILING )); then
-    echo "Request exceeds overclock ceiling. Clamping to ${OC_CEILING}W." >> "$log"
+    log_msg "Request exceeds overclock ceiling. Clamping to ${OC_CEILING}W."
     TDP=$OC_CEILING
 fi
 
@@ -121,9 +138,9 @@ WATTS=$((TDP * 1000))
 SLOW_WATTS=$((WATTS * 80 / 100)) # TODO: Rethink how amd tdp is applied between handhelds and everything else(if not handheld should porobably set all limits to same value)
 
 if (( APPLY_TEMP_LIMIT )); then
-    echo "Applying final TDP: ${TDP}W, Temp Limit: 90C" >> "$log"
+    log_msg "Applying final TDP: ${TDP}W, Temp Limit: 90C"
 else
-    echo "Applying final TDP: ${TDP}W" >> "$log"
+    log_msg "Applying final TDP: ${TDP}W"
 fi
 
 cmd=(/usr/bin/ryzenadj
@@ -138,15 +155,17 @@ if (( APPLY_TEMP_LIMIT )); then
 fi
 
 if "${cmd[@]}"; then
-    echo "Successfully set TDP to ${TDP}W." >> "$log"
+    log_msg "Successfully set TDP to ${TDP}W."
     echo "$TDP" > "$STATE_FILE" 2>/dev/null || true
 else
-    echo "ERROR: ryzenadj command failed. Power limits may not have been applied." >> "$log"
+    log_msg "ERROR: ryzenadj command failed. Power limits may not have been applied."
     exit 1
 fi
 
-echo "" >> "$log"
-echo "*** ------------------------------------- ***" >> "$log"
-echo "" >> "$log"
+if (( ! TDP_QUERY )); then
+    echo "" >> "$log"
+    echo "*** ------------------------------------- ***" >> "$log"
+    echo "" >> "$log"
+fi
 
 exit 0

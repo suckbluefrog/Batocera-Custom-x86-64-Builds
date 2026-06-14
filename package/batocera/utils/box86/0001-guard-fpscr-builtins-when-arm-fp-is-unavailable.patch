@@ -1,5 +1,5 @@
 From 3f4a4ea60d44ba9c8e56c5ca5da2e6508fe8c6c1 Mon Sep 17 00:00:00 2001
-From: Batocera Builder <noreply@batocera.org>
+From: suckbluefrog <suckbluefrog@proton.me>
 Date: Sun, 15 Feb 2026 10:00:00 +0000
 Subject: [PATCH] emu: guard FPSCR builtins when ARM FP ABI is unavailable
 

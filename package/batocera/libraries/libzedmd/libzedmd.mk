@@ -3,15 +3,12 @@
 # libzedmd
 #
 ################################################################################
-# Version: Commits on Apr 29, 2026
-LIBZEDMD_VERSION = a9e856e7cd3fdb3a2a9bd994bd382f68a0b5da18
-LIBZEDMD_FRAMEUTIL_VERSION = 03d2483d5cded0bdef84bec24c9ddfdede324b5c
+# Version: Commits on Jun 10, 2026
+LIBZEDMD_VERSION = 5c44646f2af4b1419b4cdcaed3a2799ca9439221
 LIBZEDMD_SITE = $(call github,PPUC,libzedmd,$(LIBZEDMD_VERSION))
-LIBZEDMD_EXTRA_DOWNLOADS = \
-	https://raw.githubusercontent.com/PPUC/libframeutil/$(LIBZEDMD_FRAMEUTIL_VERSION)/include/FrameUtil.h
 LIBZEDMD_LICENSE = GPLv3
 LIBZEDMD_LICENSE_FILES = LICENSE
-LIBZEDMD_DEPENDENCIES = cargs libserialport sockpp
+LIBZEDMD_DEPENDENCIES = cargs libserialport sockpp libframeutil
 LIBZEDMD_SUPPORTS_IN_SOURCE_BUILD = NO
 # Install to staging to build Visual Pinball Standalone
 LIBZEDMD_INSTALL_STAGING = YES
