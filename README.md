@@ -30,15 +30,7 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
   - Added SimpleDeckyTDP installation support to batocera-wine-tools and improved AMD TDP/control-center hooks.
   - Improved NVIDIA proprietary driver setup and related runtime handling.
 
-  ---
-   ## 📜 Changelog 9-6-2026
-
- 
-  - Fixes EAC games loading in Steam.
-  - Added Decky TDP loader to wine tools meu
-  - Improved SteamOS return to desktop after gamescope drm/kms session ends on wayland build
-
-
+  
   ---
 
   ## 📜 Changelog 8-6-2026
