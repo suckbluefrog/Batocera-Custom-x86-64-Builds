@@ -14,14 +14,7 @@ Latest Build: June 14, 2026
 ## Video Preview:
 https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so Batocera recorder could capture.
 
-  ## 📜 Changelog 9-6-2026
-
-  ### Latest
-  - Fixes EAC games loading in Steam.
-  - Added Decky TDP loader to wine tools meu
-  - Improved SteamOS return to desktop after gamescope drm/kms session ends on wayland build
-
-
+ 
 ---
 
   ## 📜 Changelog 14-6-2026
@@ -38,10 +31,19 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
   - Improved NVIDIA proprietary driver setup and related runtime handling.
 
   ---
+   ## 📜 Changelog 9-6-2026
+
+ 
+  - Fixes EAC games loading in Steam.
+  - Added Decky TDP loader to wine tools meu
+  - Improved SteamOS return to desktop after gamescope drm/kms session ends on wayland build
+
+
+  ---
 
   ## 📜 Changelog 8-6-2026
 
-  ### Latest
+ 
   - Added experimental xorg v3 build.
   - Bumped Mame to 0.288
 
@@ -49,7 +51,7 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
 
   ## 📜 Changelog 4-6-2026
 
-  ### Latest
+
   - Updated the x86-64-v3 build base with kernel 7.0.11 support and Mesa 26.1.2.
   - Cleaned and refocused the tree layout for the x86-64-v3 build, removing unused non-x86 board targets from this branch.
   - Added visible Steam update/preflight handling so Steam verification and update progress no longer appears as a blank launch.
