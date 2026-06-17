@@ -171,10 +171,10 @@ def start_rom(args: argparse.Namespace, maxnbplayers: int, rom: Path, original_r
 
                 cmd = generator.generate(system, rom, player_controllers, metadata, guns, wheels, gameResolution)
 
-                if system.config.get_bool('hud_support'):
+                disable_mangohud = str(cmd.env.get("DISABLE_MANGOHUD", "")).lower() in ("1", "true", "yes")
+                if system.config.get_bool('hud_support') and not disable_mangohud:
                     hud_bezel = getHudBezel(system, generator, rom, gameResolution, system.guns_borders_size_name(guns), system.guns_border_ratio_type(guns))
                     if ((hud := system.config.get('hud')) and hud != "none") or hud_bezel is not None:
-                        cmd.env["MANGOHUD_DLSYM"] = "1"
                         hudconfig = getHudConfig(system, args.systemname, system.config.emulator, effectiveCore, rom, hud_bezel)
                         hud_config_file = Path('/var/run/hud.config')
                         with hud_config_file.open('w') as f:
@@ -187,7 +187,12 @@ def start_rom(args: argparse.Namespace, maxnbplayers: int, rom: Path, original_r
                         if steam_gamescope_mangoapp:
                             cmd.env["BATOCERA_STEAM_GS_MANGOAPP"] = "1"
                         elif not generator.hasInternalMangoHUDCall():
-                            cmd.array.insert(0, "mangohud")
+                            gpu_driver = str(cmd.env.get("GPU_DRIVER") or os.environ.get("GPU_DRIVER") or "")
+                            if gpu_driver == "libmali":
+                                cmd.env["MANGOHUD"] = "1"
+                            else:
+                                cmd.env["MANGOHUD_DLSYM"] = "1"
+                                cmd.array.insert(0, "mangohud")
 
                 add_gamescope_arguments(cmd, system, gameResolution)
 
@@ -413,7 +418,7 @@ def getHudConfig(system: Emulator, systemName: str, emulator: str, core: str, ro
     gameThumbnail = system.es_game_info.get("thumbnail", "")
 
     # predefined values
-    if mode == "perf":
+    if mode in {"perf", "fps", "bar", "box", "full"}:
         configstr += f"position={hud_position}\nbackground_alpha=0.9\nlegacy_layout=false\ncustom_text=%GAMENAME%\ncustom_text=%SYSTEMNAME%\ncustom_text=%EMULATORCORE%\nfps\ngpu_name\nengine_version\nvulkan_driver\nresolution\nram\ngpu_stats\ngpu_temp\ncpu_stats\ncpu_temp\ncore_load"
     elif mode == "game":
         configstr += f"position={hud_position}\nbackground_alpha=0\nlegacy_layout=false\nfont_size=32\nimage_max_width=200\nimage=%THUMBNAIL%\ncustom_text=%GAMENAME%\ncustom_text=%SYSTEMNAME%\ncustom_text=%EMULATORCORE%"

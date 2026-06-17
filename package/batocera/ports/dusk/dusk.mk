@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-DUSK_VERSION = a85f8c203d0d68de948f7e5fd79538a226551203
+DUSK_VERSION = f5642f307384bd4b7b7a09f690e391152445c815
 DUSK_SITE = https://github.com/TwilitRealm/dusk.git
 DUSK_SITE_METHOD = git
 DUSK_GIT_SUBMODULES = YES

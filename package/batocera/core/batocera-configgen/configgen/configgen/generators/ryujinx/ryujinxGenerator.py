@@ -331,7 +331,7 @@ class RyujinxGenerator(Generator):
         conf["max_anisotropy"] = system.config.get_int("ryujinx_filtering", -1)
 
         # VSync mode
-        vsync_mode = _vsync_mode(system.config.get("ryujinx_vsync", "Unbounded"))
+        vsync_mode = _vsync_mode(system.config.get("ryujinx_vsync", "Switch"))
         conf["enable_vsync"] = vsync_mode != 1
         conf["vsync_mode"] = vsync_mode
         conf["enable_custom_vsync_interval"] = vsync_mode == 2
@@ -383,7 +383,7 @@ class RyujinxGenerator(Generator):
             "HostMappedUnsafe",
         )
         conf["dram_size"] = _dram_size(system.config.get("ryujinx_dram_size", "MemoryConfiguration4GiB"))
-        conf["tick_scalar"] = system.config.get_int("ryujinx_tick_scalar", 50)
+        conf["tick_scalar"] = system.config.get_int("ryujinx_tick_scalar", 100)
 
         # Ignore missing services
         conf["ignore_missing_services"] = system.config.get_bool("ryujinx_ignore_missing", False)
@@ -774,14 +774,14 @@ def _resolve_firmware_dir():
 
 def _is_registered_firmware_entry(path):
     if path.is_file():
-        return True
+        return path.name.endswith(".nca")
 
     return path.is_dir() and path.name.endswith(".nca") and (path / "00").is_file()
 
 
 def _registered_firmware_entries(source_dir):
     for child in sorted(source_dir.iterdir()):
-        if child.is_file():
+        if child.is_file() and child.name.endswith(".nca"):
             yield child, child.name
         elif child.is_dir() and child.name.endswith(".nca") and (child / "00").is_file():
             yield child / "00", child.name
@@ -792,7 +792,7 @@ def _prune_stale_firmware_entries(target_registered_dir, expected_names):
         return
 
     for child in target_registered_dir.iterdir():
-        if not child.name.endswith(".nca") or child.name in expected_names:
+        if child.name in expected_names:
             continue
 
         if child.is_symlink() or child.is_file():

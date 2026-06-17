@@ -726,8 +726,8 @@ supervision:
   emulator: libretro
   core:     potator
 switch:
-  emulator: eden
-  core:     eden
+  emulator: citron
+  core:     citron
   options:
     hud_support: false
 systemsp:

@@ -139,6 +139,9 @@ hikaru:
 psvita:
   options:
     hud_support: false
+ps3:
+  options:
+    hud_support: true
 jaguar:
   emulator: bigpemu
   core:     bigpemu
@@ -157,3 +160,14 @@ quake3:
 oricatmos:
   emulator: clk
   core:     clk
+switch:
+  emulator: eden
+  core:     eden
+  options:
+    hud_support: true
+wiiu:
+  options:
+    hud_support: true
+xbox360:
+  options:
+    hud_support: true

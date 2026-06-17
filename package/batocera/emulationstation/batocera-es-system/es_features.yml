@@ -15971,8 +15971,8 @@ ryujinx:
       description: Switch mode caps to the emulated refresh rate. Unbounded disables
         VSync.
       choices:
-        Off (Default): Unbounded
-        Switch Refresh: Switch
+        Switch Refresh (Default): Switch
+        'Off': Unbounded
         Custom Interval: Custom
     ryujinx_custom_vsync_interval:
       submenu: RENDERING
@@ -16091,8 +16091,8 @@ ryujinx:
       description: 100 is normal speed. Higher values can help games sensitive to
         CPU timing.
       choices:
-        50% (Default): 50
-        100% (Normal): 100
+        50%: 50
+        100% (Normal, Default): 100
         150%: 150
         200%: 200
         300%: 300
@@ -16877,6 +16877,26 @@ xenia-canary:
         No licenses enabled: 0
         XBLA license enabled (Default): 1
         All possible licenses (Not recommended): -1
+    xenia_profile:
+      submenu: PROFILE
+      prompt: GAMER PROFILE
+      description: Select an existing Xenia profile to sign in as player 1.
+      preset: xeniaprofiles
+    xenia_profile2:
+      submenu: PROFILE
+      prompt: GAMER PROFILE P2
+      description: Select an existing Xenia profile to sign in as player 2.
+      preset: xeniaprofiles
+    xenia_profile3:
+      submenu: PROFILE
+      prompt: GAMER PROFILE P3
+      description: Select an existing Xenia profile to sign in as player 3.
+      preset: xeniaprofiles
+    xenia_profile4:
+      submenu: PROFILE
+      prompt: GAMER PROFILE P4
+      description: Select an existing Xenia profile to sign in as player 4.
+      preset: xeniaprofiles
     xenia_resolution:
       prompt: INTERNAL DISPLAY RESOLUTION
       description: Allow game that support different resolutions to be rendered in
@@ -17353,6 +17373,26 @@ xenia-edge:
         No licenses enabled: 0
         XBLA license enabled (Default): 1
         All possible licenses (Not recommended): -1
+    xenia_profile:
+      submenu: PROFILE
+      prompt: GAMER PROFILE
+      description: Select an existing Xenia profile to sign in as player 1.
+      preset: xeniaprofiles
+    xenia_profile2:
+      submenu: PROFILE
+      prompt: GAMER PROFILE P2
+      description: Select an existing Xenia profile to sign in as player 2.
+      preset: xeniaprofiles
+    xenia_profile3:
+      submenu: PROFILE
+      prompt: GAMER PROFILE P3
+      description: Select an existing Xenia profile to sign in as player 3.
+      preset: xeniaprofiles
+    xenia_profile4:
+      submenu: PROFILE
+      prompt: GAMER PROFILE P4
+      description: Select an existing Xenia profile to sign in as player 4.
+      preset: xeniaprofiles
     xenia_resolution:
       prompt: INTERNAL DISPLAY RESOLUTION
       description: Allow game that support different resolutions to be rendered in

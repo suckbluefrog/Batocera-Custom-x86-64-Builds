@@ -23,6 +23,18 @@ nds:
 ps2:
   emulator: libretro
   core:     play
+ps3:
+  options:
+    hud_support: true
+switch:
+  options:
+    hud_support: true
+wiiu:
+  options:
+    hud_support: true
+xbox360:
+  options:
+    hud_support: true
 plugnplay:
   emulator: mame
   core:     mame
