@@ -1,0 +1,6 @@
+Index: linux-7.1/drivers/gpu/drm/amd/display/dc/dce110/dce110_timing_generator.c
+===================================================================
+--- linux-7.1.orig/drivers/gpu/drm/amd/display/dc/dce110/dce110_timing_generator.c
++++ linux-7.1/drivers/gpu/drm/amd/display/dc/dce110/dce110_timing_generator.c
+@@ -1964 +1964,0 @@ void dce_tg_program_timing(struct timing_generator *tg)
+-	(void)pstate_keepout;

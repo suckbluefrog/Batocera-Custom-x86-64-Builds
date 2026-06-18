@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Batocera Linux <batocera@batocera.org>
+Date: Thu, 18 Jun 2026 08:30:00 +0300
+Subject: [PATCH] fix pppoe tag access for kernel 7.1
+
+Linux 7.1 hides struct pppoe_hdr::tag from kernel builds. The PPPoE
+tags still start immediately after the header, so derive the payload
+address from the header size instead of accessing the removed member.
+---
+ rtw_br_ext.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/rtw_br_ext.c b/rtw_br_ext.c
+--- a/rtw_br_ext.c
++++ b/rtw_br_ext.c
+@@ -62,12 +62,17 @@
+ -----------------------------------------------------------------*/
+ 
+ 
++static __inline__ unsigned char *rtw_pppoe_tags(struct pppoe_hdr *ph)
++{
++	return (unsigned char *)ph + sizeof(*ph);
++}
++
+ /* Find a tag in pppoe frame and return the pointer */
+ static __inline__ unsigned char *__nat25_find_pppoe_tag(struct pppoe_hdr *ph, unsigned short type)
+ {
+ 	unsigned char *cur_ptr, *start_ptr;
+ 	unsigned short tagLen, tagType;
+ 
+-	start_ptr = cur_ptr = (unsigned char *)ph->tag;
++	start_ptr = cur_ptr = rtw_pppoe_tags(ph);
+ 	while ((cur_ptr - start_ptr) < ntohs(ph->length)) {
+ 		/* prevent un-alignment access */
+ 		tagType = (unsigned short)((cur_ptr[0] << 8) + cur_ptr[1]);
+@@ -91,10 +96,10 @@ static __inline__ int __nat25_add_pppoe_tag(struct sk_buff *skb, struct pppoe_ta
+ 	}
+ 
+ 	skb_put(skb, data_len);
+ 	/* have a room for new tag */
+-	memmove(((unsigned char *)ph->tag + data_len), (unsigned char *)ph->tag, ntohs(ph->length));
++	memmove(rtw_pppoe_tags(ph) + data_len, rtw_pppoe_tags(ph), ntohs(ph->length));
+ 	ph->length = htons(ntohs(ph->length) + data_len);
+-	memcpy((unsigned char *)ph->tag, tag, data_len);
++	memcpy(rtw_pppoe_tags(ph), tag, data_len);
+ 	return data_len;
+ }
+ 
+-- 
+2.43.0
