@@ -76,7 +76,8 @@ resume_es() {
     fi
 
     if ! pgrep -x emulationstation >/dev/null 2>&1; then
-        emulationstation >/dev/null 2>&1 &
+        echo "EmulationStation did not return; skipping unsafe raw frontend fallback" >> "${log}"
+        return 1
     fi
 }
 

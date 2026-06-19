@@ -13,7 +13,7 @@ addresses from the structure sizes instead of accessing hidden members.
 diff --git a/core/rtw_br_ext.c b/core/rtw_br_ext.c
 --- a/core/rtw_br_ext.c
 +++ b/core/rtw_br_ext.c
-@@ -86,12 +86,22 @@
+@@ -86,13 +86,23 @@
  -----------------------------------------------------------------*/
  
  
@@ -38,7 +38,7 @@ diff --git a/core/rtw_br_ext.c b/core/rtw_br_ext.c
  	while ((cur_ptr - start_ptr) < ntohs(ph->length)) {
  		/* prevent un-alignment access */
  		tagType = (unsigned short)((cur_ptr[0] << 8) + cur_ptr[1]);
-@@ -117,10 +127,10 @@ static __inline__ int __nat25_add_pppoe_tag(struct sk_buff *skb, struct pppoe_ta
+@@ -117,9 +127,9 @@
  
  	skb_put(skb, data_len);
  	/* have a room for new tag */

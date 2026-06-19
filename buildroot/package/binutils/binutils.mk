@@ -146,6 +146,18 @@ define HOST_BINUTILS_FIXUP_HARDLINKS
 endef
 HOST_BINUTILS_POST_INSTALL_HOOKS += HOST_BINUTILS_FIXUP_HARDLINKS
 
+# gold does not keep the host RPATH passed through LDFLAGS, unlike ld.bfd.
+# Set it explicitly so later host-package installs do not trip the global
+# host RPATH audit once host-zlib exists.
+HOST_BINUTILS_DEPENDENCIES += host-patchelf
+define HOST_BINUTILS_FIXUP_GOLD_RPATH
+	if [ -e "$(HOST_DIR)/bin/$(GNU_TARGET_NAME)-ld.gold" ]; then \
+		$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' \
+			"$(HOST_DIR)/bin/$(GNU_TARGET_NAME)-ld.gold"; \
+	fi
+endef
+HOST_BINUTILS_POST_INSTALL_HOOKS += HOST_BINUTILS_FIXUP_GOLD_RPATH
+
 # batocera
 BINUTILSUSR_TOOLS = strings
 define HOST_BINUTILSUSR_FIXUP_HARDLINKS

@@ -13,7 +13,7 @@ address from the header size instead of accessing the removed member.
 diff --git a/rtw_br_ext.c b/rtw_br_ext.c
 --- a/rtw_br_ext.c
 +++ b/rtw_br_ext.c
-@@ -62,12 +62,17 @@
+@@ -62,13 +62,18 @@
  -----------------------------------------------------------------*/
  
  
@@ -33,7 +33,7 @@ diff --git a/rtw_br_ext.c b/rtw_br_ext.c
  	while ((cur_ptr - start_ptr) < ntohs(ph->length)) {
  		/* prevent un-alignment access */
  		tagType = (unsigned short)((cur_ptr[0] << 8) + cur_ptr[1]);
-@@ -91,10 +96,10 @@ static __inline__ int __nat25_add_pppoe_tag(struct sk_buff *skb, struct pppoe_ta
+@@ -91,10 +96,10 @@
  	}
  
  	skb_put(skb, data_len);

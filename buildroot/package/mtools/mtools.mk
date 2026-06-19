@@ -10,6 +10,7 @@ MTOOLS_SITE = $(BR2_GNU_MIRROR)/mtools
 MTOOLS_LICENSE = GPL-3.0+
 MTOOLS_LICENSE_FILES = COPYING
 MTOOLS_CONF_OPTS = --without-x
+HOST_MTOOLS_CONF_OPTS = --without-x
 # info documentation not needed
 MTOOLS_CONF_ENV = \
 	ac_cv_func_setpgrp_void=yes \

@@ -280,8 +280,12 @@ cleanup() {
     local rc=$?
 
     log "Steam session exited with status ${rc}"
-    restore_frontend
-    recover_frontend_with_supervisor
+    if [[ "${BATOCERA_STEAM_SKIP_FRONTEND_RESTORE:-0}" != "1" ]]; then
+        restore_frontend
+        recover_frontend_with_supervisor
+    else
+        log "frontend restore skipped for external window caller"
+    fi
     exit "${rc}"
 }
 

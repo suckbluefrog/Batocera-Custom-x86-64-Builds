@@ -391,10 +391,13 @@ while IFS= read -r library; do
         launcher_name="steam-app-${appid}.steam"
         cat > "${roms_dir}/${launcher_name}" <<EOF
 appid=${appid}
+mode=steamos
+gamepadui=1
+gamescope=1
 EOF
 
         image_rel="$(copy_game_image "${appid}")"
-        es_add_game "./${launcher_name}" "${name}" "${image_rel}" "" "" "${game_hidden}"
+        es_add_game "./${launcher_name}" "${name}" "${image_rel}" "steam" "steamos" "${game_hidden}"
         game_count+=1
     done < <(find "${library}" -maxdepth 1 -type f -name 'appmanifest_*.acf' -print0 2>/dev/null)
 done < <(discover_libraries)
@@ -425,10 +428,13 @@ while IFS= read -r -d '' desktop_file; do
     launcher_name="steam-app-${appid}.steam"
     cat > "${roms_dir}/${launcher_name}" <<EOF
 appid=${appid}
+mode=steamos
+gamepadui=1
+gamescope=1
 EOF
 
     image_rel="$(copy_game_image "${appid}")"
-    es_add_game "./${launcher_name}" "${name}" "${image_rel}" "" "" "${game_hidden}"
+    es_add_game "./${launcher_name}" "${name}" "${image_rel}" "steam" "steamos" "${game_hidden}"
     game_count+=1
 done < <(discover_desktop_files)
 
