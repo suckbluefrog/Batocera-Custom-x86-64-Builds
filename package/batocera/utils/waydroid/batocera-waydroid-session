@@ -5,13 +5,56 @@ LOG_FILE="/userdata/system/logs/waydroid-session.log"
 RUNTIME_DIR="/userdata/system/.runtime-waydroid"
 DBUS_ENV_FILE="${RUNTIME_DIR}/dbus-session.env"
 
+setup_wayland_env() {
+    local uid display socket
+
+    uid="$(id -u)"
+    display="${WAYLAND_DISPLAY:-wayland-0}"
+
+    for socket in "/run/user/${uid}/${display}" "/run/user/${uid}"/wayland-*; do
+        if [ -S "${socket}" ]; then
+            export XDG_RUNTIME_DIR="$(dirname "${socket}")"
+            export WAYLAND_DISPLAY="$(basename "${socket}")"
+            return
+        fi
+    done
+
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && [ "${WAYLAND_DISPLAY#/}" != "${WAYLAND_DISPLAY}" ] && [ -S "${WAYLAND_DISPLAY}" ]; then
+        export XDG_RUNTIME_DIR="$(dirname "${WAYLAND_DISPLAY}")"
+        export WAYLAND_DISPLAY="$(basename "${WAYLAND_DISPLAY}")"
+        return
+    fi
+
+    if command -v getLocalWaylandDisplay >/dev/null 2>&1; then
+        display="$(getLocalWaylandDisplay || true)"
+        for socket in "/run/user/${uid}/${display}" "/run/${display}" "/var/run/${display}"; do
+            if [ -n "${display}" ] && [ -S "${socket}" ]; then
+                export XDG_RUNTIME_DIR="$(dirname "${socket}")"
+                export WAYLAND_DISPLAY="$(basename "${socket}")"
+                return
+            fi
+        done
+    fi
+
+    for socket in /run/wayland-* /var/run/wayland-*; do
+        if [ -S "${socket}" ]; then
+            export XDG_RUNTIME_DIR="$(dirname "${socket}")"
+            export WAYLAND_DISPLAY="$(basename "${socket}")"
+            return
+        fi
+    done
+
+    export XDG_RUNTIME_DIR="${RUNTIME_DIR}"
+    export WAYLAND_DISPLAY="${display}"
+}
+
 mkdir -p /userdata/system/logs
 mkdir -p "${RUNTIME_DIR}"
 chmod 700 "${RUNTIME_DIR}"
 
-export XDG_RUNTIME_DIR="${RUNTIME_DIR}"
-export WAYLAND_DISPLAY="/run/wayland-0"
+setup_wayland_env
 export PULSE_RUNTIME_PATH="/run/pulse"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Using Wayland display ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" >>"${LOG_FILE}"
 
 APP_ID=""
 INTENT_ACTION=""
