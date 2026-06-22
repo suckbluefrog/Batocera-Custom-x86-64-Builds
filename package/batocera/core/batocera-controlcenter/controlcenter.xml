@@ -119,6 +119,15 @@
 			<text display="${batocera-controlcenter-tdp summary}" refresh="1" />
 			<button display="TDP +" action="batocera-controlcenter-tdp inc" afterclick="bcc_refresh" />
 		</feature>
+		<feature display="TDP Mode" if="${batocera-controlcenter-tdp supported}">
+			<text display="${batocera-controlcenter-tdp profile}" refresh="1" />
+			<choice display="Manual" action="batocera-controlcenter-tdp set-profile manual" afterclick="bcc_refresh" />
+			<choice display="Auto FPS" action="batocera-controlcenter-tdp set-profile fps" afterclick="bcc_refresh" />
+			<choice display="30 FPS" action="batocera-controlcenter-tdp set-profile 30" afterclick="bcc_refresh" />
+			<choice display="60 FPS" action="batocera-controlcenter-tdp set-profile 60" afterclick="bcc_refresh" />
+			<choice display="90 FPS" action="batocera-controlcenter-tdp set-profile 90" afterclick="bcc_refresh" />
+			<choice display="120 FPS" action="batocera-controlcenter-tdp set-profile 120" afterclick="bcc_refresh" />
+		</feature>
 		<feature name="PowerMode" display="Performance">
 			<choice display="Default" action="batocera-power-mode default" />
 			<choice display="High Perf" action="batocera-power-mode highperformance" />

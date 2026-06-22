@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+TDP_LIMIT_HELPER="/usr/bin/batocera-tdp-limit"
+
 supports_tdp() {
     command -v /usr/bin/batocera-amd-tdp >/dev/null 2>&1 || return 1
     /usr/bin/batocera-amd-tdp --limits >/dev/null 2>&1
@@ -65,6 +67,37 @@ get_max_tdp() {
     get_current_tdp
 }
 
+set_manual_mode() {
+    if [ -x "${TDP_LIMIT_HELPER}" ]; then
+        "${TDP_LIMIT_HELPER}" set-mode off >/dev/null 2>&1 || true
+    fi
+}
+
+profile_label() {
+    if [ -x "${TDP_LIMIT_HELPER}" ]; then
+        "${TDP_LIMIT_HELPER}" profile-label 2>/dev/null || echo "Manual"
+    else
+        echo "Manual"
+    fi
+}
+
+set_profile() {
+    local profile="${1:-manual}"
+
+    [ -x "${TDP_LIMIT_HELPER}" ] || return 0
+    case "${profile}" in
+        manual|off|auto|"")
+            "${TDP_LIMIT_HELPER}" set-mode off >/dev/null 2>&1 || true
+            ;;
+        fps|adaptive)
+            "${TDP_LIMIT_HELPER}" set-target auto >/dev/null 2>&1 || true
+            ;;
+        30|60|90|120)
+            "${TDP_LIMIT_HELPER}" set-target "${profile}" >/dev/null 2>&1 || true
+            ;;
+    esac
+}
+
 case "${1:-}" in
     supported)
         supports_tdp && echo 1 || true
@@ -91,25 +124,36 @@ case "${1:-}" in
             echo "${current}W"
         fi
         ;;
+    profile)
+        supports_tdp || exit 0
+        profile_label
+        ;;
+    set-profile)
+        supports_tdp || exit 1
+        set_profile "${2:-manual}"
+        ;;
     set)
         supports_tdp || exit 1
         [ -n "${2:-}" ] || exit 1
+        set_manual_mode
         /usr/bin/batocera-amd-tdp "${2}"
         ;;
     inc)
         supports_tdp || exit 1
         current=$(get_current_tdp)
         [ -n "${current}" ] || exit 1
+        set_manual_mode
         /usr/bin/batocera-amd-tdp "$((current + 1))"
         ;;
     dec)
         supports_tdp || exit 1
         current=$(get_current_tdp)
         [ -n "${current}" ] || exit 1
+        set_manual_mode
         /usr/bin/batocera-amd-tdp "$((current - 1))"
         ;;
     *)
-        echo "Usage: $0 {supported|current|max|summary|set <watts>|inc|dec}" >&2
+        echo "Usage: $0 {supported|current|max|summary|profile|set-profile <manual|fps|30|60|90|120>|set <watts>|inc|dec}" >&2
         exit 1
         ;;
 esac

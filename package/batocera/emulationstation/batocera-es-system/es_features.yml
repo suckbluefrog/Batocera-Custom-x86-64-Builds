@@ -18,11 +18,59 @@ shared:
         High Performance: highperformance
         Balanced: balanced
         Power Saver: powersaver
+    tdp_mode:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      group: POWER OPTIONS
+      submenu: RYZEN TDP LIMITER
+      prompt: RYZEN TDP MODE
+      description: Enable adaptive Ryzen TDP control. Auto/Off leaves the manual TDP
+        slider in charge.
+      choices:
+        Auto / Off: off
+        Auto FPS Target: adaptive
+    tdp_target_fps:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      group: POWER OPTIONS
+      submenu: RYZEN TDP LIMITER
+      prompt: RYZEN TDP TARGET FPS
+      description: FPS target used by adaptive Ryzen TDP control.
+      choices:
+        Auto FPS: auto
+        30 FPS: 30
+        60 FPS: 60
+        90 FPS: 90
+        120 FPS: 120
+    tdp_min:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      group: POWER OPTIONS
+      submenu: RYZEN TDP LIMITER
+      prompt: RYZEN TDP MINIMUM
+      description: Minimum wattage adaptive Ryzen TDP control may use.
+      preset: sliderauto
+      preset_parameters: 3 35 1 W
+    tdp_max:
+      archs_include:
+      - x86_64
+      - x86-64-v3
+      group: POWER OPTIONS
+      submenu: RYZEN TDP LIMITER
+      prompt: RYZEN TDP MAXIMUM
+      description: Maximum wattage adaptive Ryzen TDP control may use when extra power
+        no longer improves FPS.
+      preset: sliderauto
+      preset_parameters: 3 35 1 W
     tdp:
       archs_include:
       - x86_64
       - x86-64-v3
       group: POWER OPTIONS
+      submenu: RYZEN TDP LIMITER
       prompt: RYZEN THERMAL DESIGN POWER
       description: Adjust the percentage of power (watts) provided to a Ryzen Mobile
         Series CPU based on it's default max value. Caution, setting wattage too high
@@ -668,6 +716,10 @@ global:
   shared:
   - powermode
   - batterymode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -726,6 +778,10 @@ global:
 libretro:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -8386,6 +8442,10 @@ amiberry:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -8467,6 +8527,10 @@ amiberry:
 cannonball:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -8486,6 +8550,10 @@ cannonball:
 cemu:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -8656,6 +8724,10 @@ hypseus-singe:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - use_guns
@@ -8771,6 +8843,10 @@ devilutionx:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -9290,6 +9366,10 @@ dolphin:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -9398,6 +9478,10 @@ dosbox:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -9471,6 +9555,10 @@ dosbox_staging:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -9516,6 +9604,10 @@ dosbox-x:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -9559,6 +9651,10 @@ dosbox-x:
 duckstation:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -9904,6 +10000,10 @@ duckstation:
 flycast:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -10090,6 +10190,10 @@ fsuae:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -10106,6 +10210,10 @@ hatari:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -10170,6 +10278,10 @@ hatari:
 melonds:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -10305,6 +10417,10 @@ melonds:
 moonlight:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -10380,6 +10496,10 @@ moonlight:
 mupen64plus:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -10649,6 +10769,10 @@ mupen64plus:
 openbor:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -11051,6 +11175,10 @@ pcsx2:
 ppsspp:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -11261,6 +11389,10 @@ pygame:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -11275,6 +11407,10 @@ pygame:
 reicast:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -11730,6 +11866,10 @@ scummvm:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -11804,6 +11944,10 @@ scummvm:
 easyrpg:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -11839,6 +11983,10 @@ easyrpg:
 redream:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -11924,6 +12072,10 @@ sdlpop:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -11932,6 +12084,10 @@ superbroswar:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -11948,6 +12104,10 @@ supermodel:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -12043,6 +12203,10 @@ cgenius:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -12097,6 +12261,10 @@ vice:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -12121,6 +12289,10 @@ tsugaru:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -12153,6 +12325,10 @@ mame:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -13461,6 +13637,10 @@ wine:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -13820,6 +14000,10 @@ wine:
 solarus:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -13843,6 +14027,10 @@ mugen:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -13872,6 +14060,10 @@ ikemen:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -13887,6 +14079,10 @@ ruffle:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
 lightspark:
@@ -13894,6 +14090,10 @@ lightspark:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -13907,6 +14107,10 @@ lightspark:
 drastic:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -13980,6 +14184,10 @@ drastic:
 xemu:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14076,6 +14284,10 @@ lexaloffle:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14091,6 +14303,10 @@ ecwolf:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14106,6 +14322,10 @@ sonic2013:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14172,6 +14392,10 @@ soniccd:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14236,6 +14460,10 @@ model2emu:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -14359,6 +14587,10 @@ gsplus:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14384,6 +14616,10 @@ applewin:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -14480,6 +14716,10 @@ play:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -14556,6 +14796,10 @@ flatpak:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -14743,6 +14987,10 @@ apps:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -14790,6 +15038,10 @@ waydroid:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -14840,6 +15092,10 @@ ios:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -14876,6 +15132,10 @@ steam:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -15019,6 +15279,10 @@ heroic:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -15060,6 +15324,10 @@ lutris:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -15101,6 +15369,10 @@ n64recomp:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -15142,6 +15414,10 @@ eden:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -15481,6 +15757,10 @@ yuzu:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -15809,6 +16089,10 @@ ryujinx:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -16302,6 +16586,10 @@ samcoupe:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -16317,6 +16605,10 @@ hcl:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -16326,6 +16618,10 @@ hurrican:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -16335,6 +16631,10 @@ tyrian:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -16344,6 +16644,10 @@ openjazz:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -16381,6 +16685,10 @@ abuse:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -16396,6 +16704,10 @@ cdogs:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -16411,6 +16723,10 @@ openmsx:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -16439,6 +16755,10 @@ sh:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -16482,6 +16802,10 @@ xenia:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -16837,6 +17161,10 @@ xenia-canary:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -17333,6 +17661,10 @@ xenia-edge:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -17919,6 +18251,10 @@ freej2me:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -17986,6 +18322,10 @@ gopher64:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -18046,6 +18386,10 @@ nanoboyadvance:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   cfeatures:
@@ -18119,6 +18463,10 @@ skyemu:
   - cheevos
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -18145,6 +18493,10 @@ eka2l1:
   features: []
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18218,6 +18570,10 @@ odcommander:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - ratio
@@ -18225,6 +18581,10 @@ odcommander:
 gzdoom:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18254,6 +18614,10 @@ gzdoom:
 corsixth:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   features:
@@ -18281,6 +18645,10 @@ corsixth:
 stella:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   features:
@@ -18288,6 +18656,10 @@ stella:
 eduke32:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18308,6 +18680,10 @@ eduke32:
 fury:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18328,6 +18704,10 @@ fury:
 raze:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18356,6 +18736,10 @@ raze:
 vita3k:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   features: []
@@ -18412,6 +18796,10 @@ vita3k:
 bigpemu:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18519,6 +18907,10 @@ pyxel:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18532,6 +18924,10 @@ pyxel:
 ioquake3:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18560,6 +18956,10 @@ thextech:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -18583,6 +18983,10 @@ vpinball:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -18851,6 +19255,10 @@ theforceengine:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19013,6 +19421,10 @@ theforceengine:
 iortcw:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19087,6 +19499,10 @@ iortcw:
 fallout1-ce:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19139,6 +19555,10 @@ fallout1-ce:
 fallout2-ce:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19191,6 +19611,10 @@ fallout2-ce:
 dxx-rebirth:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19231,6 +19655,10 @@ dxx-rebirth:
 dusk:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -19260,6 +19688,10 @@ dusk:
 opengoal:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -19295,6 +19727,10 @@ opengoal:
 unleashedrecomp:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - hud
@@ -19325,6 +19761,10 @@ unleashedrecomp:
 etlegacy:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19437,6 +19877,10 @@ taradino:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19452,6 +19896,10 @@ x16emu:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19489,6 +19937,10 @@ shadps4:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - gamescope
@@ -19606,6 +20058,10 @@ dhewm3:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19647,6 +20103,10 @@ jazz2-native:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19662,6 +20122,10 @@ catacombgl:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19677,6 +20141,10 @@ lindbergh-loader:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19817,6 +20285,10 @@ vkquake:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19832,6 +20304,10 @@ vkquake2:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19845,6 +20321,10 @@ vkquake2:
 vkquake3:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19877,6 +20357,10 @@ vkquake3:
 tr1x:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19901,6 +20385,10 @@ tr2x:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19916,6 +20404,10 @@ bstone:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -19951,6 +20443,10 @@ openjkdf2:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20192,6 +20688,10 @@ openjk:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20362,6 +20862,10 @@ openjk:
 azahar:
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20479,6 +20983,10 @@ citra:
   - cheevos
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20574,6 +21082,10 @@ openmohaa:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20739,6 +21251,10 @@ ymir:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20783,6 +21299,10 @@ clk:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel
@@ -20798,6 +21318,10 @@ yquake2:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
 xroar:
@@ -20805,6 +21329,10 @@ xroar:
   - padtokeyboard
   shared:
   - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
   - tdp
   - videomode
   - bezel

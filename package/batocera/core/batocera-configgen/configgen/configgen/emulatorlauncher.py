@@ -49,6 +49,17 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+TDP_LIMIT_HELPER = Path("/usr/bin/batocera-tdp-limit")
+TDP_LIMIT_FPS_DIR = Path("/var/run/batocera-tdp-limit/fps")
+TDP_LIMIT_GAMESCOPE_STATS_PATH = Path("/var/run/batocera-tdp-limit/gamescope-stats.pipe")
+MANGOHUD_ENV_KEYS = (
+    "MANGOHUD",
+    "MANGOHUD_CONFIG",
+    "MANGOHUD_CONFIGFILE",
+    "MANGOHUD_DLSYM",
+    "MANGOAPP_CONFIG",
+)
+
 # A lock to safely modify the active controller list from multiple threads
 _player_controllers_lock = threading.Lock()
 # A global variable to hold the current, up-to-date list of player controllers
@@ -171,11 +182,23 @@ def start_rom(args: argparse.Namespace, maxnbplayers: int, rom: Path, original_r
 
                 cmd = generator.generate(system, rom, player_controllers, metadata, guns, wheels, gameResolution)
 
+                tdp_limit_adaptive = tdpLimitAdaptiveEnabled()
                 disable_mangohud = str(cmd.env.get("DISABLE_MANGOHUD", "")).lower() in ("1", "true", "yes")
-                if system.config.get_bool('hud_support') and not disable_mangohud:
+                if tdp_limit_adaptive and systemName == "steam":
+                    cmd.env["BATOCERA_STEAM_GS_STATS_PATH"] = str(TDP_LIMIT_GAMESCOPE_STATS_PATH)
+                    cmd.env["BATOCERA_STEAM_GS_MANGOAPP"] = "0"
+                    cmd.env["DISABLE_MANGOHUD"] = "1"
+                    stripMangoHud(cmd)
+                    disable_mangohud = True
+
+                if (system.config.get_bool('hud_support') or tdp_limit_adaptive) and not disable_mangohud:
                     hud_bezel = getHudBezel(system, generator, rom, gameResolution, system.guns_borders_size_name(guns), system.guns_border_ratio_type(guns))
-                    if ((hud := system.config.get('hud')) and hud != "none") or hud_bezel is not None:
+                    hud_visible = bool(((hud := system.config.get('hud')) and hud != "none") or hud_bezel is not None)
+                    if hud_visible or tdp_limit_adaptive:
                         hudconfig = getHudConfig(system, args.systemname, system.config.emulator, effectiveCore, rom, hud_bezel)
+                        if tdp_limit_adaptive:
+                            TDP_LIMIT_FPS_DIR.mkdir(parents=True, exist_ok=True)
+                            hudconfig = addTdpLimitMangoHudLogging(hudconfig, hud_visible)
                         hud_config_file = Path('/var/run/hud.config')
                         with hud_config_file.open('w') as f:
                             f.write(hudconfig)
@@ -387,10 +410,61 @@ def callExternalScripts(folder: Path, event: str, args: Iterable[str | Path]) ->
                 _logger.debug("calling external script: %s", [file, event, *args])
                 subprocess.call([file, event, *args])
 
+def tdpLimitAdaptiveEnabled() -> bool:
+    if not TDP_LIMIT_HELPER.exists():
+        return False
+    try:
+        result = subprocess.run(
+            [TDP_LIMIT_HELPER, "active-mode"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == "adaptive"
+
+def stripMangoHud(command: Command) -> None:
+    while command.array and Path(str(command.array[0])).name == "mangohud":
+        command.array.pop(0)
+    for key in MANGOHUD_ENV_KEYS:
+        command.env.pop(key, None)
+
 def hudConfig_protectStr(string: str | Path | None) -> str:
     if string is None:
         return ""
     return str(string)
+
+def addTdpLimitMangoHudLogging(configstr: str, visible_hud: bool) -> str:
+    lines = [line.strip() for line in configstr.splitlines() if line.strip()]
+    keys = {line.split("=", 1)[0] for line in lines if "=" in line}
+    bare = set(lines)
+
+    if not visible_hud:
+        # MangoHud's no_display path skips the update code that starts autostart_log.
+        lines = [line for line in lines if line.split("=", 1)[0] != "no_display"]
+        keys = {line.split("=", 1)[0] for line in lines if "=" in line}
+        bare = set(lines)
+        if "alpha" not in keys:
+            lines.append("alpha=0")
+            keys.add("alpha")
+        if "background_alpha" not in keys:
+            lines.append("background_alpha=0")
+            keys.add("background_alpha")
+        if "font_size" not in keys:
+            lines.append("font_size=1")
+            keys.add("font_size")
+    if "fps" not in bare:
+        lines.append("fps")
+    if "autostart_log" not in keys:
+        lines.append("autostart_log=1")
+    if "log_interval" not in keys:
+        lines.append("log_interval=1000")
+    lines = [line for line in lines if not line.startswith("output_folder=")]
+    lines.append(f"output_folder={hudConfig_protectStr(TDP_LIMIT_FPS_DIR)}")
+    return "\n".join(lines) + "\n"
 
 def getHudConfig(system: Emulator, systemName: str, emulator: str, core: str, rom: Path, bezel: Path | None) -> str:
     configstr = ""
@@ -557,6 +631,8 @@ def runCommand(command: Command) -> int:
     envvars: dict[str, str | Path] = dict(os.environ)
     envvars.update(command.env)
     command.env = envvars
+    if str(command.env.get("DISABLE_MANGOHUD", "")).lower() in ("1", "true", "yes"):
+        stripMangoHud(command)
 
     _logger.debug("command: %s", command)
     _logger.debug("command: %s", command.array)

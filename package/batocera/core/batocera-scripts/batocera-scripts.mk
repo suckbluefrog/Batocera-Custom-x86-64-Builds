@@ -91,6 +91,7 @@ define BATOCERA_SCRIPTS_INSTALL_TARGET_CMDS
     ln -sf /usr/bin/batocera-pcgamingwiki-update $(TARGET_DIR)/usr/share/emulationstation/hooks/preupdate-gamelists-pcgamingwiki
     mkdir -p $(TARGET_DIR)/etc/udev/rules.d
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-amd-tdp                   $(TARGET_DIR)/usr/bin/
+    install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-tdp-limit                 $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-spinner-calibrator        $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-vulkan                    $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-power-mode                $(TARGET_DIR)/usr/bin/

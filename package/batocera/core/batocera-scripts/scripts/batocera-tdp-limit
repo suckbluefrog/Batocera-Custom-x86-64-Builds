@@ -1,0 +1,729 @@
+#!/usr/bin/env python
+
+from __future__ import annotations
+
+import csv
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+STATE_DIR = Path("/var/run/batocera-tdp-limit")
+FPS_DIR = STATE_DIR / "fps"
+GAMESCOPE_STATS_PATH = STATE_DIR / "gamescope-stats.pipe"
+SESSION_FILE = STATE_DIR / "session.json"
+FPS_STATE_FILE = STATE_DIR / "fps.json"
+DAEMON_PID_FILE = STATE_DIR / "daemon.pid"
+READER_PID_FILE = STATE_DIR / "fps-reader.pid"
+LOG_FILE = Path("/userdata/system/logs/tdp-limit.log")
+
+AMD_TDP = "/usr/bin/batocera-amd-tdp"
+SETTINGS_GET = "/usr/bin/batocera-settings-get"
+SETTINGS_GET_MASTER = "/usr/bin/batocera-settings-get-master"
+SETTINGS_SET = "/usr/bin/batocera-settings-set"
+
+CHECK_INTERVAL = 3.0
+FPS_STALE_SECONDS = 30.0
+GOOD_SAMPLES_TO_LOWER = 4
+BAD_SAMPLES_TO_RAISE = 2
+
+MANGOHUD_SUFFIXES = (".csv", ".log")
+
+
+def ensure_dirs() -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    FPS_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+
+def log(message: str) -> None:
+    ensure_dirs()
+    with LOG_FILE.open("a", encoding="utf-8") as handle:
+        handle.write(f"[{time.strftime('%F %T')}] {message}\n")
+
+
+def run_command(command: list[str], timeout: float = 3.0) -> str:
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=timeout,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return ""
+
+    if result.returncode != 0:
+        return ""
+
+    return result.stdout.strip()
+
+
+def setting_get(key: str, master: bool = False) -> str:
+    binary = SETTINGS_GET_MASTER if master and Path(SETTINGS_GET_MASTER).exists() else SETTINGS_GET
+    if not Path(binary).exists():
+        return ""
+    return run_command([binary, key])
+
+
+def setting_set(key: str, value: str) -> bool:
+    if not Path(SETTINGS_SET).exists():
+        return False
+    try:
+        result = subprocess.run([SETTINGS_SET, key, value], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        return False
+    return result.returncode == 0
+
+
+def parse_int(value: object | None) -> int | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.lower() in {"auto", "default", "none", "null"}:
+        return None
+    match = re.search(r"-?\d+", text)
+    if not match:
+        return None
+    return int(match.group(0))
+
+
+def normalize_mode(value: str | None) -> str:
+    mode = (value or "").strip().lower()
+    if mode in {"adaptive", "fps", "target", "1", "on", "enabled", "enable"}:
+        return "adaptive"
+    if mode in {"manual", "off", "auto", "0", "false", "disabled", "disable", "default", ""}:
+        return "off"
+    return "off"
+
+
+def normalize_target(value: str | None) -> str:
+    target = (value or "").strip().lower()
+    if target in {"", "default", "auto"}:
+        return "auto"
+    parsed = parse_int(target)
+    if parsed in {30, 60, 90, 120}:
+        return str(parsed)
+    return "auto"
+
+
+def saved_mode() -> str:
+    for key in ("global.tdp_mode", "system.tdp.limit.mode"):
+        value = setting_get(key, master=True)
+        if value:
+            return normalize_mode(value)
+    return "off"
+
+
+def saved_target() -> str:
+    for key in ("global.tdp_target_fps", "system.tdp.limit.target_fps"):
+        value = setting_get(key, master=True)
+        if value:
+            return normalize_target(value)
+    return "auto"
+
+
+def saved_bound(name: str) -> int | None:
+    for key in (f"global.{name}", f"system.tdp.limit.{name.removeprefix('tdp_')}"):
+        value = setting_get(key, master=True)
+        parsed = parse_int(value)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def amd_limits() -> tuple[int, int, int] | None:
+    if not Path(AMD_TDP).exists():
+        return None
+    output = run_command([AMD_TDP, "--limits"])
+    parts = output.split()
+    if len(parts) < 2:
+        return None
+    min_tdp = parse_int(parts[0])
+    max_tdp = parse_int(parts[1])
+    default_tdp = parse_int(parts[2]) if len(parts) >= 3 else max_tdp
+    if min_tdp is None or max_tdp is None:
+        return None
+    return min_tdp, max_tdp, default_tdp or max_tdp
+
+
+def is_available() -> bool:
+    return amd_limits() is not None
+
+
+def current_tdp() -> int | None:
+    current = parse_int(run_command([AMD_TDP, "--current"]))
+    if current is not None:
+        return current
+
+    state = Path("/var/run/amd-tdp.current")
+    if state.exists():
+        return parse_int(state.read_text(encoding="utf-8", errors="ignore"))
+
+    limits = amd_limits()
+    if limits is not None:
+        return limits[2]
+    return None
+
+
+def clamp(value: int, minimum: int, maximum: int) -> int:
+    return max(minimum, min(maximum, value))
+
+
+def apply_tdp(value: int, reason: str) -> bool:
+    result = subprocess.run([AMD_TDP, str(value)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if result.returncode == 0:
+        log(f"set {value}W ({reason})")
+        return True
+    log(f"failed to set {value}W ({reason})")
+    return False
+
+
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
+def write_json(path: Path, data: dict) -> None:
+    ensure_dirs()
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(data, sort_keys=True), encoding="utf-8")
+    temp.replace(path)
+
+
+def read_pid(path: Path) -> int | None:
+    try:
+        return int(path.read_text(encoding="utf-8").strip())
+    except (FileNotFoundError, ValueError, OSError):
+        return None
+
+
+def pid_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def stop_pid(path: Path) -> None:
+    pid = read_pid(path)
+    if pid is None:
+        path.unlink(missing_ok=True)
+        return
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        log(f"permission denied stopping pid {pid}")
+    for _ in range(10):
+        if not pid_running(pid):
+            break
+        time.sleep(0.1)
+    path.unlink(missing_ok=True)
+
+
+def stop_workers() -> None:
+    stop_pid(DAEMON_PID_FILE)
+    stop_pid(READER_PID_FILE)
+
+
+def newest_mangohud_file(source: Path) -> Path | None:
+    if source.is_file():
+        return source
+    if not source.is_dir():
+        return None
+    candidates = [path for path in source.iterdir() if path.is_file() and path.suffix.lower() in MANGOHUD_SUFFIXES]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def parse_fps_from_row(header: list[str] | None, row: list[str]) -> float | None:
+    if header:
+        normalized = [column.strip().lower() for column in header]
+        for name in ("fps", "fps_avg"):
+            if name in normalized:
+                index = normalized.index(name)
+                if index < len(row):
+                    try:
+                        return float(row[index])
+                    except ValueError:
+                        return None
+    for item in row:
+        try:
+            value = float(item)
+        except ValueError:
+            continue
+        if 0 < value < 1000:
+            return value
+    return None
+
+
+def read_mangohud_fps(source: Path) -> tuple[float, float] | None:
+    path = newest_mangohud_file(source)
+    if path is None:
+        return None
+    try:
+        if time.time() - path.stat().st_mtime > FPS_STALE_SECONDS:
+            return None
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return None
+    if not lines:
+        return None
+
+    header: list[str] | None = None
+    for line in lines[:10]:
+        if "fps" in line.lower():
+            header = next(csv.reader([line]))
+            break
+
+    for line in reversed(lines[-40:]):
+        if not line.strip() or "fps" in line.lower():
+            continue
+        try:
+            row = next(csv.reader([line]))
+        except csv.Error:
+            continue
+        fps = parse_fps_from_row(header, row)
+        if fps is not None:
+            return fps, path.stat().st_mtime
+    return None
+
+
+def parse_fps_text(text: str) -> float | None:
+    match = re.search(r"(?:fps|app_fps|frame_rate)[=:, ]+([0-9]+(?:\.[0-9]+)?)", text, flags=re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    for item in re.split(r"[\s,;]+", text.strip()):
+        try:
+            value = float(item)
+        except ValueError:
+            continue
+        if 0 < value < 1000:
+            return value
+    return None
+
+
+def read_state_fps() -> tuple[float, float] | None:
+    data = read_json(FPS_STATE_FILE)
+    fps = data.get("fps")
+    timestamp = data.get("timestamp")
+    if not isinstance(fps, (int, float)) or not isinstance(timestamp, (int, float)):
+        return None
+    if time.time() - timestamp > FPS_STALE_SECONDS:
+        return None
+    return float(fps), float(timestamp)
+
+
+def read_fps(source: str) -> tuple[float, float] | None:
+    if source == str(GAMESCOPE_STATS_PATH):
+        return read_state_fps()
+    return read_mangohud_fps(Path(source))
+
+
+def read_max_temp_c() -> int | None:
+    values: list[int] = []
+    for pattern in ("/sys/class/thermal/thermal_zone*/temp", "/sys/class/hwmon/hwmon*/temp*_input"):
+        for entry in Path("/").glob(pattern.removeprefix("/")):
+            try:
+                raw = int(entry.read_text(encoding="utf-8").strip())
+            except (ValueError, OSError):
+                continue
+            if raw > 1000:
+                raw //= 1000
+            if 0 < raw < 130:
+                values.append(raw)
+    return max(values) if values else None
+
+
+def read_fan_percent() -> int | None:
+    for key in ("fan.percent", "system.fan.percent"):
+        value = parse_int(setting_get(key, master=True))
+        if value is not None:
+            return clamp(value, 0, 100)
+    return None
+
+
+def detect_refresh_target() -> int:
+    output = run_command(["/usr/bin/xrandr", "--current"], timeout=2.0)
+    for line in output.splitlines():
+        if "*" not in line:
+            continue
+        match = re.search(r"\s([0-9]+(?:\.[0-9]+)?)\*", line)
+        if match:
+            refresh = int(round(float(match.group(1))))
+            if refresh >= 110:
+                return 120
+            if refresh >= 80:
+                return 90
+            if refresh >= 45:
+                return 60
+            return 30
+    return 60
+
+
+def resolve_base_tdp(value: str | None, limits: tuple[int, int, int]) -> int:
+    parsed = parse_int(value)
+    if parsed is not None:
+        return clamp(parsed, limits[0], limits[1])
+    current = current_tdp()
+    if current is not None:
+        return clamp(current, limits[0], limits[1])
+    return limits[2]
+
+
+def resolve_session(
+    base_arg: str | None,
+    fps_source: str | None,
+    target_arg: str | None,
+    mode_arg: str | None,
+    min_arg: str | None,
+    max_arg: str | None,
+) -> dict | None:
+    limits = amd_limits()
+    if limits is None:
+        return None
+
+    mode = normalize_mode(mode_arg) if mode_arg not in {None, "", "default"} else saved_mode()
+    target = normalize_target(target_arg) if target_arg not in {None, "", "default"} else saved_target()
+    min_bound = parse_int(min_arg) if min_arg not in {None, "", "default"} else saved_bound("tdp_min")
+    max_bound = parse_int(max_arg) if max_arg not in {None, "", "default"} else saved_bound("tdp_max")
+
+    base_tdp = resolve_base_tdp(base_arg, limits)
+    hardware_min, hardware_max, _default_tdp = limits
+    min_tdp = hardware_min
+    max_tdp = base_tdp
+
+    if min_bound is not None:
+        min_tdp = max(hardware_min, min_bound)
+    if max_bound is not None:
+        max_tdp = min(max_tdp, max_bound)
+    max_tdp = min(max_tdp, hardware_max)
+    if min_tdp > max_tdp:
+        min_tdp = max_tdp
+
+    target_fps = detect_refresh_target() if target == "auto" else int(target)
+    source = fps_source or str(FPS_DIR)
+
+    return {
+        "mode": mode,
+        "target": target,
+        "target_fps": target_fps,
+        "base_tdp": base_tdp,
+        "restore_tdp": base_tdp,
+        "min_tdp": min_tdp,
+        "max_tdp": max_tdp,
+        "hardware_min": hardware_min,
+        "hardware_max": hardware_max,
+        "fps_source": source,
+        "started_at": time.time(),
+        "last_tdp": current_tdp() or base_tdp,
+    }
+
+
+def clean_fps_dir() -> None:
+    ensure_dirs()
+    for path in FPS_DIR.iterdir():
+        if path.is_file() and path.suffix.lower() in MANGOHUD_SUFFIXES:
+            path.unlink(missing_ok=True)
+    FPS_STATE_FILE.unlink(missing_ok=True)
+
+
+def start_background(command: list[str], pid_file: Path) -> None:
+    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    pid_file.write_text(str(process.pid), encoding="utf-8")
+
+
+def command_game_start(argv: list[str]) -> int:
+    ensure_dirs()
+    if not is_available():
+        return 0
+
+    base_arg = argv[0] if len(argv) > 0 else None
+    fps_source = argv[1] if len(argv) > 1 else None
+    target_arg = argv[2] if len(argv) > 2 else None
+    mode_arg = argv[3] if len(argv) > 3 else None
+    min_arg = argv[4] if len(argv) > 4 else None
+    max_arg = argv[5] if len(argv) > 5 else None
+
+    stop_workers()
+    clean_fps_dir()
+    session = resolve_session(base_arg, fps_source, target_arg, mode_arg, min_arg, max_arg)
+    if session is None:
+        return 0
+
+    write_json(SESSION_FILE, session)
+    if session["mode"] != "adaptive":
+        log("adaptive TDP disabled for session")
+        return 0
+
+    apply_tdp(int(session["max_tdp"]), "session start ceiling")
+    session["last_tdp"] = int(session["max_tdp"])
+    write_json(SESSION_FILE, session)
+
+    if session["fps_source"] == str(GAMESCOPE_STATS_PATH):
+        start_background([sys.argv[0], "fps-reader", session["fps_source"]], READER_PID_FILE)
+    start_background([sys.argv[0], "daemon"], DAEMON_PID_FILE)
+    log(
+        "adaptive session started "
+        f"target={session['target_fps']}fps min={session['min_tdp']}W max={session['max_tdp']}W "
+        f"base={session['base_tdp']}W source={session['fps_source']}"
+    )
+    return 0
+
+
+def command_game_stop() -> int:
+    session = read_json(SESSION_FILE)
+    stop_workers()
+    if session.get("mode") == "adaptive":
+        restore = parse_int(session.get("restore_tdp"))
+        limits = amd_limits()
+        if restore is not None and limits is not None:
+            apply_tdp(clamp(restore, limits[0], limits[1]), "session stop restore")
+    SESSION_FILE.unlink(missing_ok=True)
+    FPS_STATE_FILE.unlink(missing_ok=True)
+    log("adaptive session stopped")
+    return 0
+
+
+def thermal_limit_adjustment(current: int) -> int:
+    temp = read_max_temp_c()
+    fan = read_fan_percent()
+    if temp is not None and temp >= 95:
+        return current - 2
+    if temp is not None and fan is not None and temp >= 90 and fan >= 95:
+        return current - 1
+    return current
+
+
+def daemon_loop() -> int:
+    ensure_dirs()
+    os.getpid()
+    DAEMON_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
+    good_samples = 0
+    bad_samples = 0
+
+    while True:
+        session = read_json(SESSION_FILE)
+        if session.get("mode") != "adaptive":
+            break
+
+        current = parse_int(session.get("last_tdp")) or current_tdp() or parse_int(session.get("max_tdp"))
+        min_tdp = parse_int(session.get("min_tdp"))
+        max_tdp = parse_int(session.get("max_tdp"))
+        target_fps = parse_int(session.get("target_fps"))
+        source = str(session.get("fps_source") or FPS_DIR)
+        if current is None or min_tdp is None or max_tdp is None or target_fps is None:
+            break
+
+        fps_sample = read_fps(source)
+        desired = current
+        reason = ""
+
+        thermal_desired = thermal_limit_adjustment(current)
+        if thermal_desired < desired:
+            desired = thermal_desired
+            reason = "thermal guard"
+            good_samples = 0
+            bad_samples = 0
+        elif fps_sample is not None:
+            fps, _timestamp = fps_sample
+            if fps >= target_fps * 1.02:
+                good_samples += 1
+                bad_samples = 0
+                if good_samples >= GOOD_SAMPLES_TO_LOWER:
+                    desired = current - 1
+                    reason = f"fps headroom {fps:.1f}/{target_fps}"
+                    good_samples = 0
+            elif fps < target_fps * 0.97:
+                bad_samples += 1
+                good_samples = 0
+                if bad_samples >= BAD_SAMPLES_TO_RAISE:
+                    desired = current + 1
+                    reason = f"below target {fps:.1f}/{target_fps}"
+                    bad_samples = 0
+            else:
+                good_samples = 0
+                bad_samples = 0
+
+        desired = clamp(desired, min_tdp, max_tdp)
+        if desired != current:
+            if apply_tdp(desired, reason):
+                session["last_tdp"] = desired
+                write_json(SESSION_FILE, session)
+
+        time.sleep(CHECK_INTERVAL)
+
+    DAEMON_PID_FILE.unlink(missing_ok=True)
+    return 0
+
+
+def fps_reader_loop(path_text: str) -> int:
+    ensure_dirs()
+    READER_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
+    path = Path(path_text)
+    if path.exists() and not path.is_fifo():
+        path.unlink(missing_ok=True)
+    if not path.exists():
+        os.mkfifo(path)
+
+    while SESSION_FILE.exists():
+        try:
+            with path.open("r", encoding="utf-8", errors="ignore") as handle:
+                for line in handle:
+                    fps = parse_fps_text(line)
+                    if fps is not None:
+                        write_json(FPS_STATE_FILE, {"fps": fps, "timestamp": time.time()})
+                    if not SESSION_FILE.exists():
+                        break
+        except OSError:
+            time.sleep(0.5)
+
+    READER_PID_FILE.unlink(missing_ok=True)
+    return 0
+
+
+def active_mode() -> str:
+    session = read_json(SESSION_FILE)
+    if session.get("mode"):
+        return normalize_mode(str(session["mode"]))
+    return saved_mode()
+
+
+def command_status(json_output: bool = False) -> int:
+    session = read_json(SESSION_FILE)
+    data = {
+        "available": is_available(),
+        "saved_mode": saved_mode(),
+        "active_mode": active_mode(),
+        "saved_target": saved_target(),
+        "current_tdp": current_tdp(),
+        "daemon_running": (pid_running(pid) if (pid := read_pid(DAEMON_PID_FILE)) else False),
+    }
+    data.update({key: value for key, value in session.items() if key not in data})
+    if json_output:
+        print(json.dumps(data, sort_keys=True))
+    else:
+        for key in sorted(data):
+            print(f"{key}={data[key]}")
+    return 0
+
+
+def command_profile_label() -> int:
+    mode = active_mode()
+    if mode != "adaptive":
+        print("Manual")
+        return 0
+    session = read_json(SESSION_FILE)
+    target = str(session.get("target") or saved_target())
+    if target == "auto":
+        print("Auto FPS")
+    else:
+        print(f"{target} FPS")
+    return 0
+
+
+def command_set_mode(value: str) -> int:
+    mode = normalize_mode(value)
+    setting_set("global.tdp_mode", mode)
+    if mode != "adaptive":
+        command_game_stop()
+    else:
+        command_apply_mode()
+    return 0
+
+
+def command_set_target(value: str) -> int:
+    target = normalize_target(value)
+    setting_set("global.tdp_target_fps", target)
+    setting_set("global.tdp_mode", "adaptive")
+    command_apply_mode()
+    return 0
+
+
+def command_apply_mode() -> int:
+    session = read_json(SESSION_FILE)
+    if session:
+        command_game_start(
+            [
+                str(session.get("base_tdp", "auto")),
+                str(session.get("fps_source", FPS_DIR)),
+                saved_target(),
+                saved_mode(),
+                str(saved_bound("tdp_min") or "auto"),
+                str(saved_bound("tdp_max") or "auto"),
+            ]
+        )
+    elif saved_mode() == "adaptive":
+        command_game_start(["auto", str(FPS_DIR), saved_target(), "adaptive", "auto", "auto"])
+    return 0
+
+
+def usage() -> int:
+    print(
+        "Usage: batocera-tdp-limit "
+        "{available|active-mode|saved-mode|saved-target|profile-label|set-mode <mode>|set-target <fps>|"
+        "apply-mode|game-start [base] [fps-path] [target] [mode] [min] [max]|game-stop|stop|daemon|fps-reader <path>|status|json}"
+    )
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    command = argv[0] if argv else ""
+    args = argv[1:]
+
+    if command == "available":
+        if is_available():
+            print("1")
+            return 0
+        return 1
+    if command == "saved-mode":
+        print(saved_mode())
+        return 0
+    if command == "active-mode":
+        print(active_mode())
+        return 0
+    if command == "saved-target":
+        print(saved_target())
+        return 0
+    if command == "profile-label":
+        return command_profile_label()
+    if command == "set-mode" and args:
+        return command_set_mode(args[0])
+    if command == "set-target" and args:
+        return command_set_target(args[0])
+    if command == "apply-mode":
+        return command_apply_mode()
+    if command == "game-start":
+        return command_game_start(args)
+    if command == "game-stop":
+        return command_game_stop()
+    if command == "stop":
+        stop_workers()
+        SESSION_FILE.unlink(missing_ok=True)
+        FPS_STATE_FILE.unlink(missing_ok=True)
+        return 0
+    if command == "daemon":
+        return daemon_loop()
+    if command == "fps-reader" and args:
+        return fps_reader_loop(args[0])
+    if command == "status":
+        return command_status(False)
+    if command == "json":
+        return command_status(True)
+    return usage()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

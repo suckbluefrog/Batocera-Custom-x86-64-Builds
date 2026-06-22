@@ -23,6 +23,10 @@
 
 log="/userdata/system/logs/amd-tdp.log"
 STATE_FILE="/var/run/amd-tdp.changed"
+TDP_LIMIT_HELPER="/usr/bin/batocera-tdp-limit"
+TDP_LIMIT_FPS_DIR="/var/run/batocera-tdp-limit/fps"
+TDP_LIMIT_GAMESCOPE_STATS="/var/run/batocera-tdp-limit/gamescope-stats.pipe"
+TDP_LAST_VALUE=""
 
 get_tdp_limit_field() {
     local field=$1
@@ -86,6 +90,45 @@ set_tdp() {
     /usr/bin/batocera-amd-tdp "$TDP_VALUE"
 }
 
+get_launch_setting() {
+    local setting=$1
+    local value=""
+
+    if [ -n "${SYSTEM_NAME}" ]; then
+        value=$(/usr/bin/batocera-settings-get "${SYSTEM_NAME}[\"${ROM_NAME}\"].${setting}" 2>/dev/null || true)
+        [ -z "$value" ] && value=$(/usr/bin/batocera-settings-get "${SYSTEM_NAME}.${setting}" 2>/dev/null || true)
+    fi
+
+    [ -z "$value" ] && value=$(/usr/bin/batocera-settings-get "global.${setting}" 2>/dev/null || true)
+    printf "%s" "$value"
+}
+
+start_tdp_limit() {
+    local BASE_TDP=$1
+    local MODE TARGET MIN_TDP MAX_TDP FPS_SOURCE
+
+    [ -x "$TDP_LIMIT_HELPER" ] || return 0
+    "$TDP_LIMIT_HELPER" available >/dev/null 2>&1 || return 0
+
+    MODE=$(get_launch_setting "tdp_mode")
+    TARGET=$(get_launch_setting "tdp_target_fps")
+    MIN_TDP=$(get_launch_setting "tdp_min")
+    MAX_TDP=$(get_launch_setting "tdp_max")
+
+    if [ "$SYSTEM_NAME" = "steam" ]; then
+        FPS_SOURCE="$TDP_LIMIT_GAMESCOPE_STATS"
+    else
+        FPS_SOURCE="$TDP_LIMIT_FPS_DIR"
+    fi
+
+    "$TDP_LIMIT_HELPER" game-start "${BASE_TDP:-auto}" "$FPS_SOURCE" "${TARGET:-auto}" "${MODE:-auto}" "${MIN_TDP:-auto}" "${MAX_TDP:-auto}" >/dev/null 2>&1 || true
+}
+
+stop_tdp_limit() {
+    [ -x "$TDP_LIMIT_HELPER" ] || return 0
+    "$TDP_LIMIT_HELPER" game-stop >/dev/null 2>&1 || true
+}
+
 # Determine the new TDP value based on max TDP
 handle_tdp() {
     local TDP_PERCENTAGE=$1
@@ -103,6 +146,7 @@ handle_tdp() {
     # Round the value up or down to make bash happy
     local TDP_VALUE
     TDP_VALUE=$(awk -v max_tdp="$MAX_TDP" -v tdp_percentage="$TDP_PERCENTAGE" 'BEGIN { printf("%.0f\n", max_tdp * tdp_percentage / 100) }')
+    TDP_LAST_VALUE="${TDP_VALUE}"
     set_tdp "${TDP_VALUE}" "${ROM_NAME}"
 }
 
@@ -111,6 +155,7 @@ do_game_start() {
     local ROM_NAME="$2"
     local TDP_SETTING=""
     local RAW_GLOBAL=""
+    local BASE_TDP=""
 
     # Clear previous state file if present
     rm -f "$STATE_FILE" 2>/dev/null
@@ -132,17 +177,21 @@ do_game_start() {
     # Now apply TDP percentage accordingly
     if [ -n "${TDP_SETTING}" ]; then
         handle_tdp "${TDP_SETTING}" "${ROM_NAME}"
+        BASE_TDP="${TDP_LAST_VALUE}"
         : > "$STATE_FILE"
     else
         echo "Game START, but no TDP setting defined. Leaving TDP unchanged." >> $log
         echo "" >> "$log"
         echo "*** ------------------------------------- ***" >> "$log"
         echo "" >> "$log"
-        exit 0
     fi
+
+    start_tdp_limit "${BASE_TDP:-auto}"
 }
 
 do_game_stop() {
+    stop_tdp_limit
+
     # Check if we actually changed anything on game start
     if [ ! -e "$STATE_FILE" ]; then
         echo "Game STOP, but no prior TDP change. Nothing to do." >> "$log"

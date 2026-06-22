@@ -32,6 +32,7 @@ STEAM_FIRST_RUN_PENDING=0
 STEAM_INSTALL_CALLOUT_PID=""
 STEAMOS_MANAGER_PID=""
 STEAM_CHILD_LSFG_ENV=()
+STEAM_CHILD_ENV_CLEAN=(env -u MANGOHUD -u MANGOHUD_CONFIG -u MANGOHUD_CONFIGFILE -u MANGOHUD_DLSYM -u MANGOAPP_CONFIG)
 ALLY_HOTKEY_DIR="/userdata/system/configs/hotkeygen"
 ALLY_ACTIVE_MAP="${ALLY_HOTKEY_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 ALLY_COMMON_CONTEXT="${ALLY_HOTKEY_DIR}/common_context.ally.conf"
@@ -131,6 +132,26 @@ prepare_steam_child_lsfg_env() {
             capture_lsfg_layer_list "${name}" ","
         fi
     done
+}
+
+prepare_tdp_limit_gamescope_stats() {
+    local mode
+
+    if [[ ! -x /usr/bin/batocera-tdp-limit ]]; then
+        return
+    fi
+
+    mode="$(/usr/bin/batocera-tdp-limit active-mode 2>/dev/null || true)"
+    if [[ "${mode}" != "adaptive" ]]; then
+        return
+    fi
+
+    BATOCERA_STEAM_GS_STATS_PATH="${BATOCERA_STEAM_GS_STATS_PATH:-/var/run/batocera-tdp-limit/gamescope-stats.pipe}"
+    BATOCERA_STEAM_GS_MANGOAPP=0
+    export BATOCERA_STEAM_GS_STATS_PATH
+    export BATOCERA_STEAM_GS_MANGOAPP
+    unset MANGOHUD MANGOHUD_CONFIG MANGOHUD_CONFIGFILE MANGOHUD_DLSYM MANGOAPP_CONFIG
+    echo "Steam gamescope TDP limiter stats path: ${BATOCERA_STEAM_GS_STATS_PATH}" >> "${log}"
 }
 
 run_ally_hotkey_hook() {
@@ -941,6 +962,8 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
         append_gamescope_flag "--disable-damage-tracking"
     fi
 
+    prepare_tdp_limit_gamescope_stats
+
     mangoapp_requested=0
     if [[ "${BATOCERA_STEAM_GS_MANGOAPP:-0}" != "0" || -n "${MANGOHUD_CONFIGFILE:-}" || "${MANGOHUD:-0}" == "1" ]]; then
         mangoapp_requested=1
@@ -1021,9 +1044,9 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
     start_nightmode_watch
     set +e
     if (( ${#STEAM_CHILD_LSFG_ENV[@]} > 0 )); then
-        gamescope "${gs_args[@]}" -- /usr/bin/batocera-steam-gamescope-child env "${STEAM_CHILD_LSFG_ENV[@]}" "$@"
+        gamescope "${gs_args[@]}" -- "${STEAM_CHILD_ENV_CLEAN[@]}" /usr/bin/batocera-steam-gamescope-child env "${STEAM_CHILD_LSFG_ENV[@]}" "$@"
     else
-        gamescope "${gs_args[@]}" -- /usr/bin/batocera-steam-gamescope-child "$@"
+        gamescope "${gs_args[@]}" -- "${STEAM_CHILD_ENV_CLEAN[@]}" /usr/bin/batocera-steam-gamescope-child "$@"
     fi
     session_rc=$?
     set -e
