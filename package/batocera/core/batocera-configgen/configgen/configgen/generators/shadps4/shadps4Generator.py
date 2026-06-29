@@ -382,6 +382,12 @@ class shadPS4Generator(Generator):
         # Change to the configPath directory before running
         os.chdir(configPath)
 
+        # Determine the path based on extension
+        if rom.is_dir():
+            eboot_path = rom / "eboot.bin"
+        else:
+            eboot_path = rom.parent / "eboot.bin"
+
         # Run command
         if configure_emulator(rom):
             commandArray: list[str | Path] = [
@@ -391,7 +397,7 @@ class shadPS4Generator(Generator):
                 "-s",
             ]
         else:
-            commandArray: list[str | Path] = ["/usr/bin/shadps4/shadps4", rom.parent / "eboot.bin"]
+            commandArray: list[str | Path] = ["/usr/bin/shadps4/shadps4", eboot_path]
 
         return Command.Command(
             array=commandArray,

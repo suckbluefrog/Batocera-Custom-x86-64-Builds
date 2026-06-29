@@ -3,6 +3,7 @@
 PWM + RGB unified LED driver 
 Written for Batocera - @lbrpdx
 Updated for kernel module updates - @dmanlfc
+Updated for LED mode handling and Chroma - @dmanlfc
 """
 import os
 import time
@@ -12,19 +13,26 @@ DEBUG = 0            # set to 1 for debugging
 EFFECT_STEP = 60     # how many colors in the effect
 EFFECT_DURATION = 2  # how many seconds
 PULSE_DURATION  = 1  # how many seconds
+BLINK_COUNT = 2
+BLINK_ON_DURATION = 0.12
+BLINK_OFF_DURATION = 0.12
 BATOCONFFILE = '/userdata/system/batocera.conf'
 DEFAULT_ES_COLOR = '255 0 0'
 
 ####################
 # Is your handheld supported by this library?
 def batocera_model():
-    # Generic check for modern joystick ring LEDs from ayaneo-platform/ayn-platform
-    if glob.glob('/sys/class/leds/*:rgb:joystick_rings/multi_intensity'):
-        return "rgb"
     # Legion Go S check
     l = '/sys/class/leds/go_s:rgb:joystick_rings/effect'
     if os.path.exists(l):
         return("legiongos")
+    # Legion Go / Go 2 check
+    l = '/sys/class/leds/go:rgb:joystick_rings/effect'
+    if os.path.exists(l):
+        return("legiongo")
+    # Generic check for modern joystick ring LEDs from ayaneo-platform/ayn-platform
+    if glob.glob('/sys/class/leds/*:rgb:joystick_rings/multi_intensity'):
+        return "rgb"
     # Standard RGB check
     l = '/sys/class/leds/multicolor:chassis/multi_intensity'
     if os.path.exists(l):
@@ -83,10 +91,12 @@ def batoconf_color():
 
 
 ####################
-# Handhelds that use the Lenovo Legion Go S interface
+# Handhelds that use the Lenovo Legion Go family interface
 class legiongosled(object):
-    def __init__(self):
-        self.bpath           = '/sys/class/leds/go_s:rgb:joystick_rings/'
+    def __init__(self, prefix="go_s"):
+        self.prefix          = prefix
+        self.bpath           = f'/sys/class/leds/{prefix}:rgb:joystick_rings/'
+        self.enabled_file    = self.bpath + 'enabled'
         self.effect_file     = self.bpath + 'effect'
         self.mode_file       = self.bpath + 'mode'
         self.speed_file      = self.bpath + 'speed'
@@ -95,25 +105,40 @@ class legiongosled(object):
         self.brightness_file = self.bpath + 'brightness'
         self.max_brightness  = self.bpath + 'max_brightness'
 
+        self.set_enabled(True)
+
         # Per documentation, mode must be 'custom' for Linux control
         try:
             with open(self.mode_file, 'w') as f:
                 f.write('custom')
             if DEBUG:
-                print("Set Legion Go S LED mode to 'custom'")
+                print(f"Set {self.prefix} LED mode to 'custom'")
         except Exception as e:
             if DEBUG:
-                print(f"Could not set Legion Go S mode: {e}")
+                print(f"Could not set {self.prefix} mode: {e}")
+
+    def set_enabled(self, enabled):
+        try:
+            with open(self.enabled_file, 'w') as f:
+                f.write('true' if enabled else 'false')
+        except Exception as e:
+            if DEBUG:
+                print(f"Could not set {self.prefix} enabled state: {e}")
 
     def set_color (self, rgb):
-        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "OFF", "ESCOLOR" ]:
+        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "CHROMA", "OFF", "ESCOLOR" ]:
             print (f'Error Color {rgb} is invalid')
             return
 
-        # Always ensure the LEDs are on, unless explicitly turned off
-        self.set_brightness_conf()
-
         try:
+            if rgb == "OFF":
+                self.turn_off()
+                return
+
+            # Always ensure the LEDs are on, unless explicitly turned off.
+            self.set_enabled(True)
+            self.set_brightness_conf()
+
             if rgb == "PULSE":
                 if DEBUG: print('Set effect to: breathe')
                 with open (self.effect_file, 'w') as p: p.write('breathe')
@@ -122,8 +147,9 @@ class legiongosled(object):
                 if DEBUG: print('Set effect to: rainbow')
                 with open (self.effect_file, 'w') as p: p.write('rainbow')
                 return
-            elif rgb == "OFF":
-                self.turn_off()
+            elif rgb == "CHROMA":
+                if DEBUG: print('Set effect to: chroma')
+                with open (self.effect_file, 'w') as p: p.write('chroma')
                 return
 
             # For static colors, set effect to monocolor first
@@ -143,7 +169,7 @@ class legiongosled(object):
 
         except Exception as e:
             if DEBUG:
-                print(f'Error setting Legion Go S color: {e}')
+                print(f'Error setting {self.prefix} color: {e}')
 
     def get_color (self) -> str:
         try:
@@ -157,6 +183,8 @@ class legiongosled(object):
 
     def set_color_dec (self, rgb):
         try:
+            self.set_enabled(True)
+            self.set_brightness_conf()
             if DEBUG: print('Set effect to: monocolor')
             with open (self.effect_file, 'w') as p: p.write('monocolor')
             if DEBUG: print (f'Set color to: {rgb}')
@@ -176,12 +204,27 @@ class legiongosled(object):
     def rainbow_effect(self):
         self.set_color("RAINBOW")
 
+    def chroma_effect(self):
+        self.set_color("CHROMA")
+
     def pulse_effect(self):
         self.set_color("PULSE")
+
+    def blink_effect(self):
+        prev = self.get_color()
+        self.set_brightness_conf()
+        for _ in range(BLINK_COUNT):
+            self.set_color(prev)
+            time.sleep(BLINK_ON_DURATION)
+            self.turn_off()
+            time.sleep(BLINK_OFF_DURATION)
+        self.set_brightness_conf()
+        self.set_color(prev)
 
     def turn_off(self):
         if DEBUG: print('Turning off LED')
         self.set_brightness(0)
+        self.set_enabled(False)
 
     def set_brightness (self, b):
         try:
@@ -213,6 +256,10 @@ class legiongosled(object):
             return (b, x)
         except:
             return ("-1", "-1")
+
+class legiongoled(legiongosled):
+    def __init__(self):
+        super().__init__(prefix="go")
 
 ####################
 # Handhelds that use a direct RGB interface (easy peasy)
@@ -333,13 +380,13 @@ class rgbled(object):
             self._set_paths_brightness([p], scaled)
 
     def set_status_color(self, rgb):
-        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "OFF", "ESCOLOR" ]:
+        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "CHROMA", "OFF", "ESCOLOR" ]:
             print (f'Error Color {rgb} is invalid')
             return
         if rgb == "PULSE":
             # Keep status LED simple/stable for battery usage.
             rgb = "FF0000"
-        elif rgb == "RAINBOW":
+        elif rgb in ("RAINBOW", "CHROMA"):
             rgb = "ESCOLOR"
         elif rgb == "OFF":
             # Fully off (brightness + color), so it doesn't stay dark after re-enable.
@@ -359,7 +406,7 @@ class rgbled(object):
         self._set_paths_color(self.status_paths, out)
 
     def set_color (self, rgb):
-        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "OFF", "ESCOLOR" ]:
+        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "CHROMA", "OFF", "ESCOLOR" ]:
             print (f'Error Color {rgb} is invalid')
             return
         if rgb == "PULSE":
@@ -367,6 +414,9 @@ class rgbled(object):
             return
         elif rgb == "RAINBOW":
             self.rainbow_effect()
+            return
+        elif rgb == "CHROMA":
+            self.chroma_effect()
             return
         elif rgb == "OFF":
             self.turn_off()
@@ -415,6 +465,9 @@ class rgbled(object):
             time.sleep(EFFECT_DURATION/EFFECT_STEP)
         self.set_color(prev)
 
+    def chroma_effect(self):
+        self.rainbow_effect()
+
     def pulse_effect(self):
         prev = self.get_color()
         for i in range (0, EFFECT_STEP):
@@ -423,8 +476,23 @@ class rgbled(object):
             time.sleep(PULSE_DURATION/EFFECT_STEP)
         self.set_color(prev)
 
+    def blink_effect(self):
+        prev = self.get_color()
+        self.set_brightness_conf()
+        for _ in range(BLINK_COUNT):
+            self.set_color(prev)
+            time.sleep(BLINK_ON_DURATION)
+            self._set_paths_color(self.accent_paths, "0 0 0")
+            time.sleep(BLINK_OFF_DURATION)
+        self.set_brightness_conf()
+        self.set_color(prev)
+
     def turn_off(self):
-        # Force brightness to 0 as well; some LEDs won't re-light unless brightness is restored.
+        # User-facing OFF only blanks accent/ring LEDs. Split devices keep the
+        # status LED under battery policy so power/charge indication stays visible.
+        self._set_paths_color(self.accent_paths, "0 0 0")
+
+    def turn_off_all(self):
         self._set_paths_brightness(self.status_paths, 0)
         self._set_paths_brightness(self.accent_paths, 0)
         self._set_paths_color(self.status_paths, "0 0 0")
@@ -504,7 +572,7 @@ class pwmled(object):
         except: return 1.0
 
     def set_color (self, rgb):
-        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "OFF", "ESCOLOR" ]:
+        if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "CHROMA", "OFF", "ESCOLOR" ]:
             print (f'Error Color {rgb} is invalid')
             return
         if rgb == "PULSE":
@@ -512,6 +580,9 @@ class pwmled(object):
             return
         elif rgb == "RAINBOW":
             self.rainbow_effect()
+            return
+        elif rgb == "CHROMA":
+            self.chroma_effect()
             return
         elif rgb == "OFF":
             self.turn_off()
@@ -596,12 +667,24 @@ class pwmled(object):
             time.sleep(EFFECT_DURATION/EFFECT_STEP)
         self.set_color(prev)
 
+    def chroma_effect(self):
+        self.rainbow_effect()
+
     def pulse_effect(self):
         prev = self.get_color()
         for i in range (0, EFFECT_STEP):
             o = getPulseRGB(i, EFFECT_STEP, prev)
             self.set_color(o)
             time.sleep(PULSE_DURATION/EFFECT_STEP)
+        self.set_color(prev)
+
+    def blink_effect(self):
+        prev = self.get_color()
+        for _ in range(BLINK_COUNT):
+            self.set_color(prev)
+            time.sleep(BLINK_ON_DURATION)
+            self.turn_off()
+            time.sleep(BLINK_OFF_DURATION)
         self.set_color(prev)
 
     def turn_off(self):
@@ -683,6 +766,8 @@ class rgbledaddr(object):
             self._write_scaled(int(r), int(g), int(b))
         elif rgb == "RAINBOW":
             self.rainbow_effect()
+        elif rgb == "CHROMA":
+            self.chroma_effect()
         elif rgb == "PULSE":
             self.pulse_effect()
         elif len(rgb) == 6:
@@ -722,6 +807,9 @@ class rgbledaddr(object):
             self._write_scaled(r, g, b)
             time.sleep(EFFECT_DURATION/EFFECT_STEP)
 
+    def chroma_effect(self):
+        self.rainbow_effect()
+
     def pulse_effect(self):
         # Get the 'base' color from config to pulse against
         r_base, g_base, b_base = batoconf_color()
@@ -735,6 +823,15 @@ class rgbledaddr(object):
             # Apply pulse coefficient AND brightness factor via _write_scaled
             self._write_scaled(int(int(r_base)*coeff), int(int(g_base)*coeff), int(int(b_base)*coeff))
             time.sleep(PULSE_DURATION/EFFECT_STEP)
+
+    def blink_effect(self):
+        prev = self.get_color()
+        for _ in range(BLINK_COUNT):
+            self.set_color(prev)
+            time.sleep(BLINK_ON_DURATION)
+            self.turn_off()
+            time.sleep(BLINK_OFF_DURATION)
+        self.set_color(prev)
 
     def set_brightness(self, b):
         self.set_color("ESCOLOR")
@@ -758,6 +855,8 @@ class led(object):
             return rgbledaddr()
         elif m == "legiongos":
             return legiongosled()
+        elif m == "legiongo":
+            return legiongoled()
         else:
             print(m)
 

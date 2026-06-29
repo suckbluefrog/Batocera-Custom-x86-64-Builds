@@ -529,6 +529,18 @@ define HOST_QEMU_INSTALL_CMDS
 	$(HOST_MAKE_ENV) $(MAKE) -C $(@D) install
 endef
 
+HOST_QEMU_DEPENDENCIES += host-patchelf
+define HOST_QEMU_FIXUP_RPATH
+	for tool in $(HOST_DIR)/bin/qemu-*; do \
+		[ -e "$${tool}" ] || continue; \
+		if readelf -l "$${tool}" >/dev/null 2>&1; then \
+			$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' "$${tool}"; \
+		fi; \
+	done
+endef
+
+HOST_QEMU_POST_INSTALL_HOOKS += HOST_QEMU_FIXUP_RPATH
+
 # install symlink to qemu-system
 ifeq ($(BR2_PACKAGE_HOST_QEMU_SYSTEM_MODE),y)
 define HOST_QEMU_POST_INSTALL_SYMLINK

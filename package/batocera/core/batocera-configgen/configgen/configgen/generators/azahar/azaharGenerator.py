@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 from os import environ
 from typing import TYPE_CHECKING
 
@@ -22,12 +23,52 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+
+def _is_dual_screen_handheld() -> bool:
+    try:
+        secondary_output = subprocess.run(
+            ["/usr/bin/batocera-settings-get-master", "global.videooutput2"],
+            check=False,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        display_position = subprocess.run(
+            ["/usr/bin/batocera-settings-get-master", "display.position"],
+            check=False,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except Exception:
+        return False
+
+    return bool(secondary_output) and display_position == "top-bottom"
+
+
+def _screen_layout(config, dual_screen_handheld: bool | None = None) -> tuple[str, str]:
+    layout = config.get("azahar_screen_layout")
+    if layout is config.MISSING:
+        if dual_screen_handheld is None:
+            dual_screen_handheld = _is_dual_screen_handheld()
+        return ("4" if dual_screen_handheld else "0"), "false"
+
+    layout_parts = str(layout).split('-', maxsplit=1)
+    if len(layout_parts) == 1:
+        return layout_parts[0], "false"
+
+    return layout_parts[0], layout_parts[1]
+
+
+def _uses_separate_windows(config) -> bool:
+    layout_option, _swap_screen = _screen_layout(config)
+    return layout_option == "4"
+
+
 class AzaharGenerator(Generator):
 
     def getHotkeysContext(self) -> HotkeysContext:
         return {
             "name": "azahar",
-            "keys": { "exit": ["KEY_LEFTALT", "KEY_F4"], "menu": "KEY_F4", "reset": "KEY_F6", "screen_layout": "KEY_F10", "swap_screen": "KEY_F9" }
+            "keys": { "exit": ["KEY_LEFTCTRL", "KEY_Q"], "menu": "KEY_F4", "reset": "KEY_F6", "save_state": ["KEY_LEFTALT", "KEY_S"], "restore_state": ["KEY_LEFTALT", "KEY_L"], "screen_layout": "KEY_F10", "swap_screen": "KEY_F9" }
         }
 
     # Main entry of the module
@@ -36,14 +77,22 @@ class AzaharGenerator(Generator):
 
         commandArray = ['/usr/bin/azahar', rom]
 
-        return Command.Command(array=commandArray, env={
+        env = {
             "XDG_CONFIG_HOME": CONFIGS,
             "XDG_DATA_HOME": SAVES / "3ds",
             "XDG_CACHE_HOME": CACHE,
             "SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers),
             "SDL_JOYSTICK_HIDAPI": "0"
-            }
-        )
+        }
+
+        is_dual_screen_handheld = _is_dual_screen_handheld()
+        if is_dual_screen_handheld and _uses_separate_windows(system.config):
+            env["QT_QPA_PLATFORM"] = "xcb"
+            env["DISPLAY"] = environ.get("DISPLAY", ":0")
+            env["XDG_SESSION_TYPE"] = "x11"
+            env["WAYLAND_DISPLAY"] = ""
+
+        return Command.Command(array=commandArray, env=env)
 
     # Show mouse on screen
     def getMouseMode(self, config, rom):
@@ -90,7 +139,7 @@ class AzaharGenerator(Generator):
         # Screen Layout
         azaharConfig.set("Layout", "custom_layout", "false")
         azaharConfig.set("Layout", r"custom_layout\default", "false")
-        layout_option, swap_screen = system.config.get("azahar_screen_layout", "0-false").split('-')
+        layout_option, swap_screen = _screen_layout(system.config)
         azaharConfig.set("Layout", "swap_screen",   swap_screen)
         azaharConfig.set("Layout", r"swap_screen\default", "false")
         azaharConfig.set("Layout", "layout_option", layout_option)
@@ -102,8 +151,9 @@ class AzaharGenerator(Generator):
         # New 3DS Version
         azaharConfig.set("System", "is_new_3ds", system.config.get_bool("azahar_is_new_3ds", return_values=("true", "false")))
         azaharConfig.set("System", r"is_new_3ds\default", "false")
-        # Language
-        azaharConfig.set("System", "region_value", str(getAzaharLangFromEnvironment()))
+        # System region. Azahar stores true system language in the emulated CFG save,
+        # while region is exposed through qt-config.ini.
+        azaharConfig.set("System", "region_value", str(getAzaharRegion(system.config)))
         azaharConfig.set("System", r"region_value\default", "false")
 
         ## [UI]
@@ -129,6 +179,22 @@ class AzaharGenerator(Generator):
         # Close without confirmation
         azaharConfig.set("UI", "confirmClose", "false")
         azaharConfig.set("UI", r"confirmClose\default", "false")
+
+        azaharShortcuts = {
+            r"Exit%20Azahar": "Ctrl+Q",
+            r"Continue\Pause%20Emulation": "F4",
+            r"Restart%20Emulation": "F6",
+            r"Quick%20Save": "Alt+S",
+            r"Quick%20Load": "Alt+L",
+            r"Swap%20Screens": "F9",
+            r"Toggle%20Screen%20Layout": "F10",
+        }
+        for shortcut, key_sequence in azaharShortcuts.items():
+            shortcut_prefix = rf"Shortcuts\Main%20Window\{shortcut}"
+            azaharConfig.set("UI", rf"{shortcut_prefix}\Context", "1")
+            azaharConfig.set("UI", rf"{shortcut_prefix}\Context\default", "false")
+            azaharConfig.set("UI", rf"{shortcut_prefix}\KeySeq", key_sequence)
+            azaharConfig.set("UI", rf"{shortcut_prefix}\KeySeq\default", "false")
 
         # screenshots
         azaharConfig.set("UI", r"Paths\screenshotPath", "/userdata/screenshots")
@@ -287,7 +353,21 @@ class AzaharGenerator(Generator):
             return "left"
         return "unknown"
 
-# Language auto setting
+# Region auto setting
+def getAzaharRegion(config):
+    region = config.get("azahar_region")
+    if region is not config.MISSING and str(region) != "auto":
+        try:
+            region_id = int(region)
+        except (TypeError, ValueError):
+            region_id = getAzaharLangFromEnvironment()
+        else:
+            if -1 <= region_id <= 6:
+                return region_id
+
+    return getAzaharLangFromEnvironment()
+
+
 def getAzaharLangFromEnvironment():
     region = { "AUTO": -1, "JPN": 0, "USA": 1, "EUR": 2, "AUS": 3, "CHN": 4, "KOR": 5, "TWN": 6 }
     availableLanguages = {

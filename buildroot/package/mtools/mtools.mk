@@ -11,6 +11,19 @@ MTOOLS_LICENSE = GPL-3.0+
 MTOOLS_LICENSE_FILES = COPYING
 MTOOLS_CONF_OPTS = --without-x
 HOST_MTOOLS_CONF_OPTS = --without-x
+HOST_MTOOLS_DEPENDENCIES += host-patchelf
+
+define HOST_MTOOLS_FIX_HOST_TOOLS_RPATH
+	rm -f $(HOST_DIR)/bin/floppyd $(HOST_DIR)/bin/floppyd_installtest
+	for tool in mtools mkmanifest; do \
+		if test -x $(HOST_DIR)/bin/$${tool}; then \
+			$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' $(HOST_DIR)/bin/$${tool}; \
+		fi; \
+	done
+endef
+
+HOST_MTOOLS_POST_INSTALL_HOOKS += HOST_MTOOLS_FIX_HOST_TOOLS_RPATH
+
 # info documentation not needed
 MTOOLS_CONF_ENV = \
 	ac_cv_func_setpgrp_void=yes \

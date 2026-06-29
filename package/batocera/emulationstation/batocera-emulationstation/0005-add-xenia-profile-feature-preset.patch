@@ -27,10 +27,9 @@ diff --git a/es-app/src/ApiSystem.cpp b/es-app/src/ApiSystem.cpp
 diff --git a/es-app/src/ApiSystem.h b/es-app/src/ApiSystem.h
 --- a/es-app/src/ApiSystem.h
 +++ b/es-app/src/ApiSystem.h
-@@ -265,6 +265,7 @@ public:
+@@ -265,5 +265,6 @@ public:
      virtual std::vector<std::string> getVideoModes(const std::string output = "");
  	std::vector<std::string> getCustomRunners();
- 	std::vector<std::string> getSteamUsers();
 +	std::vector<std::string> getXeniaProfiles();
  
  	virtual std::vector<std::string> getAvailableStorageDevices();

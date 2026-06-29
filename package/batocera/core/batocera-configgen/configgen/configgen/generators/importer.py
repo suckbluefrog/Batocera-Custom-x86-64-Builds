@@ -71,6 +71,7 @@ _GENERATOR_MAP: Final[dict[str, tuple[str, str]]] = {
     'openmohaa': ('openmohaa.openmohaaGenerator', 'OpenMOHAAGenerator'),
     'xenia-edge': ('xenia_edge.xenia_edgeGenerator', 'XeniaEdgeGenerator'),
     'ymir': ('ymir.ymirGenerator', 'YmirGenerator'),
+    'yabasanshiro-sa': ('yabasanshiro.yabasanshiroGenerator', 'YabaSanshiroGenerator'),
     'aethersx2': ('aethersx2.aethersx2Generator', 'AetherSX2Generator'),
     'yquake2': ('yquake2.yquake2Generator', 'YQuake2Generator'),
     'sh': ('sh.shGenerator', 'ShGenerator'),

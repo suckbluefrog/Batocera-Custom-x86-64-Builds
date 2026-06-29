@@ -8547,6 +8547,87 @@ cannonball:
       choices:
         'Off': 0
         'On': 1
+    scanlines:
+      prompt: SCANLINES
+      description: Simulate vintage CRT scanlines (Requires scale factor 2x or higher).
+      choices:
+        'Off': 0
+        'On': 1
+    vsync:
+      prompt: VSYNC
+      description: Fix screen tearing.
+      choices:
+        'Off': 0
+        'On': 1
+    fps:
+      prompt: FRAME RATE (FPS)
+      description: Set the frame rate and rendering mode.
+      choices:
+        30 FPS: 0
+        30/60 FPS (Original Game): 1
+        60 FPS (Smooth): 2
+    gear_mode:
+      prompt: GEAR SHIFT MODE
+      description: Set the gear shift behavior.
+      choices:
+        Manual (Click to Shift): 0
+        Manual (Hold to Shift): 1
+        Manual (Separate Buttons): 2
+        Automatic: 3
+    car_colour:
+      prompt: FERRARI COLOUR
+      description: Customize the colour palette of your Ferrari.
+      choices:
+        Red: 0
+        Blue: 1
+        Yellow: 2
+        Green: 3
+        Cyan: 4
+    time_limit:
+      prompt: TIME DIFFICULTY
+      description: Adjust starting and checkpoint time limits.
+      choices:
+        Easy: 0
+        Normal: 1
+        Hard: 2
+        Very Hard: 3
+        Freeze Timer: 4
+    traffic_level:
+      prompt: TRAFFIC DENSITY
+      description: Adjust the amount of traffic on the road.
+      choices:
+        Easy: 0
+        Normal: 1
+        Hard: 2
+        Very Hard: 3
+        No Traffic: 4
+    fix_bugs:
+      prompt: FIX ARCADE BUGS
+      description: Address various minor engine bugs from the original Sega codebase.
+      choices:
+        'On': 1
+        'Off': 0
+    cheats_offroad:
+      submenu: CHEATS
+      prompt: OFF-ROAD TRACTION
+      description: Keep your top speed even when driving off-road.
+      choices:
+        'Off': 0
+        'On': 1
+    cheats_grippy_tyres:
+      submenu: CHEATS
+      prompt: GRIP STYLE
+      description: Prevent sliding on tight corners with extra-grippy tyres.
+      choices:
+        'Off': 0
+        'On': 1
+    cheats_turbo:
+      submenu: CHEATS
+      prompt: TURBO MODE
+      description: Boosts the car's top speed by 20%.
+      choices:
+        'Off': 0
+        'On': 1
 cemu:
   shared:
   - powermode
@@ -11438,25 +11519,25 @@ rpcs3:
             description: LLVM is fastest, use the Interpreter settings if there are issues.
             choices:
                 "LLVM Recompiler":     Recompiler (LLVM)
-                "Dynamic Interpreter": Interpreter (dynamic)
                 "Static Interpreter":  Interpreter (static)
         rpcs3_spudecoder:
             submenu: MANUAL GAME PROFILE
             prompt: SPU DECODER
-            description: If game crashes, try ASMJIT. If still crashing, try Fast Interpreter.
+            description: If game crashes, try ASMJIT. If still crashing, try Interpreter settings.
             choices:
                 "LLVM Recompiler":     Recompiler (LLVM)
                 "ASMJIT Recompiler":   Recompiler (ASMJIT)
-                "Fast Interpreter":    Interpreter (fast)
-                "Precise Interpreter": Interpreter (precise)
+                "Dynamic Interpreter": Interpreter (dynamic)
+                "Static Interpreter":  Interpreter (static)
         rpcs3_spuxfloataccuracy:
             submenu: MANUAL GAME PROFILE
             prompt: SPU XFloat Accuracy
             description: Can fix bugs in some games. Only relevant for dynamic or LLVM SPU decoder.
             choices:
-                "Accurate XFloat":    accurate
-                "Approximate XFloat": approximate
-                "Relaxed XFloat":     relaxed
+                "Accurate XFloat":    Accurate
+                "Approximate XFloat": Approximate
+                "Relaxed XFloat":     Relaxed
+                "Inaccurate XFloat":  Inaccurate
         rpcs3_sputhreads:
             submenu: CPU
             prompt: PREFERRED SPU THREADS
@@ -11586,15 +11667,15 @@ rpcs3:
             choices:
                 "Nearest":                     Nearest
                 "Bilinear (Default)":          Bilinear
-                "FidelityFX Super Resolution": FidelityFX Super Resolution
+                "FidelityFX Super Resolution": FidelityFX Super Resolution 1
         rpcs3_shadermode:
             submenu: MANUAL GAME PROFILE
             prompt: SHADER MODE
             description: Only Async (skip draw) avoids freezing while compiling shaders.
             choices:
-                "Legacy (single threaded)":        Shader Recompiler
-                "Async (multi threaded)(Default)": Async Shader Recompiler
-                "Async with Shader Interpreter":   Async with Shader Interpreter
+                "Legacy Recompiler (single-threaded)":                 Shader Recompiler
+                "Async Recompiler (multi-threaded)(Default)":          Async Shader Recompiler
+                "Async Recompiler with Shader Interpreter":            Async with Shader Interpreter
                 "Shader Interpreter only":         Shader Interpreter only
         rpcs3_num_compilers:
             submenu: RENDER
@@ -11657,8 +11738,9 @@ rpcs3:
             prompt: VSYNC
             description: Can fix screen tearing on unorthodox displays (most LCDs don't need this).
             choices:
-                "Off (Default)": False
-                "On":            True
+                "Disabled": Disabled
+                "Adaptive":  Adaptive
+                "Full":      Full
         rpcs3_stretchdisplay:
             submenu: VIDEO
             prompt: STRETCH TO DISPLAY AREA
@@ -11695,6 +11777,8 @@ rpcs3:
                 "Stereo":       Stereo
                 "Surround 5.1": Surround 5.1
                 "Surround 7.1": Surround 7.1
+                "Manual":       Manual
+                "Automatic":    Automatic
         rpcs3_audio_16bit:
             submenu: AUDIO
             prompt: CONVERT TO 16-BIT
@@ -12198,6 +12282,41 @@ supermodel:
         '130': 130
         '140': 140
         '150': 150
+    m3_outputs:
+      group: CABINET OUTPUTS
+      prompt: CABINET OUTPUTS
+      description: Send cabinet and lamp output signals via network to external tools
+        like MAME Hooker.
+      choices:
+        'Off': none
+        'On': net
+    m3_outputs_lf:
+      group: CABINET OUTPUTS
+      prompt: OUTPUTS USE LINE FEED
+      description: Terminate network message packets with a line feed (\n) character.
+      choices:
+        'Off': 0
+        'On': 1
+    m3_outputs_tcp:
+      group: CABINET OUTPUTS
+      prompt: OUTPUTS TCP PORT
+      description: The TCP port used to send network output packets. Leave at default
+        (0) to disable.
+      choices:
+        0 (Disabled): 0
+        '8000': 8000
+        '8001': 8001
+        '15124': 15124
+    m3_outputs_udp:
+      group: CABINET OUTPUTS
+      prompt: OUTPUTS UDP BROADCAST PORT
+      description: The UDP broadcast port used to send network output packets. Leave
+        at default (0) to disable.
+      choices:
+        0 (Disabled): 0
+        '8000': 8000
+        '8001': 8001
+        '15126': 15126
 cgenius:
   features:
   - padtokeyboard
@@ -14176,11 +14295,50 @@ drastic:
         'On': 1
     drastic_screen_orientation:
       prompt: SCREEN LAYOUT
-      description: Arrange the dual screen layout.
+      description: Arrange the DS screens on single-panel devices. Dual-panel devices
+        keep their top and bottom output mapping.
       choices:
-        Vertical: 0
-        Horizontal: 1
-        Single: 3
+        Top/Bottom: 0
+        Side by Side: 1
+        Single Screen: 3
+    drastic_panel_fill:
+      prompt: SCREEN FILL MODE
+      description: Controls how DraStic scales the DS screen layout on single-panel
+        devices.
+      choices:
+        Aspect Fit: fit
+        Crop to Fill: cover
+        Stretch: stretch
+    drastic_language:
+      submenu: EMULATION
+      prompt: FIRMWARE LANGUAGE
+      description: Sets the generated DS firmware language used by DraStic.
+      choices:
+        System Default: auto
+        Japanese: 0
+        English: 1
+        French: 2
+        German: 3
+        Italian: 4
+        Spanish: 5
+    drastic_mirror_touch:
+      submenu: CONTROLS
+      prompt: MIRROR TOUCHSCREEN
+      description: When touching outside the active touch area, remap input to the other
+        DS screen. Useful in single-screen mode for touch-heavy games.
+      choices:
+        'Off': 0
+        'On': 1
+    drastic_mic_threshold:
+      submenu: CONTROLS
+      prompt: MICROPHONE
+      description: Use the host microphone to trigger DraStic's fake microphone input.
+        Higher sensitivity triggers more easily.
+      choices:
+        'Off': 0
+        Low sensitivity: 0.06
+        Normal sensitivity: 0.03
+        High sensitivity: 0.015
 xemu:
   shared:
   - powermode
@@ -18381,6 +18539,70 @@ gopher64:
       choices:
         'Off (Default)': false
         'On': true
+yabasanshiro-sa:
+  features:
+  - padtokeyboard
+  shared:
+  - powermode
+  - tdp_mode
+  - tdp_target_fps
+  - tdp_min
+  - tdp_max
+  - tdp
+  - videomode
+  - hud
+  - hud_corner
+  cfeatures:
+    yabasanshiro_resolution:
+      prompt: RENDERING RESOLUTION
+      description: Increase the internal rendering resolution.
+      choices:
+        Native: 0
+        4x: 1
+        2x (Default): 2
+        Original: 3
+        720p: 4
+        1080p: 5
+    yabasanshiro_keep_aspect:
+      prompt: KEEP ASPECT RATIO
+      description: Preserve the original Saturn aspect ratio.
+      choices:
+        'On': true
+        'Off': false
+    yabasanshiro_frameskip:
+      prompt: AUTO FRAME SKIP
+      description: Let the emulator skip frames when needed.
+      choices:
+        'On': true
+        'Off': false
+    yabasanshiro_scsp_sync:
+      prompt: SOUND SYNC
+      description: Select the SCSP synchronization mode.
+      choices:
+        Real Time (Default): 1
+        Internal Timing: 2
+        Legacy: 3
+    yabasanshiro_bios:
+      prompt: SATURN BIOS
+      description: Select a BIOS file or use the emulator's built-in BIOS.
+      choices:
+        Emulated (Default): emulated
+        saturn_bios.bin: /userdata/bios/saturn_bios.bin
+        saturn.bin: /userdata/bios/saturn.bin
+        sega_101.bin: /userdata/bios/sega_101.bin
+        mpr-17933.bin: /userdata/bios/mpr-17933.bin
+    yabasanshiro_rotate_screen:
+      prompt: ROTATE SCREEN
+      description: Rotate the standalone Yaba Sanshiro display.
+      choices:
+        'Off': false
+        'On': true
+    yabasanshiro_compute_shader:
+      prompt: COMPUTE SHADER
+      description: Use the emulator compute shader path.
+      choices:
+        'Off': false
+        'On': true
 nanoboyadvance:
   features:
   - padtokeyboard
@@ -20891,6 +21113,19 @@ azahar:
         Separate Windows: 4-false
         Hybrid Screen Top: 5-false
         Hybrid Screen Bottom: 5-true
+    azahar_region:
+      submenu: EMULATION
+      prompt: SYSTEM REGION
+      description: Sets the emulated 3DS system region exposed through Azahar's Qt configuration.
+      choices:
+        Auto: auto
+        Japan: 0
+        USA: 1
+        Europe: 2
+        Australia: 3
+        China: 4
+        Korea: 5
+        Taiwan: 6
     azahar_resolution_factor:
       submenu: GRAPHICS
       prompt: RENDERING RESOLUTION

@@ -205,6 +205,12 @@ class evmapy(AbstractContextManager[None, None]):
 
         # configure each player
         for pad in self.controllers:
+            if not pad.device_path:
+                _logger.warning(
+                    'skipping evmapy config for player %s: missing controller device path',
+                    pad.player_number,
+                )
+                continue
             if (actions := pad_action_config.get(f'actions_player{pad.player_number}')) is not None:
                 self.__write_controller_config(pad, actions, keys_file)
 

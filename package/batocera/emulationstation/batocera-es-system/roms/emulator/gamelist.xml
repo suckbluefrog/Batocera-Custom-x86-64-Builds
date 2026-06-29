@@ -96,6 +96,13 @@
     <image>./images/filemanagerlauncher.png</image>
   </game>
   <game>
+    <path>./Start_Arch_Plasma_LXC.sh</path>
+    <name>Arch Plasma LXC</name>
+    <desc>Launch an Arch Linux KDE Plasma desktop in LXC.</desc>
+    <image>./images/arch-plasma-lxc.svg</image>
+    <thumbnail>./images/arch-plasma-lxc.svg</thumbnail>
+  </game>
+  <game>
     <path>./Install_Batocera_Internal.sh</path>
     <name>Install Batocera Internal</name>
     <image>./images/install-internal.svg</image>

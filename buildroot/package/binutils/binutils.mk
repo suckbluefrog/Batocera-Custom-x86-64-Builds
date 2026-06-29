@@ -146,17 +146,23 @@ define HOST_BINUTILS_FIXUP_HARDLINKS
 endef
 HOST_BINUTILS_POST_INSTALL_HOOKS += HOST_BINUTILS_FIXUP_HARDLINKS
 
-# gold does not keep the host RPATH passed through LDFLAGS, unlike ld.bfd.
-# Set it explicitly so later host-package installs do not trip the global
-# host RPATH audit once host-zlib exists.
+# Some host-binutils tools can keep an absolute build-path RPATH when this
+# output tree is reused through a different mount point. Make the installed
+# host tools relocatable so both /zen3 and the real workspace path pass the
+# global host RPATH audit.
 HOST_BINUTILS_DEPENDENCIES += host-patchelf
-define HOST_BINUTILS_FIXUP_GOLD_RPATH
-	if [ -e "$(HOST_DIR)/bin/$(GNU_TARGET_NAME)-ld.gold" ]; then \
-		$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' \
-			"$(HOST_DIR)/bin/$(GNU_TARGET_NAME)-ld.gold"; \
-	fi
+HOST_BINUTILS_RPATH_TOOLS = \
+	addr2line ar as c++filt dwp elfedit gprof ld ld.bfd ld.gold nm \
+	objcopy objdump ranlib readelf size strings strip
+define HOST_BINUTILS_FIXUP_RPATH
+	for tool in $(HOST_BINUTILS_RPATH_TOOLS); do \
+		if [ -e "$(HOST_DIR)/bin/$(GNU_TARGET_NAME)-$${tool}" ]; then \
+			$(HOST_DIR)/bin/patchelf --set-rpath '$$ORIGIN/../lib' \
+				"$(HOST_DIR)/bin/$(GNU_TARGET_NAME)-$${tool}"; \
+		fi; \
+	done
 endef
-HOST_BINUTILS_POST_INSTALL_HOOKS += HOST_BINUTILS_FIXUP_GOLD_RPATH
+HOST_BINUTILS_POST_INSTALL_HOOKS += HOST_BINUTILS_FIXUP_RPATH
 
 # batocera
 BINUTILSUSR_TOOLS = strings

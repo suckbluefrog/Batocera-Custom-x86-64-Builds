@@ -220,7 +220,14 @@ class RyujinxGenerator(Generator):
     def getHotkeysContext(self) -> HotkeysContext:
         return {
             "name": "ryujinx",
-            "keys": {"exit": "batocera-es-swissknife --emukill 0.5"}
+            "keys": {
+                "exit": "batocera-es-swissknife --emukill 0.5",
+                "menu": "KEY_F4",
+                "pause": "KEY_F5",
+                "screenshot": "KEY_F8",
+                "fastforward": "KEY_F6",
+                "volumemute": "KEY_F2",
+            }
         }
 
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
@@ -408,6 +415,14 @@ class RyujinxGenerator(Generator):
         else:
             conf["multiplayer_mode"] = 0
         conf["enable_internet_access"] = system.config.get_bool("ryujinx_internet", False)
+        conf.setdefault("hotkeys", {}).update({
+            "show_ui": "F4",
+            "pause": "F5",
+            "screenshot": "F8",
+            "toggle_mute": "F2",
+            "turbo_mode": "F6",
+            "turbo_mode_while_held": False,
+        })
 
         conf["input_config"] = []
 

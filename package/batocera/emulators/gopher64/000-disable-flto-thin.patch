@@ -1,0 +1,15 @@
+diff --git a/build.rs b/build.rs
+index 2cbcdf5..17844e0 100644
+--- a/build.rs
++++ b/build.rs
+@@ -153,10 +153,6 @@ fn main() {
+         println!("cargo:rustc-link-lib=dylib=freetype");
+     }
+ 
+-    volk_build.flag("-flto=thin");
+-    rdp_build.flag("-flto=thin");
+-    simd_build.flag("-flto=thin");
+-    retroachievements_build.flag("-flto=thin");
+ 
+     volk_build.compile("volk");
+     rdp_build.compile("parallel-rdp");

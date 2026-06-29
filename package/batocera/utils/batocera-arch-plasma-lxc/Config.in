@@ -1,0 +1,7 @@
+config BR2_PACKAGE_BATOCERA_ARCH_PLASMA_LXC
+	bool "batocera-arch-plasma-lxc"
+	depends on BR2_PACKAGE_LXC
+	depends on BR2_PACKAGE_DIALOG
+	depends on BR2_PACKAGE_XTERM
+	help
+	  Runtime launcher for an Arch Linux KDE Plasma desktop in LXC.

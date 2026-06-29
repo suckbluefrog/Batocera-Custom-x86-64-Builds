@@ -7,7 +7,12 @@ diff --git a/es-app/src/ApiSystem.cpp b/es-app/src/ApiSystem.cpp
 index 91d84a2..d0bb8e8 100644
 --- a/es-app/src/ApiSystem.cpp
 +++ b/es-app/src/ApiSystem.cpp
-@@ -463,0 +464,41 @@ bool ApiSystem::launchKodi(Window *window)
+@@ -3098,4 +3098,46 @@ bool ApiSystem::nfc_write(const std::string& game) {
+ bool ApiSystem::nfc_write(const std::string& game) {
+   std::string cmd = "batocera-nfc --write \"" + game + "\"";
+   return executeScript(cmd);
+ }
++
 +#ifdef BATOCERA
 +bool ApiSystem::launchSteamOS(Window *window)
 +{
