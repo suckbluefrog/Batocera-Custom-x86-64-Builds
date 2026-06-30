@@ -52,5 +52,8 @@ BR2_PACKAGE_BATOCERA_XORG=y
 # BR2_PACKAGE_WAYDROID is not set
 
 # Switch emulators (required so es-system/datainit generates switch entries/folders)
+# Arch Plasma LXC desktop launcher
+BR2_PACKAGE_BATOCERA_ARCH_PLASMA_LXC=y
+
 BR2_PACKAGE_EDEN=y
 BR2_PACKAGE_RYUJINX=y

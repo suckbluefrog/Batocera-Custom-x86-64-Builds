@@ -788,10 +788,6 @@ exit $EXIT_CODE
                 'SDL_JOYSTICK_HIDAPI': '0',
                 'BATOCERA_SKIP_GAMESCOPE': '1',
             }
-            pulse_socket = Path('/var/run/pulse/native')
-            if pulse_socket.exists():
-                environment['PULSE_SERVER'] = f'unix:{pulse_socket}'
-                environment['SDL_AUDIODRIVER'] = 'pulseaudio'
             lsfg.apply_lsfg_vk(system, environment)
             return Command.Command(array=commandArray, env=environment)
 
