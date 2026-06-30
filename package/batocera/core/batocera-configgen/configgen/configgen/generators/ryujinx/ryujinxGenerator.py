@@ -190,7 +190,7 @@ ryujinxCtrl: dict[str, Any] = {
         "enable_rumble": True
       },
       "left_joycon": {
-        "button_minus": "Minus",
+        "button_minus": "Back",
         "button_l": "LeftShoulder",
         "button_zl": "LeftTrigger",
         "button_sl": "Unbound",
@@ -201,7 +201,7 @@ ryujinxCtrl: dict[str, Any] = {
         "dpad_right": "DpadRight"
       },
       "right_joycon": {
-        "button_plus": "Plus",
+        "button_plus": "Start",
         "button_r": "RightShoulder",
         "button_zr": "RightTrigger",
         "button_sl": "Unbound",
@@ -286,6 +286,7 @@ class RyujinxGenerator(Generator):
         conf["check_updates_on_start"] = False
         conf["show_confirm_exit"] = False
         conf["skip_user_profiles"] = system.config.get_bool("ryujinx_skip_user_profiles", True)
+        conf.pop("skip_videos", None)
         conf["hide_cursor"] = _hide_cursor_mode(system.config.get("ryujinx_hide_cursor", "OnIdle"))
         conf["game_dirs"] = [str(ROMS / "switch")]
         conf["start_fullscreen"] = True
@@ -701,13 +702,18 @@ def getLangFromEnvironment():
 
 
 def _build_ryujinx_controller_id(pad, nplayer):
+    pad_index = _controller_index(pad, nplayer)
+    controller_id = _build_ryujinx_controller_id_from_sdl_guid(getattr(pad, "guid", None), pad_index)
+    if controller_id is not None:
+        return controller_id
+
     if evdev is None:
-        return str(nplayer - 1)
+        return str(pad_index)
 
     try:
         devices = [evdev.InputDevice(fn) for fn in evdev.list_devices()]
     except Exception:
-        return str(nplayer - 1)
+        return str(pad_index)
 
     for dev in devices:
         try:
@@ -720,12 +726,44 @@ def _build_ryujinx_controller_id(pad, nplayer):
             version = f"{dev.info.version:04x}"
             product = product[2:] + product[:2]
             version = version[2:] + version[:2]
-            pad_index = getattr(pad, "index", nplayer - 1)
             return f"{pad_index}-{bustype}-{vendor}-0000-{product}-0000{version}0000"
         except Exception:
             continue
 
-    return str(nplayer - 1)
+    return str(pad_index)
+
+
+def _controller_index(pad, nplayer):
+    try:
+        return int(getattr(pad, "index"))
+    except (TypeError, ValueError):
+        return nplayer - 1
+
+
+def _build_ryujinx_controller_id_from_sdl_guid(guid, pad_index):
+    if not guid:
+        return None
+
+    guid = str(guid).replace("-", "").lower()
+    if len(guid) != 32:
+        return None
+
+    try:
+        guid_bytes = bytes.fromhex(guid)
+    except ValueError:
+        return None
+
+    bus = int.from_bytes(guid_bytes[0:4], "little")
+    vendor = int.from_bytes(guid_bytes[4:6], "little")
+    if bus == 0 or vendor == 0:
+        return None
+
+    # Ryujinx's SDL2 driver converts SDL GUIDs through System.Guid and then
+    # prefixes a duplicate index. The product/version fields are kept in SDL's
+    # byte order here to match that string form.
+    product = guid_bytes[8:10].hex()
+    version = guid_bytes[12:14].hex()
+    return f"{pad_index}-{bus:08x}-{vendor:04x}-0000-{product}-0000{version}0000"
 
 
 def _link_dir_into_expected(source_dir, expected_dir):

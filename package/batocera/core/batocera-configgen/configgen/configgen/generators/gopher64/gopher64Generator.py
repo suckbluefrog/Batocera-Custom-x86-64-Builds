@@ -140,6 +140,9 @@ def _clear_joystick_profile(profile: dict[str, Any]) -> None:
 
 
 def _sdl3_joystick_button_offset(pad: Controller) -> int:
+    if pad.device_path is None:
+        return 0
+
     try:
         import evdev
     except ImportError:
@@ -147,7 +150,7 @@ def _sdl3_joystick_button_offset(pad: Controller) -> int:
 
     try:
         key_codes = evdev.InputDevice(pad.device_path).capabilities().get(evdev.ecodes.EV_KEY, [])
-    except OSError:
+    except (OSError, TypeError):
         return 0
 
     # Gopher64 reads dinput profiles through SDL3's joystick API. SDL3 does not
@@ -260,6 +263,22 @@ def _ensure_default_config() -> None:
         shutil.copy2(_GOPHER64_DEFAULT_CONFIG, _GOPHER64_CONFIG_FILE)
 
 
+def _load_config() -> dict[str, Any]:
+    _ensure_default_config()
+
+    try:
+        with _GOPHER64_CONFIG_FILE.open(encoding="utf-8") as config_file:
+            return json.load(config_file)
+    except (OSError, json.JSONDecodeError):
+        shutil.copy2(_GOPHER64_DEFAULT_CONFIG, _GOPHER64_CONFIG_FILE)
+
+    try:
+        with _GOPHER64_CONFIG_FILE.open(encoding="utf-8") as config_file:
+            return json.load(config_file)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
 def _set_nested(mapping: dict[str, Any], *keys: str, value: Any) -> None:
     current = mapping
     for key in keys[:-1]:
@@ -283,10 +302,7 @@ class Gopher64Generator(Generator):
         }
 
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
-        _ensure_default_config()
-
-        with _GOPHER64_CONFIG_FILE.open(encoding="utf-8") as config_file:
-            config: dict[str, Any] = json.load(config_file)
+        config = _load_config()
 
         _set_nested(config, "video", "upscale", value=system.config.get_int("gopher64_upscale", 1))
         _set_nested(config, "video", "integer_scaling", value=system.config.get_bool("gopher64_integer_scaling", False))
