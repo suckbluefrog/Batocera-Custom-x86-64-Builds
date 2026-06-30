@@ -1,0 +1,40 @@
+#!/bin/sh
+
+NAME=batocera-nightmode
+DAEMON=/usr/bin/${NAME}
+PIDFILE=/var/run/${NAME}.pid
+
+[ -x "${DAEMON}" ] || exit 0
+
+start() {
+    printf "Starting Batocera night mode watcher: "
+    start-stop-daemon --start --quiet --background --make-pidfile --pidfile "${PIDFILE}" \
+        --exec "${DAEMON}" -- watch \
+        && echo "OK" || echo "FAIL"
+}
+
+stop() {
+    printf "Stopping Batocera night mode watcher: "
+    start-stop-daemon --stop --quiet --remove-pidfile --pidfile "${PIDFILE}" \
+        && echo "OK" || echo "FAIL"
+    "${DAEMON}" off >/dev/null 2>&1 || true
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

@@ -11,6 +11,11 @@ BATOCERA_SCRIPTS_SOURCE=
 
 BATOCERA_SCRIPTS_PATH = $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-scripts
 
+ifeq ($(BR2_PACKAGE_WAYLAND),y)
+  BATOCERA_SCRIPTS_DEPENDENCIES += wayland host-wayland
+  BATOCERA_SCRIPTS_POST_INSTALL_TARGET_HOOKS += BATOCERA_SCRIPTS_INSTALL_NIGHTMODE
+endif
+
 # mouse type #
 ifeq ($(BR2_PACKAGE_XSERVER_XORG_SERVER),y)
   BATOCERA_SCRIPTS_MOUSE_TYPE=xorg
@@ -64,6 +69,7 @@ define BATOCERA_SCRIPTS_INSTALL_TARGET_CMDS
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-cores                     $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-wifi                      $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-brightness                $(TARGET_DIR)/usr/bin/
+    install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-nightmode                 $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-es-swissknife             $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-store                     $(TARGET_DIR)/usr/bin/
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-autologin                 $(TARGET_DIR)/usr/bin/
@@ -109,6 +115,29 @@ define BATOCERA_SCRIPTS_INSTALL_TARGET_CMDS
     mkdir -p $(TARGET_DIR)/usr/share/batocera/f1-theme
     install -m 0644 $(BATOCERA_SCRIPTS_PATH)/Adwaita-dark.zip                           $(TARGET_DIR)/usr/share/batocera/f1-theme/
 endef
+
+ifeq ($(BR2_PACKAGE_WAYLAND),y)
+define BATOCERA_SCRIPTS_BUILD_CMDS
+	mkdir -p $(@D)/nightmode
+	$(HOST_DIR)/bin/wayland-scanner client-header \
+		$(BATOCERA_SCRIPTS_PATH)/scripts/nightmode/wlr-gamma-control-unstable-v1.xml \
+		$(@D)/nightmode/wlr-gamma-control-unstable-v1-protocol.h
+	$(HOST_DIR)/bin/wayland-scanner private-code \
+		$(BATOCERA_SCRIPTS_PATH)/scripts/nightmode/wlr-gamma-control-unstable-v1.xml \
+		$(@D)/nightmode/wlr-gamma-control-unstable-v1-protocol.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -I$(@D)/nightmode \
+		$(BATOCERA_SCRIPTS_PATH)/scripts/nightmode/batocera-nightmode-gamma.c \
+		$(@D)/nightmode/wlr-gamma-control-unstable-v1-protocol.c \
+		-o $(@D)/nightmode/batocera-nightmode-gamma \
+		$(TARGET_LDFLAGS) -lwayland-client -lm
+endef
+
+define BATOCERA_SCRIPTS_INSTALL_NIGHTMODE
+	mkdir -p $(TARGET_DIR)/etc/init.d
+	install -m 0755 $(@D)/nightmode/batocera-nightmode-gamma                           $(TARGET_DIR)/usr/bin/
+	install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/nightmode/S32nightmode             $(TARGET_DIR)/etc/init.d/
+endef
+endif
 
 define BATOCERA_SCRIPTS_INSTALL_MOUSE
     install -m 0755 $(BATOCERA_SCRIPTS_PATH)/scripts/batocera-mouse.${BATOCERA_SCRIPTS_MOUSE_TYPE} $(TARGET_DIR)/usr/bin/batocera-mouse

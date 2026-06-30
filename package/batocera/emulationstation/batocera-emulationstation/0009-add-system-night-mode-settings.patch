@@ -1,0 +1,75 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Tue, 30 Jun 2026 00:00:00 +0000
+Subject: [PATCH] Add system night mode settings
+
+---
+ es-app/src/guis/GuiMenu.cpp | 56 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 56 insertions(+)
+
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -1790,6 +1790,62 @@ void GuiMenu::openSystemSettings()
+ 	  }
+ 	});
+ 
++#ifdef BATOCERA_NIGHTMODE
++	s->addEntry(_("NIGHT MODE"), true, [this]
++	{
++		auto nightModeSettings = new GuiSettings(mWindow, _("NIGHT MODE").c_str());
++
++		std::string currentMode = SystemConf::getInstance()->get("display.nightmode");
++		if (currentMode == "1" || currentMode == "true" || currentMode == "on")
++			currentMode = "on";
++		else if (currentMode == "schedule" || currentMode == "scheduled" || currentMode == "time")
++			currentMode = "schedule";
++		else
++			currentMode = "off";
++
++		auto nightMode = std::make_shared<OptionListComponent<std::string>>(mWindow, _("NIGHT MODE"), false);
++		nightMode->addRange({
++			{ _("OFF"), "off" },
++			{ _("ON"), "on" },
++			{ _("SCHEDULED"), "schedule" }
++		}, currentMode);
++		nightModeSettings->addWithLabel(_("NIGHT MODE"), nightMode);
++
++		std::string intensityString = SystemConf::getInstance()->get("display.nightmode.intensity");
++		int intensity = 50;
++		if (!intensityString.empty())
++			intensity = Utils::String::toInteger(intensityString);
++		if (intensity < 0)
++			intensity = 0;
++		else if (intensity > 100)
++			intensity = 100;
++
++		auto nightModeIntensity = std::make_shared<SliderComponent>(mWindow, 0.f, 100.f, 1.f, "%");
++		nightModeIntensity->setValue(intensity);
++		nightModeSettings->addWithLabel(_("INTENSITY"), nightModeIntensity);
++
++		if (SystemConf::getInstance()->get("display.nightmode.on").empty())
++			SystemConf::getInstance()->set("display.nightmode.on", "20:00");
++		if (SystemConf::getInstance()->get("display.nightmode.off").empty())
++			SystemConf::getInstance()->set("display.nightmode.off", "07:00");
++
++		nightModeSettings->addInputTextConfigRow(_("TIME ON"), "display.nightmode.on", false);
++		nightModeSettings->addInputTextConfigRow(_("TIME OFF"), "display.nightmode.off", false);
++
++		nightModeSettings->addSaveFunc([nightMode, nightModeIntensity]
++		{
++			SystemConf::getInstance()->set("display.nightmode", nightMode->getSelected());
++			SystemConf::getInstance()->set(
++				"display.nightmode.intensity",
++				std::to_string((int)Math::round(nightModeIntensity->getValue())));
++			SystemConf::getInstance()->saveSystemConf();
++			Utils::Platform::ProcessStartInfo("/usr/bin/batocera-nightmode apply").run();
++		});
++
++		mWindow->pushGui(nightModeSettings);
++	});
++#endif
++
+ 	// splash
+ 	auto optionsSplash = std::make_shared<OptionListComponent<std::string> >(mWindow, _("BOOT SPLASH"), false);
+ 

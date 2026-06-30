@@ -1,0 +1,370 @@
+#!/bin/sh
+
+LOG="/userdata/system/logs/nightmode.log"
+RUN_DIR="/run/batocera-nightmode"
+DEFAULT_RUNTIME_DIR="/run/user/0"
+GAMMA_HELPER="/usr/bin/batocera-nightmode-gamma"
+SETTINGS_GET="/usr/bin/batocera-settings-get"
+INTERVAL="${BATOCERA_NIGHTMODE_INTERVAL:-30}"
+
+mkdir -p "${RUN_DIR}" "$(dirname "${LOG}")" 2>/dev/null || true
+
+log() {
+    echo "batocera-nightmode: $*" >> "${LOG}"
+}
+
+setting() {
+    "${SETTINGS_GET}" "$1" 2>/dev/null || true
+}
+
+clamp_int() {
+    local value="$1"
+    local default_value="$2"
+
+    case "${value}" in
+        ''|*[!0-9]*)
+            value="${default_value}"
+            ;;
+    esac
+
+    if [ "${value}" -lt 0 ]; then
+        value=0
+    elif [ "${value}" -gt 100 ]; then
+        value=100
+    fi
+
+    printf '%s\n' "${value}"
+}
+
+valid_time() {
+    echo "$1" | grep -Eq '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+}
+
+time_to_minutes() {
+    local value="$1"
+    local hour="${value%:*}"
+    local minute="${value#*:}"
+
+    hour="${hour#0}"
+    minute="${minute#0}"
+    [ -z "${hour}" ] && hour=0
+    [ -z "${minute}" ] && minute=0
+    echo $((hour * 60 + minute))
+}
+
+schedule_active() {
+    local on_time="$1"
+    local off_time="$2"
+    local now_minutes
+    local on_minutes
+    local off_minutes
+    local hour
+    local minute
+
+    valid_time "${on_time}" || on_time="20:00"
+    valid_time "${off_time}" || off_time="07:00"
+
+    hour="$(date +%H)"
+    minute="$(date +%M)"
+    hour="${hour#0}"
+    minute="${minute#0}"
+    [ -z "${hour}" ] && hour=0
+    [ -z "${minute}" ] && minute=0
+
+    now_minutes=$((hour * 60 + minute))
+    on_minutes="$(time_to_minutes "${on_time}")"
+    off_minutes="$(time_to_minutes "${off_time}")"
+
+    if [ "${on_minutes}" -eq "${off_minutes}" ]; then
+        return 0
+    fi
+
+    if [ "${on_minutes}" -lt "${off_minutes}" ]; then
+        [ "${now_minutes}" -ge "${on_minutes}" ] && [ "${now_minutes}" -lt "${off_minutes}" ]
+    else
+        [ "${now_minutes}" -ge "${on_minutes}" ] || [ "${now_minutes}" -lt "${off_minutes}" ]
+    fi
+}
+
+desired_label() {
+    local mode
+    local on_time
+    local off_time
+
+    mode="$(setting display.nightmode)"
+    mode="$(echo "${mode}" | tr '[:upper:]' '[:lower:]')"
+
+    case "${mode}" in
+        1|true|yes|on|enabled)
+            echo night
+            ;;
+        schedule|scheduled|time|timer)
+            on_time="$(setting display.nightmode.on)"
+            off_time="$(setting display.nightmode.off)"
+            if schedule_active "${on_time:-20:00}" "${off_time:-07:00}"; then
+                echo night
+            else
+                echo off
+            fi
+            ;;
+        *)
+            echo off
+            ;;
+    esac
+}
+
+nightmode_intensity() {
+    clamp_int "$(setting display.nightmode.intensity)" 50
+}
+
+safe_name() {
+    echo "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'
+}
+
+pid_running() {
+    local pid="$1"
+
+    [ -n "${pid}" ] && [ -d "/proc/${pid}" ]
+}
+
+write_cube() {
+    local intensity="$1"
+    local cube="$2"
+
+    awk -v intensity="${intensity}" '
+        BEGIN {
+            level = intensity / 100.0
+            green = 1.0 - (0.30 * level)
+            blue = 1.0 - (0.65 * level)
+            print "TITLE \"Batocera Night Mode\""
+            print "LUT_3D_SIZE 2"
+            print "DOMAIN_MIN 0.0 0.0 0.0"
+            print "DOMAIN_MAX 1.0 1.0 1.0"
+            printf "0.0 0.0 0.0\n"
+            printf "1.0 0.0 0.0\n"
+            printf "0.0 %.6f 0.0\n", green
+            printf "1.0 %.6f 0.0\n", green
+            printf "0.0 0.0 %.6f\n", blue
+            printf "1.0 0.0 %.6f\n", blue
+            printf "0.0 %.6f %.6f\n", green, blue
+            printf "1.0 %.6f %.6f\n", green, blue
+        }
+    ' > "${cube}"
+}
+
+resolve_gamescope_display() {
+    local runtime_dir="${XDG_RUNTIME_DIR:-${DEFAULT_RUNTIME_DIR}}"
+    local candidate
+    local socket
+
+    for candidate in "${GAMESCOPE_WAYLAND_DISPLAY:-}" "${WAYLAND_DISPLAY:-}" gamescope-0; do
+        [ -n "${candidate}" ] || continue
+        [ -S "${runtime_dir}/${candidate}" ] || continue
+        printf '%s %s\n' "${runtime_dir}" "${candidate}"
+        return 0
+    done
+
+    for socket in "${runtime_dir}"/gamescope-* "${DEFAULT_RUNTIME_DIR}"/gamescope-*; do
+        [ -S "${socket}" ] || continue
+        candidate="$(basename "${socket}")"
+        case "${candidate}" in
+            *mangoapp*|*limiter*)
+                continue
+                ;;
+        esac
+        printf '%s %s\n' "$(dirname "${socket}")" "${candidate}"
+        return 0
+    done
+
+    return 1
+}
+
+reset_gamescope_color_workarounds() {
+    local runtime_dir="$1"
+    local display="$2"
+    local key
+
+    for key in \
+        drm_debug_disable_color_encoding \
+        drm_debug_disable_color_range \
+        drm_debug_disable_ctm \
+        drm_debug_disable_degamma_tf \
+        drm_debug_disable_regamma_tf \
+        drm_debug_disable_output_tf \
+        drm_debug_disable_shaper_and_3dlut \
+        drm_debug_disable_blend_tf \
+        composite_force; do
+        XDG_RUNTIME_DIR="${runtime_dir}" \
+            GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+            gamescopectl "${key}" 0 >/dev/null 2>&1 || true
+    done
+}
+
+apply_gamescope() {
+    local label="$1"
+    local intensity="$2"
+    local resolved
+    local runtime_dir
+    local display
+    local cube
+
+    command -v gamescopectl >/dev/null 2>&1 || return 0
+
+    resolved="$(resolve_gamescope_display)" || return 0
+    runtime_dir="${resolved% *}"
+    display="${resolved#* }"
+
+    if [ "${label}" = "night" ]; then
+        cube="${RUN_DIR}/gamescope-${intensity}.cube"
+        write_cube "${intensity}" "${cube}" || return 1
+
+        XDG_RUNTIME_DIR="${runtime_dir}" \
+            GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+            gamescopectl composite_force 1 >/dev/null 2>&1 || true
+        XDG_RUNTIME_DIR="${runtime_dir}" \
+            GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+            gamescopectl set_look "${cube}" "${cube}" >/dev/null 2>&1 || return 1
+    else
+        XDG_RUNTIME_DIR="${runtime_dir}" \
+            GAMESCOPE_WAYLAND_DISPLAY="${display}" \
+            gamescopectl set_look >/dev/null 2>&1 || true
+        reset_gamescope_color_workarounds "${runtime_dir}" "${display}"
+    fi
+
+    log "applied ${label} gamescope look on ${display}"
+}
+
+wayland_sockets() {
+    local socket
+
+    for socket in \
+        "${XDG_RUNTIME_DIR:-${DEFAULT_RUNTIME_DIR}}"/wayland-* \
+        "${DEFAULT_RUNTIME_DIR}"/wayland-* \
+        /var/run/wayland-* \
+        /run/wayland-*; do
+        [ -S "${socket}" ] || continue
+        printf '%s\n' "${socket}"
+    done | sort -u
+}
+
+stop_gamma_pidfile() {
+    local pidfile="$1"
+    local pid
+
+    pid="$(cat "${pidfile}" 2>/dev/null || true)"
+    if pid_running "${pid}"; then
+        kill "${pid}" >/dev/null 2>&1 || true
+        sleep 0.1
+        if pid_running "${pid}"; then
+            kill -KILL "${pid}" >/dev/null 2>&1 || true
+        fi
+    fi
+
+    rm -f "${pidfile}" "${pidfile}.state" 2>/dev/null || true
+}
+
+stop_all_gamma() {
+    local pidfile
+
+    for pidfile in "${RUN_DIR}"/gamma-*.pid; do
+        [ -e "${pidfile}" ] || continue
+        stop_gamma_pidfile "${pidfile}"
+    done
+}
+
+start_gamma_for_socket() {
+    local socket="$1"
+    local intensity="$2"
+    local runtime_dir
+    local display
+    local name
+    local pidfile
+    local statefile
+    local desired_state
+    local pid
+
+    [ -x "${GAMMA_HELPER}" ] || return 0
+
+    runtime_dir="$(dirname "${socket}")"
+    display="$(basename "${socket}")"
+    name="$(safe_name "${runtime_dir}_${display}")"
+    pidfile="${RUN_DIR}/gamma-${name}.pid"
+    statefile="${pidfile}.state"
+    desired_state="${runtime_dir}:${display}:${intensity}"
+
+    pid="$(cat "${pidfile}" 2>/dev/null || true)"
+    if pid_running "${pid}" && [ "$(cat "${statefile}" 2>/dev/null || true)" = "${desired_state}" ]; then
+        return 0
+    fi
+
+    [ -e "${pidfile}" ] && stop_gamma_pidfile "${pidfile}"
+
+    XDG_RUNTIME_DIR="${runtime_dir}" \
+        WAYLAND_DISPLAY="${display}" \
+        "${GAMMA_HELPER}" --intensity "${intensity}" >> "${LOG}" 2>&1 &
+    pid="$!"
+    echo "${pid}" > "${pidfile}"
+    echo "${desired_state}" > "${statefile}"
+    log "started gamma helper pid ${pid} for ${display} intensity ${intensity}"
+}
+
+apply_wayland_gamma() {
+    local label="$1"
+    local intensity="$2"
+    local socket
+
+    if [ "${label}" != "night" ]; then
+        stop_all_gamma
+        return 0
+    fi
+
+    wayland_sockets | while IFS= read -r socket; do
+        start_gamma_for_socket "${socket}" "${intensity}"
+    done
+}
+
+apply_current() {
+    local label
+    local intensity
+
+    label="$(desired_label)"
+    intensity="$(nightmode_intensity)"
+
+    apply_gamescope "${label}" "${intensity}" || log "failed to apply gamescope ${label}"
+    apply_wayland_gamma "${label}" "${intensity}" || log "failed to apply Wayland gamma ${label}"
+}
+
+watch_loop() {
+    if ! echo "${INTERVAL}" | grep -Eq '^[0-9]+$' || [ "${INTERVAL}" -lt 2 ]; then
+        INTERVAL=30
+    fi
+
+    while true; do
+        apply_current
+        sleep "${INTERVAL}"
+    done
+}
+
+clear_runtime() {
+    stop_all_gamma
+    apply_gamescope off 0 || true
+}
+
+case "${1:-apply}" in
+    apply)
+        apply_current
+        ;;
+    watch)
+        watch_loop
+        ;;
+    off|stop|clear)
+        clear_runtime
+        ;;
+    status)
+        desired_label
+        ;;
+    *)
+        echo "Usage: $0 {apply|watch|off|status}" >&2
+        exit 2
+        ;;
+esac
