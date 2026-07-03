@@ -4,9 +4,16 @@
 #
 ################################################################################
 
-BATOCERA_ARCH_PLASMA_LXC_VERSION = 1.0
+BATOCERA_ARCH_PLASMA_LXC_VERSION = 1.01
 BATOCERA_ARCH_PLASMA_LXC_LICENSE = MIT
 BATOCERA_ARCH_PLASMA_LXC_SOURCE =
+BATOCERA_ARCH_PLASMA_LXC_DEPENDENCIES = \
+	bash \
+	dialog \
+	dnsmasq \
+	iptables \
+	lxc \
+	xterm
 
 BATOCERA_ARCH_PLASMA_LXC_PKGDIR = \
 	$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-arch-plasma-lxc

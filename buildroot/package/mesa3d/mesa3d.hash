@@ -1,5 +1,5 @@
-# From https://archive.mesa3d.org/mesa-26.1.3.tar.xz
-sha256  7725004e724b34c6d4fbaf5c48fc6c6223aa9f2741d6d7782c699b049356fc45  mesa-26.1.3.tar.xz
+# From https://archive.mesa3d.org/mesa-26.1.4.tar.xz
+sha256  072705caa9adf4740f1489194b13e278ad959166863b5271fe423a86353c9ab6  mesa-26.1.4.tar.xz
 # License
 sha256  0d1a0472ecc81830e75c20d59b0ea02841e3db21255e0ebad97ab682c54d6615  docs/license.rst
 sha256  323c587d0ccf10e376f8bf9a7f31fb4ca6078105194b42e0b1e0ee2bc9bde71f  licenses/MIT

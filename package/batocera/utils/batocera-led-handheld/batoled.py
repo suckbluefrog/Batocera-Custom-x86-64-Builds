@@ -19,6 +19,12 @@ BLINK_OFF_DURATION = 0.12
 BATOCONFFILE = '/userdata/system/batocera.conf'
 DEFAULT_ES_COLOR = '255 0 0'
 
+def multicolor_led_paths():
+    return sorted({
+        os.path.dirname(path) + '/'
+        for path in glob.glob('/sys/class/leds/*/multi_intensity')
+    })
+
 ####################
 # Is your handheld supported by this library?
 def batocera_model():
@@ -37,18 +43,14 @@ def batocera_model():
     l = '/sys/class/leds/multicolor:chassis/multi_intensity'
     if os.path.exists(l):
         return("rgb")
-    # Odin2/SM8550 power indicator LED
-    l = '/sys/class/leds/power-led/multi_intensity'
-    if os.path.exists(l):
-        return("rgb")
-    # Odin2/SM8550 analog RGB groups
-    for n in ("left-side", "left-joystick", "right-side", "right-joystick"):
-        if os.path.exists(f"/sys/class/leds/{n}/multi_intensity"):
-            return("rgb")
-    # Addressable RGB check
-    c = glob.glob('/sys/class/leds/l:b?')
-    if c:
+    # Thor/Odin3-style addressable rings can expose per-channel l:/r: LEDs
+    # or grouped multicolor class LEDs such as rgb:l1/rgb:r1.
+    has_multicolor_groups = bool(multicolor_led_paths())
+    if glob.glob('/sys/class/leds/l:b?') and not has_multicolor_groups:
         return("rgbaddr")
+    # Odin2/SM8550 power indicator LED or grouped multicolor accent LEDs.
+    if has_multicolor_groups:
+        return("rgb")
     # PWM check
     c = glob.glob('/sys/class/pwm/pwmchip*/device/name')
     for t in c:
@@ -151,7 +153,6 @@ class legiongosled(object):
                 if DEBUG: print('Set effect to: chroma')
                 with open (self.effect_file, 'w') as p: p.write('chroma')
                 return
-
             # For static colors, set effect to monocolor first
             if DEBUG: print('Set effect to: monocolor')
             with open (self.effect_file, 'w') as p: p.write('monocolor')
@@ -274,29 +275,18 @@ class rgbled(object):
         found_paths = glob.glob('/sys/class/leds/*:rgb:joystick_rings/')
         if found_paths:
             self.paths = sorted(found_paths)
-            self.bpath = self.paths[0]
         else:
-            # Odin2/SM8550: multiple multicolor class LEDs.
-            for n in ("power-led", "left-side", "left-joystick", "right-side", "right-joystick"):
-                p = f"/sys/class/leds/{n}/"
-                if os.path.exists(p + "multi_intensity"):
-                    self.paths.append(p)
-
-            if self.paths:
-                self.bpath = self.paths[0]
-            else:
-                # Fallback for other supported RGB handheld layouts
-                fallback_path = '/sys/class/leds/multicolor:chassis/'
-                if os.path.exists(fallback_path):
-                    self.paths = [fallback_path]
-                    self.bpath = fallback_path
+            # Odin2/SM8550 and Odin3/SM8750: multiple multicolor class LEDs.
+            # Names vary by device: power-led, left-side, rgb:l1, rgb:r1, etc.
+            self.paths = multicolor_led_paths()
 
         if self.bpath is None:
-            raise RuntimeError("Could not find a valid RGB LED sysfs path.")
+            if not self.paths:
+                raise RuntimeError("Could not find a valid RGB LED sysfs path.")
 
         # Odin2-style split:
         # - status_paths: battery/indicator LED ("power-led")
-        # - accent_paths: side/joystick RGB zones
+        # - accent_paths: side/joystick RGB zones, whatever the kernel named them.
         for p in self.paths:
             if p.endswith('/power-led/'):
                 self.status_paths.append(p)
@@ -309,53 +299,124 @@ class rgbled(object):
         if not self.accent_paths:
             self.accent_paths = list(self.paths)
 
+        preferred_paths = self.accent_paths or self.status_paths or self.paths
+        self.bpath = preferred_paths[0]
         self.base            = self.bpath + 'multi_intensity'
         self.brightness      = self.bpath + 'brightness'
         self.max_brightness  = self.bpath + 'max_brightness'
 
     def _set_paths_color(self, targets, out):
         for p in targets:
+            self._set_path_trigger(p, 'none')
             # Some handheld LEDs (for example ROG Ally rings) expose more than
             # 3 channels and require full-length writes to multi_intensity.
             expanded = self._expand_color_for_path(p, out)
+            brightness = self._path_max_brightness(p) if self._color_has_output(expanded) else 0
+            self._set_paths_brightness([p], brightness)
             with open(p + 'multi_intensity', 'w') as f:
                 f.write(expanded)
 
-    def _path_channel_count(self, p):
+    def _color_has_output(self, out):
+        try:
+            return any(int(float(v)) > 0 for v in out.strip().split())
+        except Exception:
+            return False
+
+    def _path_channels(self, p):
         try:
             with open(p + 'multi_index', 'r') as f:
                 values = f.readline().strip().split()
                 if values:
-                    return len(values)
+                    return values
         except Exception:
             pass
         try:
             with open(p + 'multi_intensity', 'r') as f:
                 values = f.readline().strip().split()
                 if values:
-                    return len(values)
+                    return ["red", "green", "blue"][:len(values)]
         except Exception:
             pass
-        return 3
+        return ["red", "green", "blue"]
 
-    def _expand_color_for_path(self, p, out):
+    def _brightness_scale(self):
+        conf = batoconf("led.brightness")
+        if conf is None:
+            conf = 100
+        try:
+            return max(0.0, min(100.0, float(conf))) / 100.0
+        except Exception:
+            return 1.0
+
+    def _parse_rgb_values(self, out):
         values = out.strip().split()
         if len(values) < 3:
             values = (values + ["0", "0", "0"])[:3]
         else:
             values = values[:3]
+        parsed = []
+        for value in values:
+            try:
+                parsed.append(max(0, min(255, int(float(value)))))
+            except Exception:
+                parsed.append(0)
+        return parsed
 
-        channel_count = self._path_channel_count(p)
-        if channel_count <= 3:
-            return " ".join(values)
+    def _scale_rgb_values(self, values):
+        scale = self._brightness_scale()
+        return [str(max(0, min(255, int(v * scale)))) for v in values]
 
+    def _expand_color_for_path(self, p, out):
+        r, g, b = self._parse_rgb_values(out)
+        ordered = {
+            "red": r,
+            "green": g,
+            "blue": b,
+            "white": max(r, g, b),
+        }
+
+        channels = self._path_channels(p)
+        if len(channels) <= 3:
+            return " ".join(self._scale_rgb_values([
+                ordered.get(channel.lower(), 0)
+                for channel in channels
+            ]))
+
+        values = [r, g, b]
+        channel_count = len(channels)
         repeat = (channel_count + 2) // 3
-        return " ".join((values * repeat)[:channel_count])
+        return " ".join(self._scale_rgb_values((values * repeat)[:channel_count]))
 
     def _set_paths_brightness(self, targets, b):
         for p in targets:
             with open(p + 'brightness', 'w') as f:
                 f.write(str(b))
+
+    def _set_path_trigger(self, p, trigger):
+        trigger_file = p + 'trigger'
+        try:
+            with open(trigger_file, 'r') as f:
+                available = f.read().replace('[', '').replace(']', '').split()
+            if trigger not in available:
+                return False
+            with open(trigger_file, 'w') as f:
+                f.write(trigger)
+            return True
+        except Exception:
+            return False
+
+    def _set_path_pattern_pulse(self, p, brightness):
+        if not self._set_path_trigger(p, 'pattern'):
+            return False
+        try:
+            with open(p + 'repeat', 'w') as f:
+                f.write('-1')
+            with open(p + 'pattern', 'w') as f:
+                f.write(f'0 2500 {brightness} 2500')
+            return True
+        except Exception:
+            self._set_path_trigger(p, 'none')
+            return False
 
     def _path_max_brightness(self, p, default=255):
         try:
@@ -364,20 +425,27 @@ class rgbled(object):
         except Exception:
             return default
 
-    def _set_paths_brightness_conf(self, targets):
-        # Apply led.brightness percentage to each target using that target's own max_brightness.
-        conf = batoconf("led.brightness")
-        if conf is None:
-            conf = 100
-        try:
-            percentage = max(0.0, min(100.0, float(conf)))
-        except Exception:
-            percentage = 100.0
+    def _raw_color_for_path(self, p, r, g, b):
+        ordered = {
+            "red": r,
+            "green": g,
+            "blue": b,
+            "white": max(r, g, b),
+        }
 
+        channels = self._path_channels(p)
+        if len(channels) <= 3:
+            return " ".join(str(ordered.get(channel.lower(), 0)) for channel in channels)
+
+        values = [r, g, b]
+        repeat = (len(channels) + 2) // 3
+        return " ".join(str(value) for value in (values * repeat)[:len(channels)])
+
+    def _set_paths_brightness_conf(self, targets):
+        # Multicolor groups on some handhelds behave like on/off brightness gates;
+        # actual dimming is applied by scaling multi_intensity in _set_paths_color().
         for p in targets:
-            max_v = self._path_max_brightness(p)
-            scaled = int((percentage / 100.0) * max_v)
-            self._set_paths_brightness([p], scaled)
+            self._set_paths_brightness([p], self._path_max_brightness(p))
 
     def set_status_color(self, rgb):
         if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "CHROMA", "OFF", "ESCOLOR" ]:
@@ -404,6 +472,20 @@ class rgbled(object):
         r, g, b = rgb[0:2], rgb[2:4], rgb[4:6]
         out = f'{hex_to_dec(r)} {hex_to_dec(g)} {hex_to_dec(b)}'
         self._set_paths_color(self.status_paths, out)
+
+    def set_status_sleep_amber(self, pulse=True):
+        for p in self.status_paths:
+            self._set_path_trigger(p, 'none')
+            with open(p + 'multi_intensity', 'w') as f:
+                f.write(self._raw_color_for_path(p, 255, 96, 0))
+            max_brightness = self._path_max_brightness(p)
+            brightness = max(1, int(max_brightness * 0.08))
+            self._set_paths_brightness([p], brightness)
+            # The generic timer trigger is not color-stable on the Odin2/Odin3
+            # PMIC multicolor power LED. Use pattern when the kernel exposes it;
+            # otherwise keep the LED static amber.
+            if pulse:
+                self._set_path_pattern_pulse(p, brightness)
 
     def set_color (self, rgb):
         if len(rgb) != 6 and rgb not in [ "PULSE", "RAINBOW", "CHROMA", "OFF", "ESCOLOR" ]:
@@ -438,7 +520,14 @@ class rgbled(object):
             values = rgb.split()
             if len(values) < 3:
                 return "000000"
-            r, g, b = values[0], values[1], values[2]
+            channels = self._path_channels(self.bpath)
+            channel_values = {
+                channels[i].lower(): values[i]
+                for i in range(min(len(channels), len(values)))
+            }
+            r = channel_values.get("red", values[0])
+            g = channel_values.get("green", values[1])
+            b = channel_values.get("blue", values[2])
             out = f'{dec_to_hex(r)}{dec_to_hex(g)}{dec_to_hex(b)}'
             return (out)
 
@@ -453,28 +542,41 @@ class rgbled(object):
             values = rgb.split()
             if len(values) < 3:
                 return "0 0 0"
-            r, g, b = values[0], values[1], values[2]
+            channels = self._path_channels(self.bpath)
+            channel_values = {
+                channels[i].lower(): values[i]
+                for i in range(min(len(channels), len(values)))
+            }
+            r = channel_values.get("red", values[0])
+            g = channel_values.get("green", values[1])
+            b = channel_values.get("blue", values[2])
             out = f'{r} {g} {b}'
             return (out)
 
-    def rainbow_effect(self):
+    def rainbow_effect(self, restore=True):
         prev = self.get_color()
         for i in range (0, EFFECT_STEP):
             o = getRainbowRGB(float (i/EFFECT_STEP))
             self.set_color(o)
             time.sleep(EFFECT_DURATION/EFFECT_STEP)
-        self.set_color(prev)
+        if restore:
+            self.set_color(prev)
 
-    def chroma_effect(self):
-        self.rainbow_effect()
+    def chroma_effect(self, restore=True):
+        self.rainbow_effect(restore)
 
-    def pulse_effect(self):
+    def pulse_effect(self, restore=True):
         prev = self.get_color()
+        base = prev
+        if not restore:
+            r, g, b = batoconf_color()
+            base = f'{dec_to_hex(r)}{dec_to_hex(g)}{dec_to_hex(b)}'
         for i in range (0, EFFECT_STEP):
-            o = getPulseRGB(i, EFFECT_STEP, prev)
+            o = getPulseRGB(i, EFFECT_STEP, base)
             self.set_color(o)
             time.sleep(PULSE_DURATION/EFFECT_STEP)
-        self.set_color(prev)
+        if restore:
+            self.set_color(prev)
 
     def blink_effect(self):
         prev = self.get_color()
@@ -499,11 +601,10 @@ class rgbled(object):
         self._set_paths_color(self.accent_paths, "0 0 0")
 
     def set_brightness (self, b):
-        self._set_paths_brightness(self.accent_paths, b)
+        self.set_color("ESCOLOR")
 
     def set_brightness_conf (self):
-        # Only apply to accent LEDs. Status LED is driven by battery mapping.
-        self._set_paths_brightness_conf(self.accent_paths)
+        self.set_color("ESCOLOR")
 
     def get_brightness (self):
         with open (self.brightness, 'r') as p:
@@ -659,24 +760,30 @@ class pwmled(object):
         out = f'{pwm_to_dec(r, self.period)} {pwm_to_dec(g, self.period)} {pwm_to_dec(b, self.period)}'
         return(out)
 
-    def rainbow_effect(self):
+    def rainbow_effect(self, restore=True):
         prev = self.get_color()
         for i in range (0, EFFECT_STEP):
             o = getRainbowRGB(float (i/EFFECT_STEP))
             self.set_color(o)
             time.sleep(EFFECT_DURATION/EFFECT_STEP)
-        self.set_color(prev)
+        if restore:
+            self.set_color(prev)
 
-    def chroma_effect(self):
-        self.rainbow_effect()
+    def chroma_effect(self, restore=True):
+        self.rainbow_effect(restore)
 
-    def pulse_effect(self):
+    def pulse_effect(self, restore=True):
         prev = self.get_color()
+        base = prev
+        if not restore:
+            r, g, b = batoconf_color()
+            base = f'{dec_to_hex(r)}{dec_to_hex(g)}{dec_to_hex(b)}'
         for i in range (0, EFFECT_STEP):
-            o = getPulseRGB(i, EFFECT_STEP, prev)
+            o = getPulseRGB(i, EFFECT_STEP, base)
             self.set_color(o)
             time.sleep(PULSE_DURATION/EFFECT_STEP)
-        self.set_color(prev)
+        if restore:
+            self.set_color(prev)
 
     def blink_effect(self):
         prev = self.get_color()

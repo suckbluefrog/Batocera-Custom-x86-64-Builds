@@ -22,6 +22,9 @@ DEFAULT_USER="batocera"
 DEFAULT_PASSWORD="linux"
 ARCH_IMAGE_ARCH="${BATOCERA_ARCH_PLASMA_IMAGE_ARCH:-amd64}"
 ARCH_IMAGE_RELEASE="${BATOCERA_ARCH_PLASMA_IMAGE_RELEASE:-current}"
+SSH_FORWARD_ENABLE="${BATOCERA_ARCH_PLASMA_SSH_FORWARD_ENABLE:-true}"
+SSH_FORWARD_PORT="${BATOCERA_ARCH_PLASMA_SSH_FORWARD_PORT:-2222}"
+CONTAINER_SSH_PORT="${BATOCERA_ARCH_PLASMA_CONTAINER_SSH_PORT:-22}"
 PLASMA_RENDERER="${BATOCERA_ARCH_PLASMA_RENDERER:-raw}"
 if [ -n "${BATOCERA_ARCH_PLASMA_SESSION_TYPE:-}" ]; then
     PLASMA_SESSION_TYPE="${BATOCERA_ARCH_PLASMA_SESSION_TYPE}"
@@ -71,6 +74,45 @@ clear_inherited_overlay_env() {
 close_inherited_frontend_lock
 clear_inherited_overlay_env
 
+read_first_existing_file() {
+    local path
+
+    for path in "$@"; do
+        [ -r "${path}" ] || continue
+        tr -d '\0' < "${path}" 2>/dev/null | head -n 1
+        return 0
+    done
+
+    return 1
+}
+
+is_asus_rog_ally() {
+    local dmi
+
+    dmi="$(read_first_existing_file \
+        /sys/class/dmi/id/product_name \
+        /sys/class/dmi/id/product_version \
+        /sys/class/dmi/id/board_name 2>/dev/null || true)"
+
+    case "${dmi}" in
+        *"ROG Ally"*|*"RC71L"*|*"RC72L"*)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+configure_device_display_defaults() {
+    is_asus_rog_ally || return 0
+
+    if [ -z "${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE+x}" ]; then
+        export BATOCERA_ARCH_PLASMA_OUTPUT_SCALE="1"
+    fi
+
+    log "applying ASUS ROG Ally display defaults: scale=${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE}"
+}
+
 run_detached() {
     if command -v setsid >/dev/null 2>&1; then
         setsid "$@" </dev/null >>"${LOG}" 2>&1 &
@@ -91,6 +133,7 @@ save_state() {
         printf 'PLASMA_USER=%s\n' "${user}"
         printf 'CONTAINER=%s\n' "${CONTAINER}"
         printf 'LXC_PATH=%s\n' "${LXC_PATH}"
+        printf 'SSH_FORWARD_PORT=%s\n' "${SSH_FORWARD_PORT}"
     } > "${STATE_FILE}"
 }
 
@@ -208,7 +251,64 @@ EOF
     ip link show lxcbr0 >/dev/null 2>&1 || die "lxcbr0 did not come up"
 }
 
+container_ipv4() {
+    container_running || return 1
+
+    lxc-info -P "${LXC_PATH}" -n "${CONTAINER}" -iH 2>/dev/null | \
+        awk '/^[0-9]+\./ { print; exit }'
+}
+
+configure_host_ssh_forward() {
+    local container_ip chain="BATOCERA_ARCH_PLASMA"
+
+    case "${SSH_FORWARD_ENABLE}" in
+        0|false|False|FALSE|no|No|NO|off|Off|OFF)
+            return 0
+            ;;
+    esac
+
+    [[ "${SSH_FORWARD_PORT}" =~ ^[0-9]+$ ]] || {
+        log "warning: invalid Arch Plasma SSH forward port: ${SSH_FORWARD_PORT}"
+        return 0
+    }
+    [[ "${CONTAINER_SSH_PORT}" =~ ^[0-9]+$ ]] || {
+        log "warning: invalid Arch Plasma container SSH port: ${CONTAINER_SSH_PORT}"
+        return 0
+    }
+
+    command -v iptables >/dev/null 2>&1 || {
+        log "warning: iptables is unavailable; Arch Plasma SSH forward not installed"
+        return 0
+    }
+
+    container_ip="$(container_ipv4 || true)"
+    if [ -z "${container_ip}" ]; then
+        log "warning: container has no IPv4 address yet; Arch Plasma SSH forward not installed"
+        return 0
+    fi
+
+    sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true
+
+    iptables -t nat -N "${chain}" 2>/dev/null || true
+    iptables -t nat -F "${chain}" 2>/dev/null || true
+    iptables -t nat -C PREROUTING -p tcp --dport "${SSH_FORWARD_PORT}" -j "${chain}" >/dev/null 2>&1 || \
+        iptables -t nat -I PREROUTING 1 -p tcp --dport "${SSH_FORWARD_PORT}" -j "${chain}" 2>>"${LOG}" || true
+    iptables -t nat -A "${chain}" -p tcp --dport "${SSH_FORWARD_PORT}" \
+        -j DNAT --to-destination "${container_ip}:${CONTAINER_SSH_PORT}" 2>>"${LOG}" || true
+
+    iptables -N "${chain}" 2>/dev/null || true
+    iptables -F "${chain}" 2>/dev/null || true
+    iptables -C FORWARD -j "${chain}" >/dev/null 2>&1 || \
+        iptables -I FORWARD 1 -j "${chain}" 2>>"${LOG}" || true
+    iptables -A "${chain}" -p tcp -d "${container_ip}" --dport "${CONTAINER_SSH_PORT}" -j ACCEPT 2>>"${LOG}" || true
+    iptables -A "${chain}" -p tcp -s "${container_ip}" --sport "${CONTAINER_SSH_PORT}" -j ACCEPT 2>>"${LOG}" || true
+
+    log "Arch Plasma SSH forward: host tcp/${SSH_FORWARD_PORT} -> ${container_ip}:${CONTAINER_SSH_PORT}"
+}
+
 ensure_runtime_dir() {
+    configure_device_display_defaults
+
     mkdir -p "${HOST_RUNTIME_DIR}/pulse" "${HOST_RUNTIME_DIR}/udev"
     chown 1000:1000 "${HOST_RUNTIME_DIR}" "${HOST_RUNTIME_DIR}/pulse" 2>/dev/null || true
     chmod 700 "${HOST_RUNTIME_DIR}" 2>/dev/null || true
@@ -343,6 +443,7 @@ start_container() {
     fi
 
     sync_container_udev_database
+    configure_host_ssh_forward
 }
 
 container_has_session_mounts() {
@@ -434,21 +535,61 @@ if [ -f /etc/pacman.conf ]; then
     sed -i \
         -e 's/^[[:space:]]*DownloadUser[[:space:]]*=/#DownloadUser =/' \
         -e 's/^[#[:space:]]*DisableSandboxFilesystem/DisableSandboxFilesystem/' \
+        -e 's/^[#[:space:]]*DisableDownloadTimeout/DisableDownloadTimeout/' \
         -e 's/^[#[:space:]]*DisableSandboxSyscalls/DisableSandboxSyscalls/' \
         /etc/pacman.conf
 fi
+
+configure_arch_mirrors() {
+    [ -d /etc/pacman.d ] || return 0
+    if [ -f /etc/pacman.d/mirrorlist ] && [ ! -f /etc/pacman.d/mirrorlist.batocera-bak ]; then
+        cp -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.batocera-bak || true
+    fi
+
+    cat > /etc/pacman.d/mirrorlist <<'MIRRORS'
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://mirror.leaseweb.com/archlinux/$repo/os/$arch
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+MIRRORS
+}
+
+pacman_cmd() {
+    if pacman --help 2>/dev/null | grep -q -- '--disable-download-timeout'; then
+        pacman --disable-download-timeout "$@"
+    else
+        pacman "$@"
+    fi
+}
+
+pacman_retry() {
+    local attempt
+
+    for attempt in 1 2 3; do
+        if pacman_cmd "$@"; then
+            return 0
+        fi
+        sleep $((attempt * 5))
+        pacman_cmd -Syy --noconfirm >/dev/null 2>&1 || true
+    done
+
+    return 1
+}
+
+configure_arch_mirrors
 
 if ! pacman-key --list-keys >/dev/null 2>&1; then
     pacman-key --init
 fi
 pacman-key --populate archlinux >/dev/null 2>&1 || true
-pacman -Sy --noconfirm --needed archlinux-keyring
+pacman_retry -Syy --noconfirm --needed archlinux-keyring
 required_packages=(
-    bash sudo shadow openssh dbus dbus-broker xorg-xwayland \
+    bash sudo shadow dropbear openssh dbus dbus-broker polkit polkit-kde-agent xorg-xwayland \
     xorg-xauth xorg-xrdb kwin-x11 \
     plasma-desktop plasma-workspace plasma-pa systemsettings discover \
     dolphin konsole kate ark gwenview okular spectacle kcalc \
     plasma-systemmonitor kscreen kio-extras packagekit packagekit-qt6 \
+    flatpak \
     pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber \
     qt6-multimedia-ffmpeg tesseract-data-eng tesseract-data-osd \
     mesa \
@@ -459,12 +600,17 @@ optional_packages=(
     vulkan-radeon vulkan-intel vulkan-mesa-layers
 )
 
-pacman -Syu --noconfirm --needed "${required_packages[@]}"
+pacman_retry -Syu --noconfirm --needed "${required_packages[@]}"
 for package in "${optional_packages[@]}"; do
     if pacman -Si "${package}" >/dev/null 2>&1; then
-        pacman -S --noconfirm --needed "${package}"
+        pacman_retry -S --noconfirm --needed "${package}"
     fi
 done
+
+if command -v flatpak >/dev/null 2>&1; then
+    flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
+    flatpak update --appstream --system -y || true
+fi
 
 if ! id "${PLASMA_USER}" >/dev/null 2>&1; then
     existing_uid_user="$(getent passwd 1000 | cut -d: -f1 || true)"
@@ -475,10 +621,12 @@ if ! id "${PLASMA_USER}" >/dev/null 2>&1; then
         else
             usermod -l "${PLASMA_USER}" -d "/home/${PLASMA_USER}" -s /bin/bash "${existing_uid_user}"
         fi
-        existing_group="$(getent group 1000 | cut -d: -f1 || true)"
-        if [ -n "${existing_group}" ] && [ "${existing_group}" != "${PLASMA_USER}" ]; then
-            groupmod -n "${PLASMA_USER}" "${existing_group}" 2>/dev/null || true
+        existing_gid="$(id -g "${PLASMA_USER}" 2>/dev/null || true)"
+        existing_group="$(getent group "${existing_gid}" | cut -d: -f1 || true)"
+        if [ -n "${existing_group}" ] && [ "${existing_group}" != "${PLASMA_USER}" ] && ! getent group "${PLASMA_USER}" >/dev/null 2>&1; then
+            groupmod -n "${PLASMA_USER}" "${existing_group}" || true
         fi
+        chown -R "${PLASMA_USER}:${PLASMA_USER}" "/home/${PLASMA_USER}" 2>/dev/null || true
     else
         useradd -m -u 1000 -s /bin/bash "${PLASMA_USER}"
     fi
@@ -495,15 +643,62 @@ install -d -m 0750 /etc/sudoers.d
 printf '%s ALL=(ALL) NOPASSWD: ALL\n' "${PLASMA_USER}" > /etc/sudoers.d/90-batocera-plasma
 chmod 0440 /etc/sudoers.d/90-batocera-plasma
 
-install -d -m 0755 /etc/ssh/sshd_config.d
-cat > /etc/ssh/sshd_config.d/90-batocera-plasma.conf <<'EOS'
-PasswordAuthentication yes
-KbdInteractiveAuthentication yes
-PermitRootLogin no
-UsePAM yes
+install -d -m 0755 /etc/polkit-1/rules.d
+cat > /etc/polkit-1/rules.d/50-batocera-plasma-discover.rules <<'EOS'
+polkit.addRule(function(action, subject) {
+    if (subject.active !== true || !subject.isInGroup("wheel")) {
+        return polkit.Result.NOT_HANDLED;
+    }
+
+    if (action.id.indexOf("org.freedesktop.Flatpak.") === 0 ||
+        action.id.indexOf("org.freedesktop.packagekit.") === 0) {
+        return polkit.Result.YES;
+    }
+
+    return polkit.Result.NOT_HANDLED;
+});
 EOS
-ssh-keygen -A >/dev/null 2>&1 || true
-systemctl enable --now sshd.service >/dev/null 2>&1 || true
+chmod 0644 /etc/polkit-1/rules.d/50-batocera-plasma-discover.rules
+
+install -d -m 0700 /etc/dropbear
+for key_type in rsa ecdsa ed25519; do
+    key_file="/etc/dropbear/dropbear_${key_type}_host_key"
+    [ -s "${key_file}" ] && continue
+    dropbearkey -t "${key_type}" -f "${key_file}" >/dev/null 2>&1 || true
+    chmod 0600 "${key_file}" 2>/dev/null || true
+done
+
+cat > /usr/local/sbin/batocera-dropbear-start <<'EOS'
+#!/bin/sh
+set -eu
+
+set -- -F -E -w -p 0.0.0.0:22
+for key_file in /etc/dropbear/dropbear_*_host_key; do
+    [ -s "${key_file}" ] || continue
+    set -- "$@" -r "${key_file}"
+done
+
+exec /usr/bin/dropbear "$@"
+EOS
+chmod 0755 /usr/local/sbin/batocera-dropbear-start
+
+cat > /etc/systemd/system/batocera-dropbear.service <<'EOS'
+[Unit]
+Description=Batocera Arch Plasma Dropbear SSH server
+After=network.target
+Wants=network.target
+
+[Service]
+ExecStart=/usr/local/sbin/batocera-dropbear-start
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOS
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl disable --now sshd.service >/dev/null 2>&1 || true
+systemctl enable --now batocera-dropbear.service >/dev/null 2>&1 || true
 
 cat > /usr/local/bin/batocera-start-plasma <<'EOS'
 #!/bin/bash
@@ -606,6 +801,22 @@ unset WAYLAND_DISPLAY
 unset XAUTHORITY
 unset DBUS_SESSION_BUS_ADDRESS
 
+apply_static_output_scale() {
+    local scale="${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE:-}"
+
+    [ -n "${scale}" ] || return 0
+    [[ "${scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
+
+    install -d -m 0700 /root/.config
+    if [ -f /root/.config/kwinoutputconfig.json ]; then
+        sed -i -E "s/(\"scale\": )[0-9]+([.][0-9]+)?/\1${scale}/g" /root/.config/kwinoutputconfig.json 2>/dev/null || true
+    fi
+
+    if command -v kwriteconfig6 >/dev/null 2>&1; then
+        kwriteconfig6 --file /root/.config/kwinrc --group Xwayland --key Scale "${scale}" >/dev/null 2>&1 || true
+    fi
+}
+
 inputmethod_args=()
 for inputmethod in plasma-keyboard maliit-keyboard squeekboard; do
     if command -v "${inputmethod}" >/dev/null 2>&1; then
@@ -613,6 +824,8 @@ for inputmethod in plasma-keyboard maliit-keyboard squeekboard; do
         break
     fi
 done
+
+apply_static_output_scale
 
 exec kwin_wayland --drm --xwayland --socket wayland-0 --no-lockscreen "${inputmethod_args[@]}" \
     --exit-with-session /usr/local/bin/batocera-plasma-session-wrapper
@@ -640,6 +853,33 @@ for _ in $(seq 1 50); do
 done
 
 chmod 777 "${runtime_dir}/${wayland_display}" "${runtime_dir}/${wayland_display}.lock" 2>/dev/null || true
+
+apply_runtime_output_scale() {
+    local scale="${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE:-}"
+    local output_file output_ids output_id
+
+    [ -n "${scale}" ] || return 0
+    [[ "${scale}" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 0
+    command -v kscreen-doctor >/dev/null 2>&1 || return 0
+
+    output_file="/tmp/batocera-kscreen-doctor-$$.out"
+    for _ in $(seq 1 20); do
+        if kscreen-doctor -o >"${output_file}" 2>/dev/null; then
+            break
+        fi
+        sleep 0.1
+    done
+
+    output_ids="$(awk '/^Output: / { print $2 }' "${output_file}" 2>/dev/null || true)"
+    rm -f "${output_file}" 2>/dev/null || true
+    [ -n "${output_ids}" ] || output_ids="1 2 3 4"
+
+    for output_id in ${output_ids}; do
+        kscreen-doctor "output.${output_id}.scale.${scale}" >/dev/null 2>&1 || true
+    done
+}
+
+apply_runtime_output_scale
 
 if [ -n "${XAUTHORITY:-}" ] && [ -e "${XAUTHORITY}" ]; then
     chown "${uid}:${gid}" "${XAUTHORITY}" 2>/dev/null || true
@@ -676,6 +916,7 @@ exec /usr/bin/runuser -u "${user}" -- /usr/bin/env \
     XAUTHORITY="${XAUTHORITY:-}" \
     PIPEWIRE_REMOTE="${PIPEWIRE_REMOTE:-/batocera-runtime/pipewire-0}" \
     PULSE_SERVER="${PULSE_SERVER:-unix:/batocera-runtime/pulse/native}" \
+    BATOCERA_ARCH_PLASMA_OUTPUT_SCALE="${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE:-}" \
     /usr/local/bin/batocera-plasma-session-payload
 EOS
 chmod 0755 /usr/local/bin/batocera-plasma-session-wrapper
@@ -709,7 +950,23 @@ run_if_available() {
     "$@" &
 }
 
+start_polkit_agent() {
+    local agent
+
+    for agent in \
+        /usr/lib/polkit-kde-authentication-agent-1 \
+        /usr/libexec/polkit-kde-authentication-agent-1 \
+        polkit-kde-authentication-agent-1
+    do
+        if [ -x "${agent}" ] || command -v "${agent}" >/dev/null 2>&1; then
+            "${agent}" &
+            return 0
+        fi
+    done
+}
+
 start_plasma_shell_session() {
+    start_polkit_agent
     run_if_available kded6
     run_if_available kactivitymanagerd
     run_if_available kglobalacceld
@@ -728,7 +985,22 @@ if command -v dbus-run-session >/dev/null 2>&1; then
             command -v "$1" >/dev/null 2>&1 || return 0
             "$@" &
         }
+        start_polkit_agent() {
+            local agent
+
+            for agent in \
+                /usr/lib/polkit-kde-authentication-agent-1 \
+                /usr/libexec/polkit-kde-authentication-agent-1 \
+                polkit-kde-authentication-agent-1
+            do
+                if [ -x "${agent}" ] || command -v "${agent}" >/dev/null 2>&1; then
+                    "${agent}" &
+                    return 0
+                fi
+            done
+        }
         trap "jobs -pr | xargs -r kill 2>/dev/null || true" EXIT INT TERM
+        start_polkit_agent
         run_if_available kded6
         run_if_available kactivitymanagerd
         run_if_available kglobalacceld
@@ -815,6 +1087,7 @@ install_or_update_container() {
     create_container
     start_container
     provision_container "${PLASMA_USER}" "${PLASMA_PASSWORD}"
+    container_ready || die "container provisioning completed without ready marker"
     save_state "${PLASMA_USER}"
 }
 
@@ -1217,6 +1490,7 @@ launch_plasma_session() {
             -v "SEATD_SOCK=/batocera-runtime/seatd.sock" \
             -v "PIPEWIRE_REMOTE=/batocera-runtime/pipewire-0" \
             -v "PULSE_SERVER=unix:/batocera-runtime/pulse/native" \
+            -v "BATOCERA_ARCH_PLASMA_OUTPUT_SCALE=${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE:-}" \
             -- /usr/local/bin/batocera-start-plasma-root
         session_rc="$?"
         set -e
@@ -1235,6 +1509,7 @@ launch_plasma_session() {
             -v "SEATD_SOCK=/batocera-runtime/seatd.sock" \
             -v "PIPEWIRE_REMOTE=/batocera-runtime/pipewire-0" \
             -v "PULSE_SERVER=unix:/batocera-runtime/pulse/native" \
+            -v "BATOCERA_ARCH_PLASMA_OUTPUT_SCALE=${BATOCERA_ARCH_PLASMA_OUTPUT_SCALE:-}" \
             -- /usr/bin/runuser -u "${user}" --preserve-environment -- /usr/local/bin/batocera-start-plasma
     fi
 }

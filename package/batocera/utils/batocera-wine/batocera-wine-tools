@@ -10,7 +10,14 @@ WINETRICKS_ALL_URL="https://raw.githubusercontent.com/Winetricks/winetricks/mast
 KRON4EK_RELEASES_URL="https://api.github.com/repos/Kron4ek/Wine-Builds/releases?per_page=300"
 WINE_GE_RELEASES_URL="https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases?per_page=100"
 PROTON_GE_RELEASES_URL="https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases?per_page=100"
+GE_PROTON_SAMPLE_URL="https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz"
 FREE_WINDOWS_GAMES_BASE_URL="https://raw.githubusercontent.com/foclabroc/toolbox/refs/heads/main/windows"
+STEAM_PROTON_GE_CONFIG="/userdata/system/configs/steam/proton-ge.conf"
+TOOL_NAME="$(basename "$0")"
+
+steam_tools_mode() {
+    [[ "$TOOL_NAME" == *steam-tools* ]]
+}
 
 clear_screen() {
     clear >/dev/null 2>&1 || true
@@ -38,11 +45,11 @@ dialog_capture_stdout() {
 
 require_dialog() {
     if ! command -v dialog >/dev/null 2>&1; then
-        echo "batocera-wine-tools requires dialog." >&2
+        echo "${TOOL_NAME} requires dialog." >&2
         exit 1
     fi
     if ! [ -t 0 ] && ! [ -t 1 ] && ! [ -t 2 ]; then
-        echo "batocera-wine-tools requires an interactive terminal." >&2
+        echo "${TOOL_NAME} requires an interactive terminal." >&2
         exit 1
     fi
 }
@@ -148,6 +155,20 @@ select_radiolist() {
     local rc=$?
     clear_screen
     return "$rc"
+}
+
+input_box() {
+    local title="$1"
+    local prompt="$2"
+    local initial="${3:-}"
+    local value
+
+    value=$(dialog --clear --title "$title" --inputbox "$prompt" 12 110 "$initial" 2>&1 >/dev/tty) || {
+        clear_screen
+        return 1
+    }
+    clear_screen
+    printf '%s\n' "$value"
 }
 
 fetch_json() {
@@ -283,6 +304,18 @@ archive_dir_name() {
     esac
 }
 
+basename_from_url() {
+    local url="$1"
+    local path="${url%%\?*}"
+    path="${path%%\#*}"
+    printf '%s\n' "${path##*/}"
+}
+
+is_ge_proton_url() {
+    [[ "$1" =~ ^https://github\.com/GloriousEggroll/proton-ge-custom/releases/download/[A-Za-z0-9._-]+/GE-Proton[A-Za-z0-9._-]+\.tar\.gz$ ]] &&
+        [[ "$1" != *-aarch64.tar.gz ]]
+}
+
 download_release_selection() {
     local title="$1"
     local prompt="$2"
@@ -415,7 +448,8 @@ ge_proton_menu() {
     filtered=$(printf '%s' "$data" | jq -c '
         [.[] as $r
          | $r.assets[]?
-         | select(.name | endswith(".tar.gz"))
+         | select((.name | startswith("GE-Proton")) and (.name | endswith(".tar.gz")))
+         | select((.name | contains("-aarch64")) | not)
          | {
              label: (.name + " [" + $r.tag_name + "]"),
              archive: .name,
@@ -426,6 +460,246 @@ ge_proton_menu() {
         return 1
     }
     download_release_selection "GE-Proton" "Select GE-Proton builds to download:" "$filtered"
+}
+
+steam_root_dir() {
+    printf '%s\n' "${BATOCERA_STEAM_ROOT:-/userdata/system/steam}"
+}
+
+write_steam_proton_ge_config() {
+    local version="$1"
+    local url="$2"
+
+    mkdir -p "$(dirname "$STEAM_PROTON_GE_CONFIG")" || return 1
+    {
+        printf '%s\n' "# Batocera Steam GE-Proton selection"
+        printf '%s\n' "BATOCERA_STEAM_PROTON_GE=1"
+        printf '%s\n' "BATOCERA_STEAM_PROTON_GE_VERSION=${version}"
+        printf '%s\n' "BATOCERA_STEAM_PROTON_GE_URL=${url}"
+    } > "$STEAM_PROTON_GE_CONFIG"
+    chmod 0644 "$STEAM_PROTON_GE_CONFIG" 2>/dev/null || true
+}
+
+write_steam_proton_toolmanifest_vdf() {
+    local target="$1"
+
+    cat > "$target" <<'EOF'
+"manifest"
+{
+  "version" "2"
+  "commandline" "/proton %verb%"
+  "use_sessions" "1"
+  "compatmanager_layer_name" "proton"
+}
+EOF
+}
+
+write_steam_proton_ge_compatibilitytool_vdf() {
+    local outdir="$1"
+    local version="$2"
+    local tool_id="ge-proton-${version#GE-Proton}"
+
+    cat > "${outdir}/compatibilitytool.vdf" <<EOF
+"compatibilitytools"
+{
+  "compat_tools"
+  {
+    "${tool_id}"
+    {
+      "install_path" "."
+      "display_name" "${version}"
+      "from_oslist" "windows"
+      "to_oslist" "linux"
+    }
+  }
+}
+EOF
+}
+
+prepare_steam_proton_ge_dir() {
+    local outdir="$1"
+    local version="$2"
+    local manifest="${outdir}/toolmanifest.vdf"
+
+    if [ -f "$manifest" ]; then
+        sed -i '/require_tool_appid/d' "$manifest" 2>/dev/null || true
+    fi
+    if [ ! -f "$manifest" ] || ! grep -q '"commandline"[[:space:]]*"/proton %verb%"' "$manifest" 2>/dev/null; then
+        write_steam_proton_toolmanifest_vdf "$manifest"
+    fi
+
+    write_steam_proton_ge_compatibilitytool_vdf "$outdir" "$version"
+    chmod +x "$outdir/proton" 2>/dev/null || true
+}
+
+download_steam_proton_ge_url() {
+    local url="$1"
+    local archive dirname version steam_root compat_dir tmpfile outdir
+
+    if [[ "$(uname -m)" != "x86_64" ]]; then
+        msg_box "Steam GE-Proton downloads are only enabled on x86_64 builds."
+        return 1
+    fi
+    is_ge_proton_url "$url" || {
+        msg_box "Unsupported GE-Proton URL:\n${url}\n\nExpected a x86_64 GitHub release asset like:\n${GE_PROTON_SAMPLE_URL}"
+        return 1
+    }
+
+    require_commands wget tar || return 1
+
+    archive="$(basename_from_url "$url")"
+    dirname="$(archive_dir_name "$archive")" || {
+        msg_box "Unsupported archive format: ${archive}"
+        return 1
+    }
+    version="$dirname"
+    steam_root="$(steam_root_dir)"
+    compat_dir="${steam_root}/compatibilitytools.d"
+    tmpfile="${compat_dir}/${archive}"
+    outdir="${compat_dir}/${dirname}"
+
+    mkdir -p "$compat_dir" || return 1
+
+    if ! download_with_gauge "$url" "$tmpfile" "Downloading ${version} for Steam..."; then
+        msg_box "Download failed: ${archive}"
+        rm -f "$tmpfile"
+        return 1
+    fi
+
+    rm -rf "$outdir"
+    mkdir -p "$outdir" || return 1
+    if ! extract_archive_with_gauge "$tmpfile" "$outdir" "Extracting ${version} for Steam..."; then
+        msg_box "Extraction failed: ${archive}"
+        rm -f "$tmpfile"
+        rm -rf "$outdir"
+        return 1
+    fi
+    rm -f "$tmpfile"
+
+    prepare_steam_proton_ge_dir "$outdir" "$version"
+    if [ ! -x "$outdir/proton" ]; then
+        msg_box "${version} did not install a runnable proton script at:\n${outdir}/proton"
+        return 1
+    fi
+
+    write_steam_proton_ge_config "$version" "$url" || {
+        msg_box "Installed ${version}, but failed to write ${STEAM_PROTON_GE_CONFIG}."
+        return 1
+    }
+
+    msg_box "Installed ${version} for Steam.\n\nSteam will list it as a compatibility tool after restart. It is also written as the GE-Proton preflight install target."
+}
+
+download_steam_proton_ge_selection() {
+    local json="$1"
+    local selections idx archive url dirname version steam_root compat_dir tmpfile outdir
+    local default_version="" default_url="" installed=0 failed=0
+
+    selections=$(select_multiple_from_json \
+        "Steam GE-Proton" \
+        "Select one or more GE-Proton builds for Steam to download:" \
+        "$json") || return 1
+    [ -n "$selections" ] || return 1
+
+    steam_root="$(steam_root_dir)"
+    compat_dir="${steam_root}/compatibilitytools.d"
+    mkdir -p "$compat_dir" || return 1
+
+    for idx in $selections; do
+        idx=$((idx - 1))
+        archive=$(printf '%s' "$json" | jq -r ".[$idx].archive")
+        url=$(printf '%s' "$json" | jq -r ".[$idx].url")
+        dirname=$(archive_dir_name "$archive") || {
+            msg_box "Unsupported archive format: ${archive}"
+            failed=$((failed + 1))
+            continue
+        }
+        version="$dirname"
+        tmpfile="${compat_dir}/${archive}"
+        outdir="${compat_dir}/${dirname}"
+
+        if ! download_with_gauge "$url" "$tmpfile" "Downloading ${version} for Steam..."; then
+            msg_box "Download failed: ${archive}"
+            rm -f "$tmpfile"
+            failed=$((failed + 1))
+            continue
+        fi
+
+        rm -rf "$outdir"
+        mkdir -p "$outdir" || return 1
+        if ! extract_archive_with_gauge "$tmpfile" "$outdir" "Extracting ${version} for Steam..."; then
+            msg_box "Extraction failed: ${archive}"
+            rm -f "$tmpfile"
+            rm -rf "$outdir"
+            failed=$((failed + 1))
+            continue
+        fi
+        rm -f "$tmpfile"
+
+        prepare_steam_proton_ge_dir "$outdir" "$version"
+        if [ ! -x "$outdir/proton" ]; then
+            msg_box "${version} did not install a runnable proton script at:\n${outdir}/proton"
+            failed=$((failed + 1))
+            continue
+        fi
+
+        default_version="$version"
+        default_url="$url"
+        installed=$((installed + 1))
+    done
+
+    if [ "$installed" -eq 0 ]; then
+        msg_box "No GE-Proton builds for Steam were installed."
+        return 1
+    fi
+
+    write_steam_proton_ge_config "$default_version" "$default_url" || {
+        msg_box "Installed ${installed} build(s), but failed to write ${STEAM_PROTON_GE_CONFIG}."
+        return 1
+    }
+
+    msg_box "Installed ${installed} GE-Proton build(s) for Steam.\n\nSteam will list each build as a separate compatibility tool after restart. The last installed build, ${default_version}, is now the default preflight install target.\n\nFailed installs: ${failed}"
+}
+
+steam_proton_ge_url_menu() {
+    local url
+
+    url="$(input_box "Steam GE-Proton URL" "Enter a GE-Proton x86_64 .tar.gz release URL to install as a Steam compatibility tool.\n\nExample:" "$GE_PROTON_SAMPLE_URL")" || return 1
+    url="${url//[[:space:]]/}"
+    download_steam_proton_ge_url "$url"
+}
+
+steam_proton_ge_menu() {
+    if [[ "$(uname -m)" != "x86_64" ]]; then
+        msg_box "Steam GE-Proton downloads are only enabled on x86_64 builds."
+        return 1
+    fi
+
+    require_commands jq curl wget tar || return 1
+    local data filtered
+    data=$(fetch_json "$PROTON_GE_RELEASES_URL") || {
+        msg_box "Failed to fetch Steam GE-Proton releases."
+        return 1
+    }
+    filtered=$(printf '%s' "$data" | jq -c '
+        [.[] as $r
+         | $r.assets[]?
+         | select((.name | startswith("GE-Proton")) and (.name | endswith(".tar.gz")))
+         | select((.name | contains("-aarch64")) | not)
+         | {
+             label: ("GE-Proton for Steam x86_64: " + (.name | rtrimstr(".tar.gz")) + " [" + $r.tag_name + "]"),
+             archive: .name,
+             url: .browser_download_url
+           }
+        ]') || {
+        msg_box "Failed to parse Steam GE-Proton releases."
+        return 1
+    }
+    if [ "$(printf '%s' "$filtered" | jq 'length')" -eq 0 ]; then
+        msg_box "No GE-Proton x86_64 builds for Steam were found."
+        return 1
+    fi
+    download_steam_proton_ge_selection "$filtered"
 }
 
 translate_free_game_installer() {
@@ -615,6 +889,68 @@ select_prefix() {
     fi
 
     select_single "Select Wineprefix" "Choose a Wineprefix:" "${prefixes[@]}"
+}
+
+steam_roots_all() {
+    local root
+    local seen=":"
+
+    for root in "$(steam_root_dir)" "${BATOCERA_STEAM_ROOT:-}" "${BATOCERA_STEAM_HOME:-}" \
+        /userdata/system/.local/share/Steam /userdata/system/steam /userdata/system/.steam/steam; do
+        [ -n "$root" ] || continue
+        case "$seen" in
+            *":$root:"*) continue ;;
+        esac
+        seen="${seen}${root}:"
+        printf '%s\n' "$root"
+    done
+}
+
+collect_steam_compat_prefixes() {
+    local root compat appid prefix key
+    local seen=$'\n'
+
+    while IFS= read -r root; do
+        [ -d "$root" ] || continue
+        for compat in "$root"/steamapps/compatdata/* "$root"/compatdata/*; do
+            [ -d "$compat" ] || continue
+            appid="$(basename "$compat")"
+            prefix="${compat}/pfx"
+            [ -d "$prefix" ] || continue
+            key="${appid}|${prefix}"
+            [[ "$seen" == *$'\n'"$key"$'\n'* ]] && continue
+            seen+="${key}"$'\n'
+            printf '%s\n' "$key"
+        done
+    done < <(steam_roots_all)
+}
+
+select_steam_prefix() {
+    local prefixes=()
+    local options=()
+    local line idx choice appid prefix
+
+    while IFS= read -r line; do
+        [ -n "$line" ] && prefixes+=("$line")
+    done < <(collect_steam_compat_prefixes)
+
+    if [ "${#prefixes[@]}" -eq 0 ]; then
+        msg_box "No Steam Proton prefixes found.\n\nLaunch the game through Steam once so Steam creates steamapps/compatdata/<appid>/pfx, then run Steam Tools again."
+        return 1
+    fi
+
+    for idx in "${!prefixes[@]}"; do
+        appid="${prefixes[$idx]%%|*}"
+        prefix="${prefixes[$idx]#*|}"
+        options+=("$((idx + 1))" "${appid} - ${prefix}")
+    done
+
+    choice=$(dialog --clear --title "Select Steam Prefix" --menu "Choose a Steam Proton prefix:" 22 110 12 "${options[@]}" 2>&1 >/dev/tty) || {
+        clear_screen
+        return 1
+    }
+    clear_screen
+    printf '%s\n' "${prefixes[$((choice - 1))]}"
 }
 
 collect_windows_games_for_steam() {
@@ -947,6 +1283,205 @@ run_easy_winetricks() {
     done
 }
 
+append_unique_verb() {
+    local -n target="$1"
+    local verb="$2"
+    local existing
+
+    for existing in "${target[@]}"; do
+        [ "$existing" = "$verb" ] && return 0
+    done
+    target+=("$verb")
+}
+
+expand_protontricks_tag() {
+    local tag="$1"
+
+    case "$tag" in
+        common_vc_dx9)
+            printf '%s\n' vcrun2008 vcrun2010 vcrun2012 vcrun2013 vcrun2022 d3dx9 d3dx9_43 d3dcompiler_47 xact
+            ;;
+        common_dx9)
+            printf '%s\n' d3dx9 d3dx9_43 d3dcompiler_47 xact directplay
+            ;;
+        *)
+            printf '%s\n' "$tag"
+            ;;
+    esac
+}
+
+select_common_protontricks_verbs() {
+    local selected tag verb
+    local verbs=()
+
+    selected=$(dialog_capture_stdout --separate-output --checklist "Select Steam Proton runtime components to inject:" 27 100 16 \
+        common_vc_dx9 "Common VC++ 2008-2022 + DX9/XAudio bundle" off \
+        common_dx9 "DirectX 9/XAudio/DirectPlay bundle" off \
+        vcrun2008 "Visual C++ 2008" off \
+        vcrun2010 "Visual C++ 2010" off \
+        vcrun2012 "Visual C++ 2012" off \
+        vcrun2013 "Visual C++ 2013" off \
+        vcrun2022 "Visual C++ 2015-2022" off \
+        d3dx9 "DirectX 9 redistributable" off \
+        d3dx9_43 "DirectX 9 d3dx9_43" off \
+        d3dcompiler_47 "D3D compiler 47" off \
+        xact "XAudio/XACT" off \
+        directplay "DirectPlay" off) || {
+        clear_screen
+        return 1
+    }
+    clear_screen
+    [ -n "$selected" ] || return 1
+
+    while IFS= read -r tag; do
+        [ -n "$tag" ] || continue
+        while IFS= read -r verb; do
+            [ -n "$verb" ] && append_unique_verb verbs "$verb"
+        done < <(expand_protontricks_tag "$tag")
+    done <<<"$selected"
+
+    printf '%s\n' "${verbs[@]}"
+}
+
+select_official_protontricks_verb() {
+    require_commands curl || return 1
+    local temp_file parsed pkg line tag desc
+    local options=()
+
+    temp_file=$(mktemp)
+    parsed=$(mktemp)
+    if curl -fsSL "$WINETRICKS_ALL_URL" -o "$temp_file"; then
+        grep -v '^=====' "$temp_file" | grep -v '^[[:space:]]*$' > "$parsed"
+        while IFS= read -r line; do
+            tag=$(awk '{print $1}' <<<"$line")
+            desc=$(cut -d' ' -f2- <<<"$line")
+            options+=("$tag" "$desc" off)
+        done < "$parsed"
+        pkg=$(dialog_capture_stdout --title "Protontricks Packages" --radiolist "Select one additional Winetricks package for this Steam prefix:" 30 100 14 "${options[@]}") || true
+        clear_screen
+    else
+        msg_box "Failed to fetch the Winetricks package list."
+    fi
+    rm -f "$temp_file" "$parsed"
+
+    [ -n "${pkg:-}" ] || return 1
+    printf '%s\n' "$pkg"
+}
+
+protontricks_stamp_name() {
+    printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
+run_protontricks_batch() {
+    local appid="$1"
+    local prefix="$2"
+    shift 2
+    local verbs=("$@")
+    local stamp_dir="${prefix}/.batocera-runtime-stamps"
+    local output_file status_file
+    local total="${#verbs[@]}"
+    local rc=0
+    local applied=0 failed=0 skipped=0
+    local stamp verb percent summary failures=""
+
+    [ "$total" -gt 0 ] || return 1
+    output_file=$(mktemp)
+    status_file=$(mktemp)
+
+    export DISPLAY="${DISPLAY:-:0.0}"
+    command -v unclutter-remote >/dev/null 2>&1 && unclutter-remote -s || true
+
+    (
+        local idx=0
+        for verb in "${verbs[@]}"; do
+            idx=$((idx + 1))
+            percent=$(((idx - 1) * 100 / total))
+            stamp="${stamp_dir}/$(protontricks_stamp_name "$verb")"
+            printf '%s\n' "$percent"
+            printf '%s\n' "XXX"
+            printf '%s\n' "Applying ${idx}/${total}: ${verb}"
+            printf '%s\n' "XXX"
+
+            if [ -f "$stamp" ]; then
+                skipped=$((skipped + 1))
+                printf 'SKIPPED %s\n' "$verb" >> "$output_file"
+                continue
+            fi
+
+            if protontricks "$appid" -q "$verb" >> "$output_file" 2>&1; then
+                mkdir -p "$stamp_dir" || true
+                : > "$stamp" 2>/dev/null || true
+                applied=$((applied + 1))
+                printf 'OK %s\n' "$verb" >> "$output_file"
+            else
+                failed=$((failed + 1))
+                failures+="${verb} "
+                printf 'FAILED %s\n' "$verb" >> "$output_file"
+                rc=1
+            fi
+        done
+        printf '%s\n' 100
+        printf '%s:%s:%s:%s:%s\n' "$rc" "$applied" "$failed" "$skipped" "$failures" > "$status_file"
+    ) | dialog --gauge "\nApplying Protontricks to Steam AppID ${appid}.\nInstaller prompts may still appear on the main display." 10 82 0 2>&1 >/dev/tty
+
+    command -v unclutter-remote >/dev/null 2>&1 && unclutter-remote -h || true
+    clear_screen
+
+    if [ -s "$status_file" ]; then
+        IFS=: read -r rc applied failed skipped failures < "$status_file"
+    else
+        rc=1
+        failed=$total
+    fi
+    summary="$(tail -n 18 "$output_file")"
+    rm -f "$output_file" "$status_file"
+
+    if [ "$rc" -eq 0 ]; then
+        msg_box "Protontricks processing complete for Steam AppID ${appid}.\n\nApplied: ${applied}\nSkipped existing stamps: ${skipped}\nFailed: ${failed}"
+    else
+        msg_box "Protontricks completed with failures for Steam AppID ${appid}.\n\nApplied: ${applied}\nSkipped existing stamps: ${skipped}\nFailed: ${failed}\nFailed verbs: ${failures:-unknown}\n\n${summary}"
+    fi
+    return "$rc"
+}
+
+run_easy_protontricks() {
+    require_commands protontricks || return 1
+    local selected appid prefix action verb
+    local verbs=()
+
+    while true; do
+        selected=$(select_steam_prefix) || return 1
+        appid="${selected%%|*}"
+        prefix="${selected#*|}"
+
+        while true; do
+            verbs=()
+            action=$(select_radiolist "Easy Protontricks" "Choose what to inject into Steam AppID ${appid}:" \
+                common "Common VC++ / DX9 components" on \
+                official "One package from the official Winetricks list" off) || break
+
+            case "$action" in
+                common)
+                    while IFS= read -r verb; do
+                        [ -n "$verb" ] && verbs+=("$verb")
+                    done < <(select_common_protontricks_verbs || true)
+                    ;;
+                official)
+                    verb="$(select_official_protontricks_verb || true)"
+                    [ -n "$verb" ] && verbs+=("$verb")
+                    ;;
+            esac
+
+            [ "${#verbs[@]}" -gt 0 ] || break
+            run_protontricks_batch "$appid" "$prefix" "${verbs[@]}" || true
+
+            yes_no "Apply another Protontricks package to the same Steam prefix?" || break
+        done
+
+        yes_no "Do you want to process another Steam Proton prefix?" || break
+    done
+}
+
 choose_compression_method() {
     select_radiolist "Compression Type" "Choose compression method:" \
         wsquashfs "SquashFS - best for larger games with small writes" off \
@@ -1135,17 +1670,14 @@ main_menu() {
             8 "Convert .pc folder to .wine folder"
             9 "Compress .wine folder to .wsquashfs or .wtgz"
             10 "Decompress .wsquashfs / .wtgz back to .wine"
-            11 "Add Windows game to Steam"
-            12 "Install Decky PluginLoader for Steam"
-            13 "Install SimpleDeckyTDP controls for Decky"
-            14 "Install free Windows games"
+            11 "Install free Windows games"
             99 "Exit"
         )
 
         choice=$(dialog --clear --backtitle "Batocera Wine Tools" \
             --title "batocera-wine-tools" \
             --menu "Choose a Wine management action:" \
-            23 96 13 \
+            22 92 12 \
             "${menu_options[@]}" \
             2>&1 >/dev/tty) || {
                 clear_screen
@@ -1164,14 +1696,51 @@ main_menu() {
             8) convert_pc_to_wine ;;
             9) compress_wine_folder ;;
             10) decompress_wine_archive ;;
-            11) add_windows_game_to_steam_menu ;;
-            12) install_decky_loader_menu ;;
-            13) install_decky_tdp_menu ;;
-            14) install_free_windows_games_menu ;;
+            11) install_free_windows_games_menu ;;
+            99) break ;;
+        esac
+    done
+}
+
+steam_tools_menu() {
+    local choice
+    while true; do
+        local menu_options=(
+            1 "Add Windows game to Steam"
+            2 "Install GE-Proton Steam builds"
+            3 "Install GE-Proton Steam build from URL"
+            4 "Easy Protontricks (VC++ / DX9)"
+            5 "Install Decky PluginLoader for Steam"
+            6 "Install SimpleDeckyTDP controls for Decky"
+            99 "Exit"
+        )
+
+        choice=$(dialog --clear --backtitle "Batocera Steam Tools" \
+            --title "batocera-steam-tools" \
+            --menu "Choose a Steam management action:" \
+            22 96 12 \
+            "${menu_options[@]}" \
+            2>&1 >/dev/tty) || {
+                clear_screen
+                break
+            }
+        clear_screen
+
+        case "$choice" in
+            1) add_windows_game_to_steam_menu ;;
+            2) steam_proton_ge_menu ;;
+            3) steam_proton_ge_url_menu ;;
+            4) run_easy_protontricks ;;
+            5) install_decky_loader_menu ;;
+            6) install_decky_tdp_menu ;;
             99) break ;;
         esac
     done
 }
 
 require_dialog
-main_menu
+if steam_tools_mode; then
+    steam_tools_menu
+else
+    main_menu
+fi

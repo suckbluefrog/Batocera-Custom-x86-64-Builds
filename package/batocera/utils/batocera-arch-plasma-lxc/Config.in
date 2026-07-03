@@ -1,7 +1,16 @@
 config BR2_PACKAGE_BATOCERA_ARCH_PLASMA_LXC
 	bool "batocera-arch-plasma-lxc"
-	depends on BR2_PACKAGE_LXC
-	depends on BR2_PACKAGE_DIALOG
-	depends on BR2_PACKAGE_XTERM
+	depends on BR2_USE_MMU
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	depends on !BR2_STATIC_LIBS
+	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_4_7
+	depends on BR2_TOOLCHAIN_HEADERS_AT_LEAST_3_0
+	depends on !BR2_TOOLCHAIN_USES_UCLIBC
+	select BR2_PACKAGE_BASH
+	select BR2_PACKAGE_DIALOG
+	select BR2_PACKAGE_DNSMASQ
+	select BR2_PACKAGE_IPTABLES
+	select BR2_PACKAGE_LXC
+	select BR2_PACKAGE_XTERM
 	help
 	  Runtime launcher for an Arch Linux KDE Plasma desktop in LXC.

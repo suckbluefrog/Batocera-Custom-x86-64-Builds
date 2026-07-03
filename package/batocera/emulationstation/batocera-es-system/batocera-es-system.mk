@@ -58,6 +58,31 @@ define BATOCERA_ES_SYSTEM_INSTALL_WINE_TOOLS
 endef
 endif
 
+ifeq ($(BR2_PACKAGE_BATOCERA_STEAM),y)
+define BATOCERA_ES_SYSTEM_INSTALL_STEAM_TOOLS
+	$(INSTALL) -D -m 0755 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/datainit/roms/emulator/Steam_Tools.sh \
+		$(TARGET_DIR)/usr/share/batocera/datainit/roms/emulator/Steam_Tools.sh
+	$(INSTALL) -D -m 0644 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/utils/batocera-steam/datainit/roms/emulator/Steam_Tools.sh.keys \
+		$(TARGET_DIR)/usr/share/batocera/datainit/roms/emulator/Steam_Tools.sh.keys
+	$(INSTALL) -D -m 0644 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/core/batocera-desktopapps/icons/steam.png \
+		$(TARGET_DIR)/usr/share/batocera/datainit/roms/emulator/images/steam.png
+	gamelist="$(TARGET_DIR)/usr/share/batocera/datainit/roms/emulator/gamelist.xml"; \
+	if [ -f "$${gamelist}" ] && ! grep -q './Steam_Tools.sh' "$${gamelist}"; then \
+		awk '/<\/gameList>/ { \
+			print "  <game>"; \
+			print "    <path>./Steam_Tools.sh</path>"; \
+			print "    <name>Steam Tools</name>"; \
+			print "    <image>./images/steam.png</image>"; \
+			print "  </game>"; \
+		} { print }' "$${gamelist}" > "$${gamelist}.tmp" && \
+		mv "$${gamelist}.tmp" "$${gamelist}"; \
+	fi
+endef
+endif
+
 define BATOCERA_ES_SYSTEM_BUILD_CMDS
 	$(HOST_DIR)/bin/python \
 		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulationstation/batocera-es-system/batocera-es-system.py \
@@ -104,8 +129,9 @@ define BATOCERA_ES_SYSTEM_INSTALL_TARGET_CMDS
 				$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulationstation/batocera-es-system/gui-launcher.keys \
 				$(TARGET_DIR)/usr/share/batocera/datainit/roms/emulator/$${launcher}.keys; \
 		fi; \
-	done
+		done
 	$(BATOCERA_ES_SYSTEM_INSTALL_WINE_TOOLS)
+	$(BATOCERA_ES_SYSTEM_INSTALL_STEAM_TOOLS)
 endef
 
 $(eval $(generic-package))
