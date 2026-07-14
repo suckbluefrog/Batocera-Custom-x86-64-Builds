@@ -22,7 +22,7 @@ ifeq ($(BR2_PACKAGE_XSERVER_XORG_SERVER),y)
     MANGOHUD_DEPENDENCIES += xserver_xorg-server
 endif
 
-MANGOHUD_CONF_OPTS = -Dwith_xnvctrl=disabled
+MANGOHUD_CONF_OPTS = -Dwith_xnvctrl=disabled -Dmangohudctl=true
 
 MANGOHUD_DEPENDENCIES += vulkan-headers
 

@@ -18473,7 +18473,8 @@ freej2me:
         5x: 5
         6x: 6
 gopher64:
-  features: []
+  features:
+  - cheevos
   shared:
   - powermode
   - tdp_mode

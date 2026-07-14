@@ -13,6 +13,11 @@ PROTON_GE_RELEASES_URL="https://api.github.com/repos/GloriousEggroll/proton-ge-c
 GE_PROTON_SAMPLE_URL="https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz"
 FREE_WINDOWS_GAMES_BASE_URL="https://raw.githubusercontent.com/foclabroc/toolbox/refs/heads/main/windows"
 STEAM_PROTON_GE_CONFIG="/userdata/system/configs/steam/proton-ge.conf"
+DECKY_HOME="${BATOCERA_DECKY_HOME:-/userdata/system/homebrew}"
+DECKY_PLUGINLOADER="${DECKY_HOME}/services/PluginLoader"
+BATOCERA_CONTROL_VERSION="${BATOCERA_CONTROL_VERSION:-0.2.9}"
+BATOCERA_CONTROL_URL="${BATOCERA_CONTROL_URL:-https://github.com/suckbluefrog/decky-bcc/releases/download/v${BATOCERA_CONTROL_VERSION}/decky-bcc-${BATOCERA_CONTROL_VERSION}.tar.gz}"
+BATOCERA_CONTROL_SHA256="${BATOCERA_CONTROL_SHA256:-24abab373ecab2ee9103f7c92169f39b17eb1512f9ba3a0c7712c095b0acc5cf}"
 TOOL_NAME="$(basename "$0")"
 
 steam_tools_mode() {
@@ -1146,6 +1151,105 @@ install_decky_loader_menu() {
     return "${rc}"
 }
 
+ensure_decky_loader_installed() {
+    local output rc summary
+
+    if [[ -x "${DECKY_PLUGINLOADER}" ]]; then
+        return 0
+    fi
+    if ! command -v batocera-steam-decky-install >/dev/null 2>&1; then
+        msg_box "Decky installer is not available in this image.\n\nInstall or enable Batocera Steam support first."
+        return 1
+    fi
+    if ! steam_client_installed; then
+        msg_box "Steam needs to be installed first.\n\nLaunch Steam GamepadUI once and complete its initial setup, then run this installer again."
+        return 1
+    fi
+
+    yes_no "Decky PluginLoader is not installed.\n\nInstall it now so Batocera Control can be added?" || return 1
+    info_box "Installing Decky PluginLoader..."
+    output=$(batocera-steam-decky-install 2>&1)
+    rc=$?
+    clear_screen
+    summary="$(printf '%s\n' "${output}" | tail -n 20)"
+    if [ "${rc}" -ne 0 ] || [[ ! -x "${DECKY_PLUGINLOADER}" ]]; then
+        msg_box "Decky PluginLoader install failed:\n\n${summary}"
+        return 1
+    fi
+    return 0
+}
+
+verify_sha256_file() {
+    local file="$1"
+    local expected="$2"
+    local actual unused
+
+    read -r actual unused < <(sha256sum "$file")
+    if [ "${actual}" != "${expected}" ]; then
+        msg_box "Hash verification failed for $(basename "$file").\n\nExpected:\n${expected}\n\nGot:\n${actual}"
+        return 1
+    fi
+    return 0
+}
+
+download_verified_archive() {
+    local url="$1"
+    local expected_sha="$2"
+    local output="$3"
+    local label="$4"
+
+    if ! download_with_gauge "$url" "$output" "Downloading ${label}..."; then
+        msg_box "Download failed:\n\n${url}"
+        return 1
+    fi
+    verify_sha256_file "$output" "$expected_sha"
+}
+
+install_decky_batocera_control_menu() {
+    local tmp archive extract installer output rc summary
+
+    require_commands wget tar sha256sum bash || return 1
+    ensure_decky_loader_installed || return 1
+
+    yes_no "Install or update Batocera Control ${BATOCERA_CONTROL_VERSION}?\n\nThe unified plugin provides compatibility, native LED, and global/per-game LSFG-VK controls. Per-game activation applies on the next game launch; only all-games mode needs a Steam restart. It uses Batocera's x64/Wine layer and /userdata/system/wine/lossless-scaling/Lossless.dll without downloading another runtime or DLL. SimpleDeckyTDP remains authoritative for AMD power controls." || return 1
+
+    tmp=$(mktemp -d)
+    archive="${tmp}/decky-bcc-${BATOCERA_CONTROL_VERSION}.tar.gz"
+    extract="${tmp}/extract"
+    mkdir -p "$extract"
+
+    if ! download_verified_archive "$BATOCERA_CONTROL_URL" "$BATOCERA_CONTROL_SHA256" "$archive" "Batocera Control ${BATOCERA_CONTROL_VERSION}"; then
+        rm -rf "$tmp"
+        return 1
+    fi
+    if ! tar -xzf "$archive" -C "$extract"; then
+        rm -rf "$tmp"
+        msg_box "Unable to extract the Batocera Control release."
+        return 1
+    fi
+
+    installer="${extract}/decky-bcc-${BATOCERA_CONTROL_VERSION}/install.sh"
+    if [ ! -f "$installer" ]; then
+        rm -rf "$tmp"
+        msg_box "Batocera Control installer was not found in the verified release."
+        return 1
+    fi
+
+    info_box "Installing Decky Batocera Control..."
+    output=$(bash "$installer" 2>&1)
+    rc=$?
+    clear_screen
+    summary="$(printf '%s\n' "${output}" | tail -n 30)"
+    rm -rf "$tmp"
+
+    if [ "${rc}" -eq 0 ]; then
+        msg_box "Batocera Control ${BATOCERA_CONTROL_VERSION} installed.\n\nOpen Steam -> Quick Access -> Batocera Control. LSFG-VK supports selected games without restarting Steam, or optional all-games mode after a Steam restart. The former standalone LSFG plugin is retained under disabled-plugins for rollback.\n\n${summary}"
+    else
+        msg_box "Decky Batocera Control install failed:\n\n${summary}"
+    fi
+    return "${rc}"
+}
+
 install_decky_tdp_menu() {
     local output rc summary decky_output decky_summary
     local decky_bin="/userdata/system/homebrew/services/PluginLoader"
@@ -1712,6 +1816,7 @@ steam_tools_menu() {
             4 "Easy Protontricks (VC++ / DX9)"
             5 "Install Decky PluginLoader for Steam"
             6 "Install SimpleDeckyTDP controls for Decky"
+            7 "Install Batocera Control + LSFG-VK"
             99 "Exit"
         )
 
@@ -1733,6 +1838,7 @@ steam_tools_menu() {
             4) run_easy_protontricks ;;
             5) install_decky_loader_menu ;;
             6) install_decky_tdp_menu ;;
+            7) install_decky_batocera_control_menu ;;
             99) break ;;
         esac
     done

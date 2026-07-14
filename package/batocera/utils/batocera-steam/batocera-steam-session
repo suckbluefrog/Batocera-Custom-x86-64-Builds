@@ -134,6 +134,38 @@ prepare_steam_child_lsfg_env() {
     done
 }
 
+strip_mangohud_loader_entries() {
+    local name="$1"
+    local value
+    local item
+    local filtered=""
+
+    value="$(printenv "${name}" 2>/dev/null || true)"
+    [[ -n "${value}" ]] || return 0
+    value="${value//:/ }"
+    for item in ${value}; do
+        case "${item,,}" in
+            *mangohud*|*mangoapp*)
+                continue
+                ;;
+        esac
+        filtered+="${filtered:+:}${item}"
+    done
+
+    if [[ -n "${filtered}" ]]; then
+        printf -v "${name}" '%s' "${filtered}"
+        export "${name}"
+    else
+        unset "${name}"
+    fi
+}
+
+sanitize_inherited_mangohud_environment() {
+    unset MANGOHUD MANGOHUD_CONFIG MANGOHUD_CONFIGFILE MANGOHUD_DLSYM MANGOAPP_CONFIG
+    strip_mangohud_loader_entries LD_PRELOAD
+    strip_mangohud_loader_entries LD_AUDIT
+}
+
 prepare_tdp_limit_gamescope_stats() {
     local mode
 
@@ -147,10 +179,11 @@ prepare_tdp_limit_gamescope_stats() {
     fi
 
     BATOCERA_STEAM_GS_STATS_PATH="${BATOCERA_STEAM_GS_STATS_PATH:-/var/run/batocera-tdp-limit/gamescope-stats.pipe}"
-    BATOCERA_STEAM_GS_MANGOAPP=0
     export BATOCERA_STEAM_GS_STATS_PATH
-    export BATOCERA_STEAM_GS_MANGOAPP
-    unset MANGOHUD MANGOHUD_CONFIG MANGOHUD_CONFIGFILE MANGOHUD_DLSYM MANGOAPP_CONFIG
+    # Adaptive TDP reads Gamescope's stats pipe directly. Discard only an
+    # inherited generic MangoHud wrapper/config so it cannot take over the
+    # Gamescope MangoApp that Steam's performance slider controls.
+    sanitize_inherited_mangohud_environment
     echo "Steam gamescope TDP limiter stats path: ${BATOCERA_STEAM_GS_STATS_PATH}" >> "${log}"
 }
 

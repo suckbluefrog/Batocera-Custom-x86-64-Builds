@@ -286,6 +286,11 @@ ifeq ($(BR2_PACKAGE_86BOX),y)
   BATOCERA_DESKTOPAPPS_ICONS   += 86box.png
 endif
 
+# Ubuntu Plasma LXC
+ifeq ($(BR2_PACKAGE_BATOCERA_UBUNTU_PLASMA_LXC),y)
+  BATOCERA_DESKTOPAPPS_APPS    += ubuntu-plasma-lxc.desktop
+endif
+
 ## Context Menu Actions
 
 # wine

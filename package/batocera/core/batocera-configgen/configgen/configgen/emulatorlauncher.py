@@ -186,7 +186,10 @@ def start_rom(args: argparse.Namespace, maxnbplayers: int, rom: Path, original_r
                 disable_mangohud = str(cmd.env.get("DISABLE_MANGOHUD", "")).lower() in ("1", "true", "yes")
                 if tdp_limit_adaptive and systemName == "steam":
                     cmd.env["BATOCERA_STEAM_GS_STATS_PATH"] = str(TDP_LIMIT_GAMESCOPE_STATS_PATH)
-                    cmd.env["BATOCERA_STEAM_GS_MANGOAPP"] = "0"
+                    # Gamescope's stats pipe is independent of MangoApp. Keep
+                    # Steam's requested MangoApp state so its performance
+                    # overlay slider remains functional while adaptive TDP is
+                    # collecting FPS data.
                     cmd.env["DISABLE_MANGOHUD"] = "1"
                     stripMangoHud(cmd)
                     disable_mangohud = True

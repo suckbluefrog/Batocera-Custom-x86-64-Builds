@@ -4,14 +4,14 @@
 #
 ################################################################################
 
-CEMU_VERSION = a8bd6f84f79e82ab9830c777376a38bd138660da
+CEMU_VERSION = acb105bd58a06ce93fc140ce0c2f55f1688ab2fd
 CEMU_SITE = https://github.com/cemu-project/Cemu
 CEMU_LICENSE = GPLv2
 CEMU_SITE_METHOD=git
 CEMU_GIT_SUBMODULES=YES
 CEMU_DEPENDENCIES = bluez5_utils boost fmt glslang glm host-doxygen host-nasm \
                     libcurl libgtk3 libopenssl libpng libusb libzip libzlib \
-					pulseaudio pugixml rapidjson sdl2 speexdsp wxwidgets zstd \
+					pulseaudio pugixml rapidjson sdl3 speexdsp wxwidgets zstd \
                     host-clang host-ninja host-lld
 					
 CEMU_SUPPORTS_IN_SOURCE_BUILD = NO

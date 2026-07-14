@@ -1,23 +1,23 @@
 # From upstream release assets:
-# - VacuumTube v1.7.0
-# - Chrome-appimage (stable 148.0.7778.167-1)
-# - Firefox-appimage (stable 151.0)
+# - VacuumTube v1.8.1
+# - Chrome-appimage (stable 150.0.7871.114-1)
+# - Firefox-appimage (stable 152.0.5)
 # - GeForce Infinity v1.2.2
 # - Parsec linux deb
-# - ProtonUp-Qt v2.15.0
-# - Steam ROM Manager v2.5.34
-# - Greenlight v2.4.1
+# - ProtonUp-Qt v2.15.1
+# - Steam ROM Manager v2.5.43
+# - Greenlight v2.4.2
 # - Moonlight v6.1.0
 # - chiaki-ng v1.10.0
-# - peazip portable Qt6 v11.1.0
-sha256  d4ae6d6fd87e0d9a05e48e13d5f2bb5b3b3f3e35948dba6a1c8ef362873b9e10  VacuumTube-x86_64.AppImage
-sha256  396079fb78866937febd05eca2693497978c2a52d71cdd6ea1e77f4de5ab977b  Google-Chrome-stable-148.0.7778.167-1-x86_64.AppImage
-sha256  15b62931307cdffce10e05a044d18eeaa49abccf1210b2105c40b5906437013a  Firefox-stable-151.0-x86_64.AppImage
+# - peazip portable Qt6 v11.2.0
+sha256  0b510c2d24d7459ca77b7138f0ba8fbc71d21b4bfdf7f7523948ceead56c1816  VacuumTube-x86_64.AppImage
+sha256  e793c69e3f8a4b610412bd42f94386631da3ade9055b6af850595adff52c00fd  Google-Chrome-stable-150.0.7871.114-1-x86_64.AppImage
+sha256  87f2b874cdc89064b2da5c21438e48902c401efdef3abdad37dbcecc108d0f45  Firefox-stable-152.0.5-x86_64.AppImage
 sha256  d01ff9c5e8773f4bde2c07870269093e083aefe7240e5009e78b1e5a0d55d828  GeForceInfinity-linux-1.2.2-x86_64.AppImage
-sha256  f1691ba3a97534604f5f640c26cceafaef672ccf7ab6eed66114d0abafc2cccf  parsec-linux.deb
-sha256  173ae03a51260bee1fbdddf606d975f3e6fa79159a49e4f108b83b2bc559d1d2  ProtonUp-Qt-2.15.0-x86_64.AppImage
-sha256  41b5f07d3f75050d79fc32f72180b7a9971a865b10be450a4f0314529658f94f  Steam-ROM-Manager-2.5.34.AppImage
-sha256  0987f40429100789acf5b8fd7cf80481d8c703f26f29a0b1802eb06fbfdb7357  Greenlight-2.4.1.AppImage
+sha256  c8a4407713d72dcb1c59f082977e81e1b9e8ffd679d0666882cde4c8a0821dd2  parsec-linux.deb
+sha256  fd78efb1ffa0907a525784462494b9b42938f9fd7c019f3eaea3b8faf837e8c1  ProtonUp-Qt-2.15.1-x86_64.AppImage
+sha256  a64734daabd04144356c4abf6c783271e495fd7c698109db8d308c9b22ef0616  Steam-ROM-Manager-2.5.43.AppImage
+sha256  1ceb56c4b3b348480565f784083e3a4222ad782dd9cb9a0aa8934df070331777  Greenlight-2.4.2.AppImage
 sha256  0e855ffd22d407e18ab5fdb575fed5f01ca119a3f91993c5f0213f15ac80b400  Moonlight-6.1.0-x86_64.AppImage
 sha256  cac42c21a19a111f2f0729bb9eef7d3878c6d2a4f06e017d383aff2aba719fd3  chiaki-ng.AppImage_x86_64
-sha256  4c5765523ebaf0908962c6599c26246301b0429144b49e34f7ef0f37b673c085  peazip_portable-11.1.0.LINUX.Qt6.x86_64.tar.gz
+sha256  e81f46854e0cf192f9eea3c51b41937ae308981f3849b8242503a77dd04bbdac  peazip_portable-11.2.0.LINUX.Qt6.x86_64.tar.gz
