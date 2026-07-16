@@ -95,6 +95,29 @@ def _find_input_config(roots: Iterable[ET.Element], name: str, guid: str, /) -> 
     raise BatoceraException(f'Could not find controller data for "{name}" with GUID "{guid}"')
 
 
+def _restore_missing_button_codes(inputs: InputDict, device_path: str, /) -> None:
+    """Restore evdev button codes omitted by affected EmulationStation builds."""
+    if not device_path or all(input.code is not None for input in inputs.values() if input.type == 'button'):
+        return
+
+    import evdev
+
+    try:
+        button_codes = evdev.InputDevice(device_path).capabilities().get(evdev.ecodes.EV_KEY, [])
+    except OSError:
+        return
+
+    for input in inputs.values():
+        if input.type != 'button' or input.code is not None:
+            continue
+
+        try:
+            button_index = int(input.id)
+            input.code = str(button_codes[button_index])
+        except (IndexError, ValueError):
+            continue
+
+
 class _RelaxedDict(TypedDict):
     centered: bool
     reversed: bool
@@ -234,17 +257,21 @@ class Controller:
 
         guid: str = getattr(args, f'p{player_number}guid')
         real_name: str = getattr(args, f'p{player_number}name')
+        device_path: str = getattr(args, f'p{player_number}devicepath')
 
         input_config = _find_input_config(roots, real_name, guid)
+        inputs = dict(Input.from_parent_element(input_config))
+        _restore_missing_button_codes(inputs, device_path)
+
         return cls(
             name=cast('str', input_config.get("deviceName")),
             type=cast('Literal["keyboard", "joystick"]', input_config.get("type")),
             guid=guid,
-            inputs_=Input.from_parent_element(input_config),
+            inputs_=inputs,
             player_number=player_number,
             index=index,
             real_name=real_name,
-            device_path=getattr(args, f'p{player_number}devicepath'),
+            device_path=device_path,
             button_count=getattr(args, f'p{player_number}nbbuttons'),
             hat_count=getattr(args, f'p{player_number}nbhats'),
             axis_count=getattr(args, f'p{player_number}nbaxes'),

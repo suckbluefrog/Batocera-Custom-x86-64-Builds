@@ -1,0 +1,98 @@
+From ce5349138c3ececd632377924d4435a3872e1b61 Mon Sep 17 00:00:00 2001
+From: suckbluefrog <suckbluefrog@proton.me>
+Date: Thu, 16 Jul 2026 00:00:00 +0000
+Subject: [PATCH] restore controller buttons and reopen state
+
+---
+ gamepads.py | 14 ++++++++++++--
+ ui_core.py  | 11 +++++++----
+ 2 files changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/gamepads.py b/gamepads.py
+index 3d3d9df..19e94a9 100644
+--- a/gamepads.py
++++ b/gamepads.py
+@@ -221,7 +221,7 @@ class GamePads:
+         return x
+ 
+     @staticmethod
+-    def _find_best_controller_mapping(pads_configs, name, bus, vendor, product, version):
++    def _find_best_controller_mapping(pads_configs, name, bus, vendor, product, version, button_codes=None):
+         guid = GamePads.compute_guid(bus, vendor, product, version)
+         input_config = GamePads._find_input_config(pads_configs, name, guid)
+ 
+@@ -235,6 +235,12 @@ class GamePads:
+                 input_type  = input.get("type")
+                 input_code  = input.get("code")
+                 input_value = input.get("value")
++                if input_type == "button" and input_code is None and button_codes is not None:
++                    try:
++                        button_index = int(input.get("id"))
++                        input_code = button_codes[button_index]
++                    except (IndexError, TypeError, ValueError):
++                        pass
+                 # hat in es (and thus sdl) are axis starting à 16, 16/17 for hat0, 18/19 for hat1, and so on
+                 if input_type == "hat":
+                     input_code  = 16+int(input.get("id"))
+@@ -323,7 +329,11 @@ class GamePads:
+         pads_configs = GamePads.load_es_dbpads()
+         mappings = {}
+         for dev in self._gamepad_devices:
+-            mapping = GamePads._find_best_controller_mapping(pads_configs, dev.name, dev.info.bustype, dev.info.vendor, dev.info.product, dev.info.version)
++            try:
++                button_codes = dev.capabilities().get(ecodes.EV_KEY, [])
++            except OSError:
++                button_codes = []
++            mapping = GamePads._find_best_controller_mapping(pads_configs, dev.name, dev.info.bustype, dev.info.vendor, dev.info.product, dev.info.version, button_codes)
+             if mapping is None:
+                 debug_print(f"[GAMEPAD] Warning: No mapping found for gamepad {dev.name}")
+                 mappings[dev.fd] = {}  # Empty mapping to prevent errors
+diff --git a/ui_core.py b/ui_core.py
+index 26bc5ce..0e81cc2 100755
+--- a/ui_core.py
++++ b/ui_core.py
+@@ -415,13 +415,13 @@ class UICore:
+                         width = int(sw * 0.90)
+                         scale_class = "full"
+                     if sw >= 1920:
+-                        width = int(sw * 0.62)
++                        width = int(sw * 0.70)
+                         scale_class = "full"
+                     if sh >= 720:
+                         height = int(sh * 0.95)
+                         scale_class = "full"
+                     if sh >= 1080:
+-                        height = int(sh * 0.72)
++                        height = int(sh * 0.80)
+                         scale_class = "full"
+ 
+                 debug_print(f"[DPI] Wayland BCC win:{width}x{height} screen:{sw}x{sh}")
+@@ -467,13 +467,13 @@ class UICore:
+                     width = int(sw * 0.90)
+                     scale_class = "full"
+                 if sw >= 1920:
+-                    width = int(sw * 0.62)
++                    width = int(sw * 0.70)
+                     scale_class = "full"
+                 if sh >= 720:
+                     max_height = int(sh * 0.95)
+                     scale_class = "full"
+                 if sh >= 1080:
+-                    max_height = int(sh * 0.72)
++                    max_height = int(sh * 0.80)
+                     scale_class = "full"
+ 
+         # style
+@@ -1570,6 +1570,9 @@ class UICore:
+         self._handle_gamepad_action = self._handle_gamepad_action_main
+         self.start_gamepad()
+         self._recompute_conditionals()
++        if hasattr(self, "_scrolled_window"):
++            adjustment = self._scrolled_window.get_vadjustment()
++            adjustment.set_value(adjustment.get_lower())
+         self.window.present()
+         self._run_show_animation()
+         self.reset_inactivity_timer()  # Reset timer on button click
+-- 
+2.43.0
+
