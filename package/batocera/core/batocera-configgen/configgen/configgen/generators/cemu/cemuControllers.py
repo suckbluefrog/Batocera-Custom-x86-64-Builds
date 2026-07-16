@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pyudev
 
 from ...batoceraPaths import mkdir_if_not_exists
+from ...utils.motion import get_dsu_server
 from .cemuPaths import CEMU_CONTROLLER_PROFILES
 
 if TYPE_CHECKING:
@@ -27,6 +28,7 @@ def generateControllerConfig(system: Emulator, playersControllers: Controllers) 
     WIIMOTE = "Wiimote"
 
     API_SDL = "SDLController"
+    API_DSU = "DSUController"
     API_WIIMOTE = "Wiimote"
 
     # from https://github.com/cemu-project/Cemu/blob/main/src/input/emulated/WPADController.h
@@ -262,6 +264,10 @@ def generateControllerConfig(system: Emulator, playersControllers: Controllers) 
         addTextElement(controllerNode, 'uuid', f"{guid_n[pad.index]}_{pad.guid}") # controller guid
         addTextElement(controllerNode, 'display_name', pad.real_name) # controller name
         addTextElement(controllerNode, 'rumble', system.config.get('cemu_rumble', '0')) # % chosen
+        if api == API_SDL:
+            # Cemu disables motion per profile by default, even when SDL
+            # exposes a gyro for this controller.
+            addTextElement(controllerNode, 'motion', 'true')
         addAnalogControl(controllerNode, 'axis')
         addAnalogControl(controllerNode, 'rotation')
         addAnalogControl(controllerNode, 'trigger')
@@ -273,6 +279,16 @@ def generateControllerConfig(system: Emulator, playersControllers: Controllers) 
             entryNode = ET.SubElement(mappingsNode, "entry")
             addTextElement(entryNode, "mapping", key)
             addTextElement(entryNode, "button", value)
+
+        # The handheld's built-in sensor belongs to the Wii U GamePad (player 1).
+        if nplayer == 0 and (dsu_server := get_dsu_server()):
+            host, port = dsu_server
+            motionControllerNode = ET.SubElement(root, "controller")
+            addTextElement(motionControllerNode, "api", API_DSU)
+            addTextElement(motionControllerNode, "uuid", "0")
+            addTextElement(motionControllerNode, "motion", "true")
+            addTextElement(motionControllerNode, "ip", host)
+            addTextElement(motionControllerNode, "port", str(port))
 
         # Save to file
         with getConfigFileName(nplayer).open('wb') as handle:

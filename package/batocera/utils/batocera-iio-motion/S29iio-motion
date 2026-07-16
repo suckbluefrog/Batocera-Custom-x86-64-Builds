@@ -1,0 +1,67 @@
+#!/bin/sh
+
+PID_FILE="/var/run/batocera-motion.pid"
+READY_FILE="/var/run/batocera-motion.ready"
+LOG_DIR="/userdata/system/logs"
+LOG_FILE="${LOG_DIR}/iio-motion.log"
+CALIBRATION_DIR="/userdata/system/configs/motion"
+CALIBRATION_FILE="${CALIBRATION_DIR}/iio-gyro.ini"
+BRIDGE="${IIO_MOTION_BRIDGE:-/usr/bin/batocera-iio-motion}"
+
+find_motion_sensor() {
+	for device in /sys/bus/iio/devices/iio:device*; do
+		[ -d "${device}" ] || continue
+		[ -r "${device}/in_accel_x_raw" ] || continue
+		[ -r "${device}/in_accel_y_raw" ] || continue
+		[ -r "${device}/in_accel_z_raw" ] || continue
+		[ -r "${device}/in_anglvel_x_raw" ] || continue
+		[ -r "${device}/in_anglvel_y_raw" ] || continue
+		[ -r "${device}/in_anglvel_z_raw" ] || continue
+		printf '%s\n' "${device}"
+		return 0
+	done
+	return 1
+}
+
+start_bridge() {
+	[ -x "${BRIDGE}" ] || return 0
+	device="$(find_motion_sensor)" || return 0
+
+	pid="$(cat "${PID_FILE}" 2>/dev/null)"
+	if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+		return 0
+	fi
+
+	mkdir -p "${LOG_DIR}" "${CALIBRATION_DIR}"
+	rm -f "${READY_FILE}" "${PID_FILE}"
+	start-stop-daemon --start --quiet --background --make-pidfile \
+		--pidfile "${PID_FILE}" --exec "${BRIDGE}" \
+		--output "${LOG_FILE}" -- \
+		--device "${device}" --port 26760 --rate 100 \
+		--calibration-file "${CALIBRATION_FILE}"
+}
+
+stop_bridge() {
+	start-stop-daemon --stop --quiet --remove-pidfile \
+		--pidfile "${PID_FILE}" --retry TERM/3/KILL/2 || true
+	rm -f "${READY_FILE}"
+}
+
+case "${1:-}" in
+	start)
+		start_bridge
+		;;
+	stop)
+		stop_bridge
+		;;
+	restart)
+		stop_bridge
+		start_bridge
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}" >&2
+		exit 1
+		;;
+esac
+
+exit 0

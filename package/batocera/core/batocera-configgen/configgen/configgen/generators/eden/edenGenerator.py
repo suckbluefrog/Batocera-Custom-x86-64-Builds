@@ -12,6 +12,7 @@ from ...batoceraPaths import BIOS, CONFIGS, SAVES, CACHE, mkdir_if_not_exists, e
 from ...controller import Controllers
 from ...utils import lsfg, vulkan
 from ...utils.configparser import CaseSensitiveRawConfigParser
+from ...utils.motion import configure_switch_motion
 from ..Generator import Generator
 from .edenController import build_eden_sdl_game_controller_config, set_eden_controllers
 
@@ -502,6 +503,10 @@ exit $EXIT_CODE
         set_override("Renderer", "max_anisotropy",
                      system.config.get("eden_anisotropy", "1"))
 
+        # Bloom rendering workaround
+        set_override("Renderer", "fix_bloom_effects",
+                     system.config.get("eden_fix_bloom_effects", "false"))
+
         # ---------- CPU ----------
         if not c.has_section("Cpu"):
             c.add_section("Cpu")
@@ -549,6 +554,7 @@ exit $EXIT_CODE
 
         # ---------- Controls ----------
         set_eden_controllers(c, system, playersControllers)
+        configure_switch_motion(c, playersControllers)
 
         # ---------- Telemetry ----------
         if not c.has_section("WebService"):

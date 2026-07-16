@@ -12,6 +12,7 @@ from ...batoceraPaths import BIOS, CONFIGS, SAVES, CACHE, mkdir_if_not_exists, e
 from ...controller import Controller, generate_sdl_game_controller_config
 from ...utils import lsfg, vulkan
 from ...utils.configparser import CaseSensitiveRawConfigParser
+from ...utils.motion import configure_switch_motion
 from ..Generator import Generator
 
 if TYPE_CHECKING:
@@ -595,6 +596,8 @@ exit $EXIT_CODE
             for motion_key in ("motionleft", "motionright"):
                 c.set("Controls", f"player_{player_index}_{motion_key}\\default", "false")
                 c.set("Controls", f"player_{player_index}_{motion_key}", "[empty]")
+
+        configure_switch_motion(c, playersControllers)
 
         # ---------- System ----------
         if not c.has_section("System"):

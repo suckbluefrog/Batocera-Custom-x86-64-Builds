@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from ...exceptions import BatoceraException
 from ...utils.configparser import CaseSensitiveConfigParser
+from ...utils.motion import get_dsu_server
 from .dolphinPaths import DOLPHIN_CONFIG
 
 if TYPE_CHECKING:
@@ -66,6 +67,7 @@ def generateControllerConfig(system: Emulator, playersControllers: Controllers, 
         else:
             generateControllerConfig_realwiimotes("WiimoteNew.ini", "Wiimote")
             generateControllerConfig_gamecube(system, playersControllers, {}, rom)           # You can use the gamecube pads on the wii together with wiimotes
+        write_dsu_client_config()
     elif system.name == "gamecube":
         used_wheels: DeviceInfoMapping = {}
         if system.config.use_wheels and wheels:
@@ -79,6 +81,19 @@ def generateControllerConfig(system: Emulator, playersControllers: Controllers, 
         generateControllerConfig_triforce(system, playersControllers, rom)
     else:
         raise BatoceraException(f"Invalid system name: '{system.name}'")
+
+
+def write_dsu_client_config() -> None:
+    if not (dsu_server := get_dsu_server()):
+        return
+
+    host, port = dsu_server
+    configFileName = DOLPHIN_CONFIG / "DSUClient.ini"
+    with codecs.open(str(configFileName), "w", encoding="utf_8_sig") as f:
+        f.write("[Server]\n")
+        f.write("Enabled = True\n")
+        f.write(f"Entries = batocera-motion:{host}:{port};\n")
+
 
 # https://docs.libretro.com/library/dolphin/
 
@@ -689,6 +704,21 @@ def generateControllerConfig_any_auto(f: codecs.StreamReaderWriter, pad: Control
                 if x == "joystick2left":
                     currentMapping[anyReplacements["joystick2right"]] = anyReverseAxes[currentMapping["joystick2left"]]
 
+    dsu_motion = system.name == "wii" and nplayer == 1 and get_dsu_server() is not None
+    if dsu_motion:
+        f.write("IMUGyroscope/Pitch Up = `DSUClient/0/batocera-motion:Gyro Pitch Up`\n")
+        f.write("IMUGyroscope/Pitch Down = `DSUClient/0/batocera-motion:Gyro Pitch Down`\n")
+        f.write("IMUGyroscope/Roll Left = `DSUClient/0/batocera-motion:Gyro Roll Left`\n")
+        f.write("IMUGyroscope/Roll Right = `DSUClient/0/batocera-motion:Gyro Roll Right`\n")
+        f.write("IMUGyroscope/Yaw Left = `DSUClient/0/batocera-motion:Gyro Yaw Left`\n")
+        f.write("IMUGyroscope/Yaw Right = `DSUClient/0/batocera-motion:Gyro Yaw Right`\n")
+        f.write("IMUAccelerometer/Left = `DSUClient/0/batocera-motion:Accel Left`\n")
+        f.write("IMUAccelerometer/Right = `DSUClient/0/batocera-motion:Accel Right`\n")
+        f.write("IMUAccelerometer/Forward = `DSUClient/0/batocera-motion:Accel Forward`\n")
+        f.write("IMUAccelerometer/Backward = `DSUClient/0/batocera-motion:Accel Backward`\n")
+        f.write("IMUAccelerometer/Up = `DSUClient/0/batocera-motion:Accel Up`\n")
+        f.write("IMUAccelerometer/Down = `DSUClient/0/batocera-motion:Accel Down`\n")
+
     for x in pad.inputs:
         input = pad.inputs[x]
 
@@ -712,7 +742,7 @@ def generateControllerConfig_any_auto(f: codecs.StreamReaderWriter, pad: Control
         if input.name in { "joystick1up", "joystick1left", "joystick2up", "joystick2left"} and keyname is not None:
             write_key(f, anyReverseAxes[keyname], input.type, input.id, input.value, pad.axis_count, True, None, None)
         # DualShock Motion control
-        if system.config.get_bool("dsmotion"):
+        if system.config.get_bool("dsmotion") and not dsu_motion:
             f.write(f"IMUGyroscope/Pitch Up = `evdev/{str(nsamepad).strip()}/{pad.real_name.strip()} Motion Sensors:Gyro X-`\n")
             f.write(f"IMUGyroscope/Pitch Down = `evdev/{str(nsamepad).strip()}/{pad.real_name.strip()} Motion Sensors:Gyro X+`\n")
             f.write(f"IMUGyroscope/Roll Left = `evdev/{str(nsamepad).strip()}/{pad.real_name.strip()} Motion Sensors:Gyro Z-`\n")

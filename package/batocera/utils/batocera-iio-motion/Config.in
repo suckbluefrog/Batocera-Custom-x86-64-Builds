@@ -1,0 +1,8 @@
+config BR2_PACKAGE_BATOCERA_IIO_MOTION
+	bool "batocera-iio-motion"
+	depends on BR2_PACKAGE_BATOCERA_TARGET_X86_ANY
+	select BR2_PACKAGE_ZLIB
+	help
+	  Expose a Linux IIO accelerometer and gyroscope as a local
+	  DSU/CemuHook motion controller. This is used for integrated
+	  handheld sensors such as the BMI323 in the ASUS ROG Ally.

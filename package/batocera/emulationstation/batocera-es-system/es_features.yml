@@ -15613,6 +15613,13 @@ eden:
         Normal: 0
         High: 1
         Extreme: 2
+    eden_fix_bloom_effects:
+      submenu: RENDERING
+      prompt: FIX BLOOM EFFECTS
+      description: Fixes excessive bloom and blur in games such as Link's Awakening.
+      choices:
+        Disabled: 'false'
+        Enabled: 'true'
     eden_cpuaccuracy:
       submenu: CPU
       prompt: CPU ACCURACY
