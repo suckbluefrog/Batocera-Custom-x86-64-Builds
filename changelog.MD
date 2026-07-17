@@ -1,8 +1,51 @@
 # Changelog
 
+ ## 📜 Changelog 14-6-2026
+
+
+  - Updated the build base to Batocera v44 and refreshed the Wayland stack, including wlroots 0.20.1 and labwc fixes for cursor hiding and XWayland absolute pointer handling.
+  - Improved Steam GamepadUI and desktop switching paths, including cleaner session selection, updated DBus stubs, update/preflight handling, and SDL renderer fixes for Proton/EAC/EOS splash windows.
+  - Added and improved 86Box and EKA2L1 integration, including desktop/config launchers, userdata BIOS notes, Symbian/N-Gage device-pack seeding, and expanded ES documentation.
+  - Added RPCS3 game-profile database support with new ES options for database defaults vs manual compatibility settings.
+  - Bumped and fixed VPinball, Dusk, RPCS3, DuckStation, Solarus, MAME, and other emulator/configgen paths.
+  - Reworked VPinball packaging around system bgfx/libframeutil and updated DMD/pinball support libraries.
+  - Updated Wine/Proton components including Wine Proton 11.0 experimental, Wine-TKG 11.10, VKD3D-Proton 3.0.1, DXVK-NVAPI 0.9.2, and Wine Mono 11.1.0.
+  - Added SimpleDeckyTDP installation support to batocera-wine-tools and improved AMD TDP/control-center hooks.
+  - Improved NVIDIA proprietary driver setup and related runtime handling.
+
+  
+  ---
+
+  ## 📜 Changelog 8-6-2026
+
+ 
+  - Added experimental xorg v3 build.
+  - Bumped Mame to 0.288
+
+  ---
+
+  ## 📜 Changelog 4-6-2026
+
+
+  - Updated the x86-64-v3 build base with kernel 7.0.11 support and Mesa 26.1.2.
+  - Cleaned and refocused the tree layout for the x86-64-v3 build, removing unused non-x86 board targets from this branch.
+  - Added visible Steam update/preflight handling so Steam verification and update progress no longer appears as a blank launch.
+  - Improved Steam Deck mode/session handling, including cleanup paths for Steam, Gamescope, helper processes, and EmulationStation return behavior.
+  - Expanded Batocera Control Center features and fixes, including better focus handling, quick actions, screenshot support, recent-game launching, and gaming/system tab updates.
+  - Added GMU music player support as an EmulationStation system with improved gamepad navigation.
+  - Added Xenia Canary Linux binary support for the Vulkan path, and kept the Windows binary/Wine VKD3D path available for D3D12.
+  - Added NVIDIA proprietary 580.x and 590.x driver support for Maxwell-class GPUs (GTX 900 / GTX 750 Ti) and newer; Gamescope performance and compatibility may vary by GPU.
+  - Bumped and fixed RPCS3, DuckStation, ShadPS4, Xenia Edge/Canary, RetroArch, Kronos, GMU, and other emulators.
+  - Converted Sunshine to a native build and fixed Boost/quadmath link issues.
+  - Updated Wine tools, Lutris, Heroic, N64 recomp launcher, install-internal tools, desktop apps, and supporting configgen/hotkey paths.
+  - Moved the main squashfs into `/system` on ext4 to avoid FAT32 limits and multi-squashfs `/boot` complications, with a new `/userdata/update` flow using `update.tar` and `update.tar.md5`; older layouts require a fresh install.
+
+  Older changelog entries are archived in [changelog.MD](changelog.MD).
+
+
 ## 📜 Changelog 17-5-2026
 
-  ### Latest
+
   - Added SteamGridDB artwork scraping support to EmulationStation, including
   alternate artwork selection, logo support, and hero artwork handling through
   marquee assets.
