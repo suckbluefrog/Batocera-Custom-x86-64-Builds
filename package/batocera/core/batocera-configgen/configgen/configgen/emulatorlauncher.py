@@ -446,19 +446,15 @@ def addTdpLimitMangoHudLogging(configstr: str, visible_hud: bool) -> str:
     bare = set(lines)
 
     if not visible_hud:
-        # MangoHud's no_display path skips the update code that starts autostart_log.
-        lines = [line for line in lines if line.split("=", 1)[0] != "no_display"]
+        # Keep MangoHud's frame updates active for autostart_log, but suppress
+        # the HUD table itself. no_display also prevents autologging on OpenGL.
+        lines = [
+            line for line in lines
+            if line.split("=", 1)[0] not in {"no_display", "table_columns"}
+        ]
+        lines.append("table_columns=0")
         keys = {line.split("=", 1)[0] for line in lines if "=" in line}
         bare = set(lines)
-        if "alpha" not in keys:
-            lines.append("alpha=0")
-            keys.add("alpha")
-        if "background_alpha" not in keys:
-            lines.append("background_alpha=0")
-            keys.add("background_alpha")
-        if "font_size" not in keys:
-            lines.append("font_size=1")
-            keys.add("font_size")
     if "fps" not in bare:
         lines.append("fps")
     if "autostart_log" not in keys:
@@ -468,6 +464,33 @@ def addTdpLimitMangoHudLogging(configstr: str, visible_hud: bool) -> str:
     lines = [line for line in lines if not line.startswith("output_folder=")]
     lines.append(f"output_folder={hudConfig_protectStr(TDP_LIMIT_FPS_DIR)}")
     return "\n".join(lines) + "\n"
+
+def getHudModeConfig(mode: str, hud_position: str) -> str:
+    if mode == "fps":
+        lines = (
+            "background_alpha=0", "legacy_layout=false", "fps",
+        )
+    elif mode == "bar":
+        hud_position = "top-left"
+        lines = (
+            "background_alpha=0.35", "legacy_layout=false", "horizontal=1", "hud_no_margin=1",
+            "fps", "frame_timing", "gpu_stats", "cpu_stats", "ram", "battery",
+        )
+    elif mode == "box":
+        lines = (
+            "background_alpha=0.75", "legacy_layout=false", "fps", "frame_timing",
+            "gpu_stats", "gpu_temp", "cpu_stats", "cpu_temp", "ram",
+        )
+    else:
+        lines = (
+            "background_alpha=0.9", "legacy_layout=false",
+            "custom_text=%GAMENAME%", "custom_text=%SYSTEMNAME%", "custom_text=%EMULATORCORE%",
+            "fps", "frame_timing", "frametime", "gpu_name", "engine_version", "vulkan_driver",
+            "resolution", "ram", "gpu_stats", "gpu_temp", "cpu_stats", "cpu_temp", "core_load", "battery",
+        )
+
+    return "\n".join((f"position={hud_position}", *lines))
+
 
 def getHudConfig(system: Emulator, systemName: str, emulator: str, core: str, rom: Path, bezel: Path | None) -> str:
     configstr = ""
@@ -496,7 +519,7 @@ def getHudConfig(system: Emulator, systemName: str, emulator: str, core: str, ro
 
     # predefined values
     if mode in {"perf", "fps", "bar", "box", "full"}:
-        configstr += f"position={hud_position}\nbackground_alpha=0.9\nlegacy_layout=false\ncustom_text=%GAMENAME%\ncustom_text=%SYSTEMNAME%\ncustom_text=%EMULATORCORE%\nfps\ngpu_name\nengine_version\nvulkan_driver\nresolution\nram\ngpu_stats\ngpu_temp\ncpu_stats\ncpu_temp\ncore_load"
+        configstr += getHudModeConfig(mode, hud_position)
     elif mode == "game":
         configstr += f"position={hud_position}\nbackground_alpha=0\nlegacy_layout=false\nfont_size=32\nimage_max_width=200\nimage=%THUMBNAIL%\ncustom_text=%GAMENAME%\ncustom_text=%SYSTEMNAME%\ncustom_text=%EMULATORCORE%"
     elif mode == "custom" and (hud_custom := system.config.get_str('hud_custom')):

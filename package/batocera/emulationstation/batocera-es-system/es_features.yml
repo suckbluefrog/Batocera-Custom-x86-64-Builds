@@ -163,7 +163,10 @@ shared:
       choices:
         None: none
         Game info/art: game
-        MangoHud: perf
+        MangoHud 1 - FPS: fps
+        MangoHud 2 - Top Bar: bar
+        MangoHud 3 - Box: box
+        MangoHud 4 - Detailed: perf
         Custom: custom
     hud_corner:
       archs_exclude:

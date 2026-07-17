@@ -824,6 +824,7 @@ def _pick_existing_path(*candidates):
 
 def _resolve_firmware_dir():
     candidates = (
+        switchBios / "registered",
         switchFirmwareDir / "registered",
         switchFirmwareDir / "Contents" / "registered",
         switchFirmwareDir / "system" / "Contents" / "registered",
