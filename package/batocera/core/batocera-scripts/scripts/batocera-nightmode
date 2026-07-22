@@ -2,15 +2,17 @@
 
 LOG="/userdata/system/logs/nightmode.log"
 RUN_DIR="/run/batocera-nightmode"
+LOCK_FILE="${RUN_DIR}/apply.lock"
+CONFIG_FILE="/userdata/system/batocera.conf"
 DEFAULT_RUNTIME_DIR="/run/user/0"
 GAMMA_HELPER="/usr/bin/batocera-nightmode-gamma"
 SETTINGS_GET="/usr/bin/batocera-settings-get"
-INTERVAL="${BATOCERA_NIGHTMODE_INTERVAL:-30}"
+INTERVAL="${BATOCERA_NIGHTMODE_INTERVAL:-5}"
 
 mkdir -p "${RUN_DIR}" "$(dirname "${LOG}")" 2>/dev/null || true
 
 log() {
-    echo "batocera-nightmode: $*" >> "${LOG}"
+    printf '%s batocera-nightmode: %s\n' "$(date -Is 2>/dev/null || date)" "$*" >> "${LOG}"
 }
 
 setting() {
@@ -125,6 +127,21 @@ pid_running() {
     local pid="$1"
 
     [ -n "${pid}" ] && [ -d "/proc/${pid}" ]
+}
+
+stop_helper_processes() {
+    local name="$1"
+    local pattern="(^|/)${name}([[:space:]]|$)"
+    local attempt=0
+
+    pkill -TERM -f "${pattern}" 2>/dev/null || true
+    while [ "${attempt}" -lt 20 ]; do
+        pgrep -f "${pattern}" >/dev/null 2>&1 || return 0
+        sleep 0.05
+        attempt=$((attempt + 1))
+    done
+
+    pkill -KILL -f "${pattern}" 2>/dev/null || true
 }
 
 write_cube() {
@@ -250,14 +267,16 @@ wayland_sockets() {
 stop_gamma_pidfile() {
     local pidfile="$1"
     local pid
+    local attempt=0
 
     pid="$(cat "${pidfile}" 2>/dev/null || true)"
     if pid_running "${pid}"; then
         kill "${pid}" >/dev/null 2>&1 || true
-        sleep 0.1
-        if pid_running "${pid}"; then
-            kill -KILL "${pid}" >/dev/null 2>&1 || true
-        fi
+        while pid_running "${pid}" && [ "${attempt}" -lt 20 ]; do
+            sleep 0.05
+            attempt=$((attempt + 1))
+        done
+        pid_running "${pid}" && kill -KILL "${pid}" >/dev/null 2>&1 || true
     fi
 
     rm -f "${pidfile}" "${pidfile}.state" 2>/dev/null || true
@@ -270,6 +289,9 @@ stop_all_gamma() {
         [ -e "${pidfile}" ] || continue
         stop_gamma_pidfile "${pidfile}"
     done
+
+    # Clean up helpers orphaned by interrupted or overlapping older applies.
+    stop_helper_processes batocera-nightmode-gamma
 }
 
 start_gamma_for_socket() {
@@ -301,7 +323,7 @@ start_gamma_for_socket() {
 
     XDG_RUNTIME_DIR="${runtime_dir}" \
         WAYLAND_DISPLAY="${display}" \
-        "${GAMMA_HELPER}" --intensity "${intensity}" >> "${LOG}" 2>&1 &
+        "${GAMMA_HELPER}" --intensity "${intensity}" >> "${LOG}" 2>&1 9>&- &
     pid="$!"
     echo "${pid}" > "${pidfile}"
     echo "${desired_state}" > "${statefile}"
@@ -323,7 +345,7 @@ apply_wayland_gamma() {
     done
 }
 
-apply_current() {
+apply_current_locked() {
     local label
     local intensity
 
@@ -334,20 +356,53 @@ apply_current() {
     apply_wayland_gamma "${label}" "${intensity}" || log "failed to apply Wayland gamma ${label}"
 }
 
+with_nightmode_lock() {
+    local action="$1"
+
+    if command -v flock >/dev/null 2>&1; then
+        (
+            if ! flock -x 9; then
+                log "unable to acquire apply lock"
+                return 1
+            fi
+            "${action}"
+        ) 9>"${LOCK_FILE}"
+    else
+        "${action}"
+    fi
+}
+
+apply_current() {
+    with_nightmode_lock apply_current_locked
+}
+
+wait_for_settings_change() {
+    if command -v inotifywait >/dev/null 2>&1 && [ -f "${CONFIG_FILE}" ]; then
+        inotifywait -q -t "${INTERVAL}" -e close_write "${CONFIG_FILE}" \
+            >/dev/null 2>&1 || true
+    else
+        sleep "${INTERVAL}"
+    fi
+}
+
 watch_loop() {
     if ! echo "${INTERVAL}" | grep -Eq '^[0-9]+$' || [ "${INTERVAL}" -lt 2 ]; then
-        INTERVAL=30
+        INTERVAL=5
     fi
 
     while true; do
         apply_current
-        sleep "${INTERVAL}"
+        wait_for_settings_change
     done
 }
 
-clear_runtime() {
+clear_runtime_locked() {
     stop_all_gamma
     apply_gamescope off 0 || true
+}
+
+clear_runtime() {
+    with_nightmode_lock clear_runtime_locked
 }
 
 case "${1:-apply}" in

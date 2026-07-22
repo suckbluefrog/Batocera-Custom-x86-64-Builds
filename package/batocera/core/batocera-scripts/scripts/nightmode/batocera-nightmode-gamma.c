@@ -41,10 +41,12 @@ struct client_state {
 };
 
 static volatile sig_atomic_t exit_requested;
+static volatile sig_atomic_t reset_requested;
 
 static void handle_signal(int signum)
 {
     (void)signum;
+    reset_requested = 1;
     exit_requested = 1;
 }
 
@@ -254,6 +256,15 @@ static int apply_gamma(struct client_state *state)
     return applied;
 }
 
+static void reset_gamma(struct client_state *state)
+{
+    state->intensity = 0.0;
+
+    /* Some compositors retain the last gamma table after control is destroyed. */
+    if (apply_gamma(state) > 0)
+        wl_display_roundtrip(state->display);
+}
+
 static void destroy_state(struct client_state *state)
 {
     struct control *control = state->controls;
@@ -379,6 +390,10 @@ int main(int argc, char **argv)
     fprintf(stderr, "batocera-nightmode-gamma: applied intensity %.0f to %d output(s)\n",
             state.intensity, applied);
     run_event_loop(&state);
+
+    if (reset_requested)
+        reset_gamma(&state);
+
     destroy_state(&state);
 
     return 0;

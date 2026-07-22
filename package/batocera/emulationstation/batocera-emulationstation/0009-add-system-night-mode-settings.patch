@@ -4,13 +4,13 @@ Date: Tue, 30 Jun 2026 00:00:00 +0000
 Subject: [PATCH] Add system night mode settings
 
 ---
- es-app/src/guis/GuiMenu.cpp | 56 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+ es-app/src/guis/GuiMenu.cpp | 64 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 64 insertions(+)
 
 diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
 --- a/es-app/src/guis/GuiMenu.cpp
 +++ b/es-app/src/guis/GuiMenu.cpp
-@@ -1790,6 +1790,62 @@ void GuiMenu::openSystemSettings()
+@@ -1790,6 +1790,70 @@ void GuiMenu::openSystemSettings()
  	  }
  	});
  
@@ -34,6 +34,14 @@ diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
 +			{ _("SCHEDULED"), "schedule" }
 +		}, currentMode);
 +		nightModeSettings->addWithLabel(_("NIGHT MODE"), nightMode);
++
++		auto applyNightMode = [](const std::string& mode)
++		{
++			SystemConf::getInstance()->set("display.nightmode", mode);
++			SystemConf::getInstance()->saveSystemConf();
++			Utils::Platform::ProcessStartInfo("/usr/bin/batocera-nightmode apply").run();
++		};
++		nightMode->setSelectedChangedCallback(applyNightMode);
 +
 +		std::string intensityString = SystemConf::getInstance()->get("display.nightmode.intensity");
 +		int intensity = 50;
