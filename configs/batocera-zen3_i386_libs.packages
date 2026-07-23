@@ -241,6 +241,13 @@ BR2_PACKAGE_SDL2_MIXER=y
 BR2_PACKAGE_SDL2_NET=y
 BR2_PACKAGE_SDL2_TTF=y
 
+# SDL 3 runtime required by the 32-bit Lindbergh loader.
+BR2_PACKAGE_SDL3=y
+BR2_PACKAGE_SDL3_X11=y
+BR2_PACKAGE_SDL3_IMAGE=y
+BR2_PACKAGE_SDL3_TTF=y
+BR2_PACKAGE_XAPP_XINPUT=y
+
 # Wayland stack required by SDL2 wayland backend in 32-bit runtime.
 BR2_PACKAGE_WAYLAND=y
 

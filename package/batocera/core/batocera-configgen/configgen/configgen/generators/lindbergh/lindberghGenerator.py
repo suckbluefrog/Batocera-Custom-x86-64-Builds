@@ -43,33 +43,54 @@ _logger = logging.getLogger(__name__)
 class LindberghGenerator(Generator):
     LINDBERGH_SAVES: Final = SAVES / "lindbergh"
 
-    CONF_KEYS: ClassVar = {
-        "WIDTH":                     True, "HEIGHT":                    True, "FULLSCREEN":                True, "INPUT_MODE":                True,
-        "NO_SDL":                    True, "REGION":                    True, "FREEPLAY":                  True, "EMULATE_JVS":               True,
-        "EMULATE_RIDEBOARD":         True, "EMULATE_DRIVEBOARD":        True, "EMULATE_MOTIONBOARD":       True, "JVS_PATH":                  True,
-        "SERIAL_1_PATH":             True, "SERIAL_2_PATH":             True, "SRAM_PATH":                 True, "EEPROM_PATH":               True,
-        "GPU_VENDOR":                True, "DEBUG_MSGS":                True, "BORDER_ENABLED":            True, "WHITE_BORDER_PERCENTAGE":   True,
-        "BLACK_BORDER_PERCENTAGE":   True, "HUMMER_FLICKER_FIX":        True, "KEEP_ASPECT_RATIO":         True, "OUTRUN_LENS_GLARE_ENABLED": True,
-        "SKIP_OUTRUN_CABINET_CHECK": True, "FPS_LIMITER_ENABLED":       True, "FPS_TARGET":                True, "LGJ_RENDER_WITH_MESA":      True,
-        "PRIMEVAL_HUNT_MODE":        True, "MJ4_ENABLED_ALL_THE_TIME":  True, "LINDBERGH_COLOUR":          True, "TEST_KEY":                  True,
-        "PLAYER_1_START_KEY":        True, "PLAYER_1_SERVICE_KEY":      True, "PLAYER_1_COIN_KEY":         True, "PLAYER_1_UP_KEY":           True,
-        "PLAYER_1_DOWN_KEY":         True, "PLAYER_1_LEFT_KEY":         True, "PLAYER_1_RIGHT_KEY":        True, "PLAYER_1_BUTTON_1_KEY":     True,
-        "PLAYER_1_BUTTON_2_KEY":     True, "PLAYER_1_BUTTON_3_KEY":     True, "PLAYER_1_BUTTON_4_KEY":     True, "TEST_BUTTON":               True,
-        "PLAYER_1_BUTTON_START":     True, "PLAYER_1_BUTTON_SERVICE":   True, "PLAYER_1_BUTTON_UP":        True, "PLAYER_1_BUTTON_DOWN":      True,
-        "PLAYER_1_BUTTON_LEFT":      True, "PLAYER_1_BUTTON_RIGHT":     True, "PLAYER_1_BUTTON_1":         True, "PLAYER_1_BUTTON_2":         True,
-        "PLAYER_1_BUTTON_3":         True, "PLAYER_1_BUTTON_4":         True, "PLAYER_1_BUTTON_5":         True, "PLAYER_1_BUTTON_6":         True,
-        "PLAYER_1_BUTTON_7":         True, "PLAYER_1_BUTTON_8":         True, "PLAYER_2_BUTTON_START":     True, "PLAYER_2_BUTTON_SERVICE":   True,
-        "PLAYER_2_BUTTON_UP":        True, "PLAYER_2_BUTTON_DOWN":      True, "PLAYER_2_BUTTON_LEFT":      True, "PLAYER_2_BUTTON_RIGHT":     True,
-        "PLAYER_2_BUTTON_1":         True, "PLAYER_2_BUTTON_2":         True, "PLAYER_2_BUTTON_3":         True, "PLAYER_2_BUTTON_4":         True,
-        "PLAYER_2_BUTTON_5":         True, "PLAYER_2_BUTTON_6":         True, "PLAYER_2_BUTTON_7":         True, "PLAYER_2_BUTTON_8":         True,
-        "ANALOGUE_1":                True, "ANALOGUE_2":                True, "ANALOGUE_3":                True, "ANALOGUE_4":                True,
-        "ANALOGUE_5":                True, "ANALOGUE_6":                True, "ANALOGUE_7":                True, "ANALOGUE_8":                True,
-        "ANALOGUE_1+":               True, "ANALOGUE_2+":               True, "ANALOGUE_3+":               True, "ANALOGUE_4+":               True,
-        "ANALOGUE_1-":               True, "ANALOGUE_2-":               True, "ANALOGUE_3-":               True, "ANALOGUE_4-":               True,
-        "ANALOGUE_DEADZONE_1":       True, "ANALOGUE_DEADZONE_2":       True, "ANALOGUE_DEADZONE_3":       True, "ANALOGUE_DEADZONE_4":       True,
-        "ANALOGUE_DEADZONE_5":       True, "ANALOGUE_DEADZONE_6":       True, "ANALOGUE_DEADZONE_7":       True, "ANALOGUE_DEADZONE_8":       True,
-        "EMULATE_CARDREADER":        True, "CARDFILE_01":               True, "CARDFILE_02":               True, "CPU_FREQ_GHZ":              True,
-        "OR2_IP":                    True, "PLAYER_1_COIN":             True, "BOOST_RENDER_RES":          True,
+    CONF_KEYS: ClassVar[dict[str, str]] = {
+        **dict.fromkeys((
+            "WIDTH", "HEIGHT", "BOOST_RENDER_RES", "FULLSCREEN", "BORDER_ENABLED",
+            "WHITE_BORDER_PERCENTAGE", "BLACK_BORDER_PERCENTAGE", "KEEP_ASPECT_RATIO", "HIDE_CURSOR",
+        ), "Display"),
+        "INPUT_MODE": "Input",
+        **dict.fromkeys((
+            "REGION", "FREEPLAY", "EMULATE_JVS", "EMULATE_RIDEBOARD", "EMULATE_DRIVEBOARD",
+            "EMULATE_MOTIONBOARD", "EMULATE_HW210_CARDREADER", "EMULATE_ID_CARDREADER", "EMULATE_TOUCHSCREEN",
+        ), "Emulation"),
+        **dict.fromkeys(("ID_CARDFILE_AUTOLOAD", "CARDFILE_01", "CARDFILE_02", "ID_CARDFOLDER"), "Cards"),
+        **dict.fromkeys(("JVS_PATH", "SERIAL_1_PATH", "SERIAL_2_PATH", "SRAM_PATH", "EEPROM_PATH", "LIBCG_PATH"), "Paths"),
+        **dict.fromkeys((
+            "GPU_VENDOR", "HUMMER_FLICKER_FIX", "FPS_LIMITER_ENABLED", "FPS_TARGET", "LGJ_RENDER_WITH_MESA",
+            "DISABLE_BUILTIN_FONT", "DISABLE_BUILTIN_LOGOS",
+        ), "Graphics"),
+        **dict.fromkeys((
+            "CUSTOM_CURSOR_ENABLED", "CUSTOM_CURSOR", "CUSTOM_CURSOR_WIDTH", "CUSTOM_CURSOR_HEIGHT",
+            "TOUCH_CURSOR", "TOUCH_CURSOR_WIDTH", "TOUCH_CURSOR_HEIGHT",
+        ), "Cursor"),
+        **dict.fromkeys((
+            "PRIMEVAL_HUNT_SCREEN_MODE", "PRIMEVAL_HUNT_TEST_SCREEN_SINGLE", "SKIP_OUTRUN_CABINET_CHECK",
+            "OUTRUN_LENS_GLARE_ENABLED", "MJ4_ENABLED_ALL_THE_TIME", "CPU_FREQ_GHZ", "RAMBO_GUNS_SWITCH",
+            "ID5_CHINESE_LANGUAGE", "ID_STEERING_REDUCTION_PERCENTAGE",
+        ), "GameSpecific"),
+        **dict.fromkeys((
+            "ENABLE_CROSSHAIRS", "P1_CROSSHAIR_PATH", "P2_CROSSHAIR_PATH",
+            "CUSTOM_CROSSHAIRS_WIDTH", "CUSTOM_CROSSHAIRS_HEIGHT",
+        ), "CrossHairs"),
+        **dict.fromkeys(("DEBUG_MSGS", "LINDBERGH_COLOUR"), "System"),
+        **dict.fromkeys((
+            "ENABLE_NETWORK_PATCHES", "NIC_NAME", "ID_IP_SEAT_1", "ID_IP_SEAT_2", "OR2_IPADDRESS",
+            "OR2_NETMASK", "IP_CAB1", "IP_CAB2", "IP_CAB3", "IP_CAB4", "2SPICY_IP_CAB1",
+            "2SPICY_IP_CAB2", "SRTV_IPADDRESS",
+        ), "Network"),
+        **dict.fromkeys((
+            "TEST_BUTTON", "PLAYER_1_COIN", "PLAYER_1_BUTTON_START", "PLAYER_1_BUTTON_SERVICE",
+            "PLAYER_1_BUTTON_UP", "PLAYER_1_BUTTON_DOWN", "PLAYER_1_BUTTON_LEFT", "PLAYER_1_BUTTON_RIGHT",
+            "PLAYER_1_BUTTON_1", "PLAYER_1_BUTTON_2", "PLAYER_1_BUTTON_3", "PLAYER_1_BUTTON_4",
+            "PLAYER_1_BUTTON_5", "PLAYER_1_BUTTON_6", "PLAYER_1_BUTTON_7", "PLAYER_1_BUTTON_8",
+            "PLAYER_2_COIN", "PLAYER_2_BUTTON_START", "PLAYER_2_BUTTON_SERVICE", "PLAYER_2_BUTTON_UP",
+            "PLAYER_2_BUTTON_DOWN", "PLAYER_2_BUTTON_LEFT", "PLAYER_2_BUTTON_RIGHT", "PLAYER_2_BUTTON_1",
+            "PLAYER_2_BUTTON_2", "PLAYER_2_BUTTON_3", "PLAYER_2_BUTTON_4", "PLAYER_2_BUTTON_5",
+            "PLAYER_2_BUTTON_6", "PLAYER_2_BUTTON_7", "PLAYER_2_BUTTON_8", "ANALOGUE_1", "ANALOGUE_2",
+            "ANALOGUE_3", "ANALOGUE_4", "ANALOGUE_5", "ANALOGUE_6", "ANALOGUE_7", "ANALOGUE_8",
+            "ANALOGUE_DEADZONE_1", "ANALOGUE_DEADZONE_2", "ANALOGUE_DEADZONE_3", "ANALOGUE_DEADZONE_4",
+            "ANALOGUE_DEADZONE_5", "ANALOGUE_DEADZONE_6", "ANALOGUE_DEADZONE_7", "ANALOGUE_DEADZONE_8",
+        ), "EVDEV"),
     }
 
     def getHotkeysContext(self) -> HotkeysContext:
@@ -177,18 +198,26 @@ class LindberghGenerator(Generator):
             _logger.debug("Configuration file %s not found.", configFile)
             lines = []
 
-        conf: dict[str, Any] = { "raw": lines, "keys": {}}
+        conf: dict[str, Any] = {"raw": lines, "keys": {}, "sections": {}}
 
-        # find keys and values
-        pattern = re.compile(r"^\s*(#?)\s*([A-Z0-9_]+)\s(.*)$")
+        section_pattern = re.compile(r"^\s*\[([^]]+)]\s*$")
+        value_pattern = re.compile(r"^\s*(#?)\s*([A-Z0-9_]+)\s*=\s*(.*)$")
+        current_section = None
 
-        # analyze lines
         for n, line in enumerate(lines):
-            matches = pattern.match(line)
+            section_match = section_pattern.match(line)
+            if section_match:
+                if current_section is not None:
+                    conf["sections"][current_section]["end"] = n
+                current_section = section_match.group(1)
+                conf["sections"][current_section] = {"start": n, "end": len(lines)}
+                continue
+
+            matches = value_pattern.match(line)
             if matches:
                 key = matches.group(2)
 
-                if key in self.CONF_KEYS:
+                if key in self.CONF_KEYS and self.CONF_KEYS[key] == current_section:
                     if key in conf["keys"]: # take care of duplicated keys
                         # if the 1st one is commented, prefer the last one
                         if conf["keys"][key]["commented"]:
@@ -212,12 +241,8 @@ class LindberghGenerator(Generator):
                                               "line":      n,
                                               "modified":  False
                                              }
-                else:
-                    print(f"CONF: ignoring key /{key}/")
-            else:
-                strippedLine = line.rstrip()
-                if strippedLine != "":
-                    print(f"CONF: ignoring line {strippedLine}")
+        if current_section is not None:
+            conf["sections"][current_section]["end"] = len(lines)
 
         return conf
 
@@ -225,10 +250,29 @@ class LindberghGenerator(Generator):
         if key not in self.CONF_KEYS:
             raise InvalidConfiguration(f"unknown conf key {key}")
 
-        # new line
         if key not in conf["keys"]:
-            conf["keys"][key] = { "line": len(conf["raw"]) }
-            conf["raw"].append("###")
+            section = self.CONF_KEYS[key]
+            if section not in conf["sections"]:
+                if conf["raw"] and conf["raw"][-1].strip():
+                    conf["raw"].append("\n")
+                start = len(conf["raw"])
+                conf["raw"].append(f"[{section}]\n")
+                conf["sections"][section] = {"start": start, "end": len(conf["raw"])}
+
+            insert_at = conf["sections"][section]["end"]
+            conf["raw"].insert(insert_at, "")
+
+            for existing in conf["keys"].values():
+                if existing["line"] >= insert_at:
+                    existing["line"] += 1
+            for section_name, bounds in conf["sections"].items():
+                if section_name == section:
+                    bounds["end"] += 1
+                elif bounds["start"] >= insert_at:
+                    bounds["start"] += 1
+                    bounds["end"] += 1
+
+            conf["keys"][key] = {"line": insert_at}
 
         conf["keys"][key]["value"]     = str(value)
         conf["keys"][key]["modified"]  = True
@@ -247,7 +291,7 @@ class LindberghGenerator(Generator):
         for key in conf["keys"]:
             if conf["keys"][key]["modified"]:
                 nline = conf["keys"][key]["line"]
-                line = f'{key} {conf["keys"][key]["value"]}\n'
+                line = f'{key} = {conf["keys"][key]["value"]}\n'
                 if conf["keys"][key]["commented"]:
                     line = f"# {line}"
                 conf["raw"][nline] = line
@@ -290,11 +334,11 @@ class LindberghGenerator(Generator):
 
         # Virtua Tennis - Card Reader
         if "tennis" in romName.lower() and system.config.get_bool("lindbergh_card"):
-            self.setConf(conf, "EMULATE_CARDREADER", 1)
+            self.setConf(conf, "EMULATE_HW210_CARDREADER", 1)
             self.setConf(conf, "CARDFILE_01", f"{self.LINDBERGH_SAVES}/VT3_Card_01.crd")
             self.setConf(conf, "CARDFILE_02", f"{self.LINDBERGH_SAVES}/VT3_Card_02.crd")
         else:
-            self.setConf(conf, "EMULATE_CARDREADER", 0)
+            self.setConf(conf, "EMULATE_HW210_CARDREADER", 0)
 
         # House of the Dead 4 - CPU speed
         cpu_speed = system.config.get("lindbergh_speed")
@@ -313,13 +357,13 @@ class LindberghGenerator(Generator):
         if ip:
             _logger.debug("Current IP Address: %s", ip)
             if "outr2sdx" in romName.lower() and system.config.get_bool("lindbergh_ip"):
-                self.setConf(conf, "OR2_IP", ip)
+                self.setConf(conf, "OR2_IPADDRESS", ip)
         else:
             _logger.debug("Unable to retrieve IP address.")
 
         # Primeval Hunt mode (touch screen)
         if "primevah" in romName.lower() or "primehunt" in romName.lower():
-            self.setConf(conf, "PRIMEVAL_HUNT_MODE", system.config.get("lindbergh_hunt", "1"))
+            self.setConf(conf, "PRIMEVAL_HUNT_SCREEN_MODE", system.config.get("lindbergh_hunt", "1"))
 
         ## Guns
         if system.config.use_guns and guns:
@@ -345,11 +389,8 @@ class LindberghGenerator(Generator):
         wheels: DeviceInfoMapping,
         /,
     ) -> None:
-        # 0: SDL, 1: EVDEV, 2: RAW EVDEV
-        if system.config.get("lindbergh_controller") == "1":
-            input_mode = 0
-        else:
-            input_mode = 2
+        # Lindbergh 2.1+: 0 is SDL+EVDEV, 1 is SDL only and 2 is EVDEV only.
+        input_mode = 1 if system.config.get("lindbergh_controller") == "1" else 2
 
 
         shortRomName = Path(romName.lower()).stem
@@ -910,14 +951,14 @@ class LindberghGenerator(Generator):
         romName: str,
         /,
     ) -> None:
-        LINDBERGH_CONFIG_FILE = Path("/userdata/system/configs/lindbergh/lindbergh.conf")
+        LINDBERGH_CONFIG_FILE = Path("/userdata/system/configs/lindbergh/lindbergh.ini")
         mkdir_if_not_exists(LINDBERGH_CONFIG_FILE.parent)
 
         # get an initial version if no version is here
-        source_file = source_dir / "lindbergh.conf"
+        source_file = source_dir / "lindbergh.ini"
         if not LINDBERGH_CONFIG_FILE.exists() or source_file.stat().st_mtime > LINDBERGH_CONFIG_FILE.stat().st_mtime:
             shutil.copy2(source_file, LINDBERGH_CONFIG_FILE)
-            _logger.debug("Updated lindbergh.conf")
+            _logger.debug("Updated lindbergh.ini")
 
         # load and modify it if needed and save it
         conf = self.loadConf(LINDBERGH_CONFIG_FILE)
@@ -925,7 +966,7 @@ class LindberghGenerator(Generator):
         self.saveConf(conf, LINDBERGH_CONFIG_FILE)
 
         # copy the config file in the rom dir, where it is used
-        shutil.copy2(LINDBERGH_CONFIG_FILE, romDir / "lindbergh.conf")
+        shutil.copy2(LINDBERGH_CONFIG_FILE, romDir / "lindbergh.ini")
 
 #    def get_cpu_min_speed(self):
 #        try:

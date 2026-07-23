@@ -16,7 +16,7 @@
 #
 ################################################################################
 
-TR2X_VERSION = tr2-0.9.2
+TR2X_VERSION = tr2-0.10
 TR2X_SITE = $(call github,LostArtefacts,TRX,$(TR2X_VERSION))
 TR2X_LICENSE = GPL-3.0 license
 TR2X_LICENSE_FILES = COPYING.md

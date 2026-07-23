@@ -3,8 +3,7 @@
 # solarus-engine
 #
 ################################################################################
-# Version: Commits on Jan 18, 2025
-SOLARUS_ENGINE_VERSION = bbecaf31ada06357d4c18726b572fe4b4ebccf56
+SOLARUS_ENGINE_VERSION = v2.0.4
 SOLARUS_ENGINE_SITE = https://gitlab.com/solarus-games/solarus
 SOLARUS_ENGINE_SITE_METHOD=git
 
@@ -18,10 +17,7 @@ SOLARUS_ENGINE_INSTALL_STAGING = YES
 SOLARUS_ENGINE_DEPENDENCIES += batocera-luajit glm libmodplug libogg libvorbis
 SOLARUS_ENGINE_DEPENDENCIES += openal physfs sdl2 sdl2_image sdl2_ttf
 
-# Disable launcher GUI (requires Qt5)
-SOLARUS_ENGINE_CONF_OPTS = \
-	-DSOLARUS_GUI=OFF \
-	-DSOLARUS_TESTS=OFF
+SOLARUS_ENGINE_CONF_OPTS = -DSOLARUS_TESTS=OFF
 
 ifeq ($(BR2_PACKAGE_HAS_LIBGLES),y)
 SOLARUS_ENGINE_DEPENDENCIES += libgles

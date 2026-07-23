@@ -17,7 +17,7 @@
 #
 ################################################################################
 
-OPENJKDF2_VERSION = v0.9.8
+OPENJKDF2_VERSION = v0.9.9
 OPENJKDF2_SITE = https://github.com/shinyquagsire23/OpenJKDF2
 OPENJKDF2_SITE_METHOD = git
 OPENJKDF2_GIT_SUBMODULES = YES
@@ -25,7 +25,7 @@ OPENJKDF2_SUPPORTS_IN_SOURCE_BUILD = NO
 OPENJKDF2_LICENSE = GPLv2 & MIT
 OPENJKDF2_LICENSE_FILE = LICENSE.txt
 
-OPENJKDF2_DEPENDENCIES += gamenetworkingsockets host-python-cog libcurl libfreeglut
+OPENJKDF2_DEPENDENCIES += gamenetworkingsockets host-clang host-python-cog libcurl libfreeglut
 OPENJKDF2_DEPENDENCIES += libglew libgtk3 libpng openal physfs protobuf python3
 OPENJKDF2_DEPENDENCIES += sdl2 sdl2_mixer zlib
 
@@ -40,6 +40,7 @@ OPENJKDF2_CONF_OPTS += -DCMAKE_INSTALL_PREFIX="/usr/bin"
 OPENJKDF2_CONF_OPTS += -DPLAT_LINUX_64=ON
 # Avoid building libraries set crosscompiling off, although we are...
 OPENJKDF2_CONF_OPTS += -DCMAKE_CROSSCOMPILING=NO
+OPENJKDF2_CONF_OPTS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
 define OPENJKDF2_INSTALL_TARGET_CMDS
     mkdir -p $(TARGET_DIR)/usr/bin

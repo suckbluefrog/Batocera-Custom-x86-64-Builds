@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-OPENGOAL_VERSION = v0.3.3
+OPENGOAL_VERSION = v0.3.5
 OPENGOAL_SITE = https://github.com/open-goal/jak-project/releases/download/$(OPENGOAL_VERSION)
 OPENGOAL_SOURCE = opengoal-linux-$(OPENGOAL_VERSION).tar.gz
 OPENGOAL_LICENSE = ISC

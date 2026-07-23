@@ -1,8 +1,8 @@
-diff --git a/src/lindbergh/evdevinput.c b/src/lindbergh/evdevinput.c
-index 4dfa26d..4cffb30 100644
---- a/src/lindbergh/evdevinput.c
-+++ b/src/lindbergh/evdevinput.c
-@@ -938,11 +938,16 @@ static ControllerStatus listControllers(Controllers *controllers)
+diff --git a/src/lindbergh/evdevInput.c b/src/lindbergh/evdevInput.c
+index f3cdd67..845c493 100644
+--- a/src/lindbergh/evdevInput.c
++++ b/src/lindbergh/evdevInput.c
+@@ -1073,11 +1073,17 @@ ControllerStatus loadEvdevControllers(Controllers *controllers)
  
          if (test_bit(EV_ABS, bit[0]))
          {
@@ -13,24 +13,25 @@ index 4dfa26d..4cffb30 100644
              {
                  if (test_bit(code, bit[EV_ABS]))
                  {
-+                    if(controllers->controller[i].inputCount >= MAX_INPUTS) { // the number of input is limited
-+		      fprintf(stderr, "warning, maximum number of inputs reached !\n");
-+		      break;
++                    if (controllers->controller[i].inputCount + 4 > MAX_INPUTS)
++                    {
++                        fprintf(stderr, "warning, maximum number of inputs reached !\n");
++                        break;
 +                    }
 +
                      controllers->controller[i].enabled = 1;
-                     ControllerInput *controllerInput =
-                         &controllers->controller[i].inputs[controllers->controller[i].inputCount++];
-diff --git a/src/lindbergh/evdevinput.h b/src/lindbergh/evdevinput.h
-index bd80be6..17d408c 100644
---- a/src/lindbergh/evdevinput.h
-+++ b/src/lindbergh/evdevinput.h
+                     ControllerInput *controllerInput = &controllers->controller[i].inputs[controllers->controller[i].inputCount++];
+                     controllerInput->evType = EV_ABS;
+diff --git a/src/lindbergh/evdevInput.h b/src/lindbergh/evdevInput.h
+index 4730579..885b7bb 100644
+--- a/src/lindbergh/evdevInput.h
++++ b/src/lindbergh/evdevInput.h
 @@ -4,7 +4,7 @@
  
  #define SIZE 300
  #define CONTROLLER_THREAD_MAX 256
 -#define MAX_INPUTS 512
-+#define MAX_INPUTS 768 // KEY_MAX : some events have this
++#define MAX_INPUTS 768
  
  typedef struct
  {

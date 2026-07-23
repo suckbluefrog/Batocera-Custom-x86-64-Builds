@@ -4,14 +4,14 @@
 #
 ################################################################################
 
-AZAHAR_VERSION = 2125.1.1
+AZAHAR_VERSION = 2125.1.3
 AZAHAR_SITE = https://github.com/azahar-emu/azahar
 AZAHAR_SITE_METHOD = git
 AZAHAR_GIT_SUBMODULES = YES
 AZAHAR_LICENSE = GPLv2
 AZAHAR_SUPPORTS_IN_SOURCE_BUILD = NO
 
-AZAHAR_DEPENDENCIES += boost fdk-aac ffmpeg fmt openal sdl2
+AZAHAR_DEPENDENCIES += boost fdk-aac ffmpeg fmt host-clang openal sdl2
 
 ifeq ($(BR2_x86_64),y)
 AZAHAR_CMAKE_BACKEND = ninja
@@ -54,9 +54,11 @@ endif
 
 ifeq ($(BR2_PACKAGE_BATOCERA_VULKAN),y)
     AZAHAR_CONF_OPTS += -DENABLE_VULKAN=ON
+    AZAHAR_CONF_OPTS += -DUSE_SYSTEM_VULKAN_HEADERS=ON
     AZAHAR_DEPENDENCIES += vulkan-headers vulkan-loader
 else
     AZAHAR_CONF_OPTS += -DENABLE_VULKAN=OFF
+    AZAHAR_CONF_OPTS += -DUSE_SYSTEM_VULKAN_HEADERS=OFF
 endif
 
 AZAHAR_CONF_ENV += LDFLAGS=-lpthread

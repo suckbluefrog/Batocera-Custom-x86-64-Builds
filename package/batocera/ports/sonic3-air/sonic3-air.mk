@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-SONIC3_AIR_VERSION = v25.02.15.0-test
+SONIC3_AIR_VERSION = v26.03.28.0-stable
 SONIC3_AIR_SITE = https://github.com/Eukaryot/sonic3air.git
 SONIC3_AIR_SITE_METHOD = git
 SONIC3_AIR_GIT_SUBMODULES = YES
@@ -27,6 +27,12 @@ SONIC3_AIR_SUPPORTS_IN_SOURCE_BUILD = NO
 SONIC3_AIR_CONF_OPTS += -DCMAKE_BUILD_TYPE=Release
 SONIC3_AIR_CONF_OPTS += -DBUILD_SHARED_LIBS=OFF
 SONIC3_AIR_CONF_OPTS += -DUSE_DISCORD=OFF
+
+define SONIC3_AIR_DISABLE_ENFORCED_DEBUG_MODE
+	$(SED) 's/"EnforceDebugMode": "1"/"EnforceDebugMode": "0"/' \
+		$(@D)/Oxygen/sonic3air/config.json
+endef
+SONIC3_AIR_POST_PATCH_HOOKS += SONIC3_AIR_DISABLE_ENFORCED_DEBUG_MODE
 
 define SONIC3_AIR_INSTALL_TARGET_CMDS
     mkdir -p $(TARGET_DIR)/usr/bin/sonic3-air
