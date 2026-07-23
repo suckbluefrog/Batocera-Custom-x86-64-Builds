@@ -22,9 +22,11 @@ TARGET_LOWER="$(echo "${TARGET_NAME}" | tr '[:upper:]' '[:lower:]')"
 I386_ROOT="${EXTERNAL_DIR}/output/${TARGET_LOWER}_i386_libs/target"
 I386_USR_LIB="${I386_ROOT}/usr/lib"
 I386_LIB="${I386_ROOT}/lib"
+I386_LINDBERGH_DIR="${I386_ROOT}/usr/bin/lindbergh"
 I386_ICD_DIR="${I386_ROOT}/usr/share/vulkan/icd.d"
 I386_IMPLICIT_LAYER_DIR="${I386_ROOT}/usr/share/vulkan/implicit_layer.d"
 I386_EXPLICIT_LAYER_DIR="${I386_ROOT}/usr/share/vulkan/explicit_layer.d"
+TARGET_LINDBERGH_DIR="${TARGET_DIR}/usr/bin/lindbergh"
 LOG_DIR="${EXTERNAL_DIR}/output/build-logs"
 MANIFEST_FILE="${LOG_DIR}/${TARGET_LOWER}_i386_injected_files.txt"
 VULKAN_VALIDATION_FILE="${LOG_DIR}/${TARGET_LOWER}_vulkan32_validation.txt"
@@ -102,6 +104,42 @@ if [ -e "${TARGET_DIR}/lib32/ld-linux.so.2" ]; then
     mkdir -p "${TARGET_DIR}/lib" || exit 1
     ln -snf ../lib32/ld-linux.so.2 "${TARGET_DIR}/lib/ld-linux.so.2" || exit 1
 fi
+
+# Lindbergh is an i386 program, not a native x86_64 binary. Make the locally
+# built payload authoritative over the older copy bundled by wine-x86.
+# Preserve data-only files such as controls.ini and crosshairs if an older
+# wine-x86 archive supplied them.
+if [ ! -d "${I386_LINDBERGH_DIR}" ]; then
+    echo "ERROR: locally built i386 Lindbergh payload is missing: ${I386_LINDBERGH_DIR}" >&2
+    exit 1
+fi
+
+for artifact in lindbergh lindbergh.so; do
+    if [ ! -f "${I386_LINDBERGH_DIR}/${artifact}" ]; then
+        echo "ERROR: incomplete i386 Lindbergh payload: missing ${artifact}" >&2
+        exit 1
+    fi
+    if ! file -L "${I386_LINDBERGH_DIR}/${artifact}" | grep -q "ELF 32-bit.*Intel 80386"; then
+        echo "ERROR: ${I386_LINDBERGH_DIR}/${artifact} is not an i386 ELF." >&2
+        exit 1
+    fi
+done
+
+echo "Injecting locally built i386 Lindbergh payload from ${I386_LINDBERGH_DIR}"
+mkdir -p "${TARGET_LINDBERGH_DIR}" || exit 1
+rsync -a "${I386_LINDBERGH_DIR}/" "${TARGET_LINDBERGH_DIR}/" || exit 1
+
+if ! cmp -s \
+    "${I386_LINDBERGH_DIR}/lindbergh" \
+    "${TARGET_LINDBERGH_DIR}/lindbergh"; then
+    echo "ERROR: final Lindbergh executable does not match the local i386 build." >&2
+    exit 1
+fi
+
+(
+    cd "${I386_ROOT}" || exit 1
+    find usr/bin/lindbergh -mindepth 1 -not -type d
+) | sed -e 's#^#/#' >> "${manifest_tmp}"
 
 # Best-effort legacy SONAME compatibility links for older 32-bit binaries.
 # These are only created when the modern provider exists and the legacy
