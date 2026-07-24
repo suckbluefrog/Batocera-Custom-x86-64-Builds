@@ -1,5 +1,22 @@
 # Changelog
 
+ ## 📜 Changelog 3-7-2026
+
+
+  - Bumped Mesa and Mesa headers to 26.1.4.
+  - Initial **System Night Mode** support, including EmulationStation controls and Wayland gamma handling.
+  - Added **Ryzen FPS Auto-TDP** support and expanded Control Center / TDP hooks for handheld power management.
+  - Improved **Steam Mode** launchers, Steam shortcut parsing, Steam Tools, Protontricks, and Wine Tools integration.
+  - Enhanced the **Arch Plasma LXC** launcher provisioning.
+  - Added LED handheld mode improvements, including EmulationStation LED controls and achievement-triggered LED feedback.
+  - Updated and fixed **MAME**, **Ymir**, **Gopher64**, **Yaba Sanshiro**, **DraStic**, **Cemu**, **RPCS3**, **Ryujinx**, **Xemu**, **Supermodel**, **Dolphin**, and numerous other emulator/configgen components.
+  - Added **Mupen64Plus-Next ParaLLEl** plugin support and improved Nintendo 64 upscaling and configgen handling.
+  - Improved **Flatpak**, Waydroid launcher behavior, Dusklight launchers, Steam desktop/session switching, and supporting runtime tools.
+  - Updated NVIDIA proprietary drivers to **595.84**, with legacy drivers updated to **580.159.04**.
+
+
+  ---
+
  ## 📜 Changelog 14-6-2026
 
 

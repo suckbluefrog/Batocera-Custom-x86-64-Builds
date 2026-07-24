@@ -7,8 +7,8 @@
 ---
 
 **Download:** 
-Latest Build: July 3, 2026
-[https://drive.proton.me/urls/CGJFSTPY18#rkYwVYC6BS94](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
+Latest Build: July 24, 2026
+[https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv](https://drive.proton.me/urls/3AR99N2KSG#tnj16yBfpgjv)
 
 ---
 ## Video Preview:
@@ -16,20 +16,24 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
 
  
 ---
- # 📜 Changelog – 3 July 2026
+ # 📜 Changelog – 24 July 2026
 
 ## Latest
 
-- Bumped Mesa and Mesa headers to 26.1.4.
-- Initial **System Night Mode** support, including EmulationStation controls and Wayland gamma handling.
-- Added **Ryzen FPS Auto-TDP** support and expanded Control Center / TDP hooks for handheld power management.
-- Improved **Steam Mode** launchers, Steam shortcut parsing, Steam Tools, Protontricks, and Wine Tools integration.
-- Enhanced the **Arch Plasma LXC** launcher Provisioning.
-- Added LED handheld mode improvements, including EmulationStation LED controls and achievement-triggered LED feedback.
-- Updated and fixed **MAME**, **Ymir**, **Gopher64**, **Yaba Sanshiro**, **DraStic**, **Cemu**, **RPCS3**, **Ryujinx**, **Xemu**, **Supermodel**, **Dolphin**, and numerous other emulator/configgen components.
-- Added **Mupen64Plus-Next ParaLLEl** plugin support and improved Nintendo 64 upscaling and configgen handling.
-- Improved **Flatpak**, Waydroid launcher behavior, Dusklight launchers, Steam desktop/session switching, and supporting runtime tools.
-- Updated NVIDIA proprietary drivers to **595.84**, with legacy drivers updated to **580.159.04**.
+- Updated the x86-64-v3 builds to **Linux kernel 7.1.4** and **Mesa 26.1.5**.
+- Added direct **AppImage support for the Ports system**, including launch options and AppImage update tooling.
+- Restored and fixed custom EmulationStation scrapers.
+- Added initial **gyro and DSU/Cemuhook motion support**, with expanded controller metadata handling across supported emulators.
+- Improved controller input handling, Batocera Control Center reopening, Steam update/preflight behavior, and Wine Tools integration.
+- Added additional **MangoHud presets** and fixed firmware detection for supported emulators.
+- Fixed System Night Mode handling and improved gamma behavior.
+- Added complete **Lindbergh SDL3/i386 integration**, including the required 32-bit runtime libraries and updated configgen support.
+- Refreshed Amiberry, Azahar, BigPEmu, Cemu, FS-UAE, Play!, PPSSPP, Ruffle, Solarus, X16, several native ports, and other emulator/configgen components.
+- Improved Arch and Ubuntu Plasma LXC provisioning, desktop integration, Sunshine capture support, and related runtime tools.
+- Added a controller-friendly **Waydroid Tools** interface for image/profile management, Google Play device registration, and installing or removing ARM translation without bundling proprietary translation files in the image.
+- Improved Waydroid startup reliability and added direct physical-controller passthrough to Android.
+- Fixed Steam Gamescope MangoApp integration so performance settings and QAM changes apply to the active MangoHud configuration.
+- Fixed a PipeWire audio regression by restoring compatibility sockets for applications using the per-user runtime path.
 
  
 
