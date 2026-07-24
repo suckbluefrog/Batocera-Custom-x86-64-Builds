@@ -1,30 +1,838 @@
 #!/bin/bash
 set -euo pipefail
+export LC_ALL=C
 
-LOG_FILE="/userdata/system/logs/waydroid-arm.log"
-PAYLOAD_ROOT="/usr/share/batocera/waydroid/libndk"
-OVERLAY_ROOT="/var/lib/waydroid/overlay"
-WAYDROID_CFG="/var/lib/waydroid/waydroid.cfg"
+LOG_FILE="${BATOCERA_WAYDROID_ARM_LOG:-/userdata/system/logs/waydroid-arm.log}"
+BIOS_ROOT="${BATOCERA_WAYDROID_BIOS_ROOT:-/userdata/bios/waydroid}"
+DROP_ROOT="${BATOCERA_WAYDROID_DROP_ROOT:-${BIOS_ROOT}/dump_here}"
+STAGED_ROOT="${BATOCERA_WAYDROID_STAGED_ROOT:-${BIOS_ROOT}/overlay}"
+CACHE_ROOT="${BATOCERA_WAYDROID_CACHE_ROOT:-/userdata/system/cache/waydroid-libndk}"
+WAYDROID_STATE_BASE="${BATOCERA_WAYDROID_STATE_BASE:-/userdata/system/waydroid}"
+STATE_ROOT="${BATOCERA_WAYDROID_ARM_STATE_ROOT:-${WAYDROID_STATE_BASE}/arm-translation}"
+PRIVATE_ROOT="${STATE_ROOT}/payload"
+BACKUP_ROOT="${STATE_ROOT}/backup"
+PROPS_BACKUP="${STATE_ROOT}/properties.before.json"
+INSTALL_MARKER="${STATE_ROOT}/installed.json"
+MIGRATION_STAMP="${WAYDROID_STATE_BASE}/libndk-auto-seed-migrated"
+PROFILE_FILE="${BATOCERA_WAYDROID_PROFILE_FILE:-/userdata/system/configs/waydroid/image-profile}"
+WAYDROID_ROOT="${BATOCERA_WAYDROID_ROOT:-/var/lib/waydroid}"
+OVERLAY_ROOT="${BATOCERA_WAYDROID_OVERLAY_ROOT:-${WAYDROID_ROOT}/overlay}"
+WAYDROID_CFG="${BATOCERA_WAYDROID_CFG:-${WAYDROID_ROOT}/waydroid.cfg}"
+MANIFEST="${BATOCERA_WAYDROID_LIBNDK_MANIFEST:-/usr/share/batocera/waydroid/libndk-files.list}"
 
-mkdir -p /userdata/system/logs
+OFFICIAL_FILENAME="chromeos_16238.47.0_zork_recovery_stable-channel_ZorkMPKeys-v12.bin.zip"
+OFFICIAL_URL="https://dl.google.com/dl/edgedl/chromeos/recovery/${OFFICIAL_FILENAME}"
+OFFICIAL_ARCHIVE_SIZE=1938995292
+EXPECTED_FILE_COUNT=177
+EXPECTED_PAYLOAD_SIZE=44618720
+EXPECTED_PAYLOAD_SHA256="b5fc6dd6685de7ead17ee5676c4dfab81693bc82bc25ef4374b5dabec479a8e3"
+RECOVERY_BUILD="R136-16238.47.0 zork"
+
+PROP_KEYS=(
+    "ro.product.cpu.abilist"
+    "ro.product.cpu.abilist32"
+    "ro.product.cpu.abilist64"
+    "ro.dalvik.vm.native.bridge"
+    "ro.enable.native.bridge.exec"
+    "ro.vendor.enable.native.bridge.exec"
+    "ro.vendor.enable.native.bridge.exec64"
+    "ro.ndk_translation.version"
+    "ro.dalvik.vm.isa.arm"
+    "ro.dalvik.vm.isa.arm64"
+)
+
+PROP_VALUES=(
+    "x86_64,x86,arm64-v8a,armeabi-v7a,armeabi"
+    "x86,armeabi-v7a,armeabi"
+    "x86_64,arm64-v8a"
+    "libndk_translation.so"
+    "1"
+    "1"
+    "1"
+    "0.2.3"
+    "x86"
+    "x86_64"
+)
+
+CLEANUP_WORK=""
+CLEANUP_ROOT_MOUNT=""
+CLEANUP_SYSTEM_MOUNT=""
+CLEANUP_STAGE=""
+INSTALL_TXN=""
+INSTALL_COMMITTED=0
+
+mkdir -p "$(dirname "${LOG_FILE}")"
 
 log_msg() {
-    echo "[$(date '+%F %T')] $*" | tee -a "${LOG_FILE}"
+    printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "${LOG_FILE}" >&2
+}
+
+die() {
+    log_msg "ERROR: $*"
+    exit 1
+}
+
+remove_tree() {
+    local target="$1"
+
+    case "${target}" in
+        ""|/|/userdata|/userdata/system|/userdata/bios|/var|/var/lib)
+            log_msg "Refusing unsafe recursive removal target: ${target}"
+            return 1
+            ;;
+    esac
+    rm -rf -- "${target}"
+}
+
+ensure_layout() {
+    mkdir -p "${DROP_ROOT}" "${CACHE_ROOT}" "${WAYDROID_STATE_BASE}" "$(dirname "${PROFILE_FILE}")"
+    chmod 0755 "${BIOS_ROOT}" "${DROP_ROOT}" 2>/dev/null || true
+    chmod 0700 "${CACHE_ROOT}" "${WAYDROID_STATE_BASE}" 2>/dev/null || true
+}
+
+read_profile() {
+    local profile="standard-gapps"
+
+    if [ -f "${PROFILE_FILE}" ]; then
+        profile="$(tr -d '\r\n' < "${PROFILE_FILE}")"
+    fi
+
+    case "${profile}" in
+        standard-gapps|standard-vanilla|android-tv-gapps|android-tv-vanilla)
+            printf '%s\n' "${profile}"
+            ;;
+        *)
+            printf 'standard-gapps\n'
+            ;;
+    esac
+}
+
+require_supported_host() {
+    [ "$(uname -m)" = "x86_64" ] ||
+        die "This pinned native bridge is only supported on x86_64."
+
+    grep -Eqm1 '^vendor_id[[:space:]]*:[[:space:]]*AuthenticAMD$' /proc/cpuinfo ||
+        die "The Google zork libndk payload is licensed for AMD. This CPU is not reported as AuthenticAMD."
+}
+
+require_standard_profile() {
+    case "$(read_profile)" in
+        android-tv-*)
+            die "WayDroid-ATV supplies its own ARM-app translation layer in the x86_64 Android image. Refusing to mix the separately provisioned zork libndk payload into Android TV."
+            ;;
+    esac
+}
+
+require_root() {
+    [ "$(id -u)" -eq 0 ] || die "$1 must run as root."
+}
+
+validate_manifest() {
+    local count previous="" rel
+
+    [ -f "${MANIFEST}" ] || {
+        log_msg "Missing libndk manifest: ${MANIFEST}"
+        return 1
+    }
+
+    count="$(wc -l < "${MANIFEST}")"
+    [ "${count}" -eq "${EXPECTED_FILE_COUNT}" ] || {
+        log_msg "Manifest has ${count} paths; expected ${EXPECTED_FILE_COUNT}"
+        return 1
+    }
+
+    while IFS= read -r rel; do
+        case "${rel}" in
+            system/*) ;;
+            *)
+                log_msg "Unsafe manifest path: ${rel}"
+                return 1
+                ;;
+        esac
+        case "/${rel}/" in
+            */../*|*/./*)
+                log_msg "Unsafe manifest traversal: ${rel}"
+                return 1
+                ;;
+        esac
+        if [ -n "${previous}" ] && [[ "${rel}" < "${previous}" || "${rel}" = "${previous}" ]]; then
+            log_msg "Manifest is not strictly sorted and unique at: ${rel}"
+            return 1
+        fi
+        previous="${rel}"
+    done < "${MANIFEST}"
+}
+
+payload_digest() {
+    local root="$1"
+
+    (
+        cd "${root}"
+        while IFS= read -r rel; do
+            [ -f "./${rel}" ] && [ ! -L "./${rel}" ] || exit 1
+            sha256sum "./${rel}"
+        done < "${MANIFEST}"
+    ) | sha256sum | awk '{print $1}'
+}
+
+payload_size() {
+    local root="$1" rel total=0 size
+
+    while IFS= read -r rel; do
+        [ -f "${root}/${rel}" ] && [ ! -L "${root}/${rel}" ] || return 1
+        size="$(stat -c '%s' "${root}/${rel}")" || return 1
+        total=$((total + size))
+    done < "${MANIFEST}"
+    printf '%s\n' "${total}"
+}
+
+validate_payload() {
+    local root="$1" digest size
+
+    validate_manifest || return 1
+    [ -d "${root}" ] || {
+        log_msg "Payload directory does not exist: ${root}"
+        return 1
+    }
+
+    size="$(payload_size "${root}")" || {
+        log_msg "Payload is missing a required regular file under ${root}"
+        return 1
+    }
+    [ "${size}" -eq "${EXPECTED_PAYLOAD_SIZE}" ] || {
+        log_msg "Payload size is ${size}; expected ${EXPECTED_PAYLOAD_SIZE}"
+        return 1
+    }
+
+    digest="$(payload_digest "${root}")" || {
+        log_msg "Could not hash payload under ${root}"
+        return 1
+    }
+    [ "${digest}" = "${EXPECTED_PAYLOAD_SHA256}" ] || {
+        log_msg "Payload digest mismatch under ${root}: ${digest}"
+        return 1
+    }
+}
+
+payload_valid_quiet() {
+    validate_payload "$1" >/dev/null 2>&1
+}
+
+file_mode_for_path() {
+    case "$1" in
+        system/bin/*|system/etc/binfmt_misc/*)
+            printf '0755\n'
+            ;;
+        *)
+            printf '0644\n'
+            ;;
+    esac
+}
+
+copy_payload() {
+    local source_root="$1" destination_root="$2" rel mode
+
+    validate_payload "${source_root}" || return 1
+    while IFS= read -r rel; do
+        mode="$(file_mode_for_path "${rel}")"
+        install -D -m "${mode}" "${source_root}/${rel}" "${destination_root}/${rel}" || return 1
+    done < "${MANIFEST}"
+}
+
+available_kib() {
+    df -Pk "$1" | awk 'NR == 2 {print $4}'
+}
+
+require_free_space() {
+    local path="$1" required_kib="$2" label="$3" available
+
+    mkdir -p "${path}"
+    available="$(available_kib "${path}")"
+    [ -n "${available}" ] || die "Could not determine free space under ${path}."
+    [ "${available}" -ge "${required_kib}" ] ||
+        die "${label} needs about $((required_kib / 1024 / 1024)) GiB free under /userdata; only $((available / 1024 / 1024)) GiB is available."
+}
+
+download_archive() {
+    local destination="${DROP_ROOT}/${OFFICIAL_FILENAME}"
+    local partial="${destination}.part" size
+
+    ensure_layout
+    require_supported_host
+
+    [ ! -L "${destination}" ] && [ ! -L "${partial}" ] ||
+        die "Refusing a symlink at the recovery download destination."
+
+    if [ -f "${destination}" ]; then
+        size="$(stat -c '%s' "${destination}")"
+        [ "${size}" -eq "${OFFICIAL_ARCHIVE_SIZE}" ] ||
+            die "${destination} exists but has the wrong size. Move it aside before retrying."
+        log_msg "Official Google recovery archive is already present: ${destination}"
+        printf '%s\n' "${destination}"
+        return 0
+    fi
+
+    require_free_space "${DROP_ROOT}" 3145728 "The recovery download"
+    log_msg "Downloading the pinned recovery image from Google."
+    log_msg "${OFFICIAL_URL}"
+
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --retry 5 --retry-delay 3 --continue-at - \
+            --output "${partial}" "${OFFICIAL_URL}" ||
+            die "Google recovery download failed. The .part file was kept so a retry can resume."
+    elif command -v wget >/dev/null 2>&1; then
+        wget -c -O "${partial}" "${OFFICIAL_URL}" ||
+            die "Google recovery download failed. The .part file was kept so a retry can resume."
+    else
+        die "Neither curl nor wget is available."
+    fi
+
+    size="$(stat -c '%s' "${partial}")"
+    [ "${size}" -eq "${OFFICIAL_ARCHIVE_SIZE}" ] ||
+        die "Downloaded ${size} bytes; expected ${OFFICIAL_ARCHIVE_SIZE}. The incomplete file was kept as ${partial}."
+
+    mv "${partial}" "${destination}"
+    log_msg "Saved the official recovery archive to ${destination}"
+    printf '%s\n' "${destination}"
+}
+
+resolve_archive() {
+    local requested="${1:-}" exact="${DROP_ROOT}/${OFFICIAL_FILENAME}"
+    local candidates=()
+
+    if [ -n "${requested}" ]; then
+        [ -f "${requested}" ] && [ ! -L "${requested}" ] ||
+            die "Recovery archive must be a regular, non-symlink file: ${requested}"
+        printf '%s\n' "${requested}"
+        return 0
+    fi
+
+    if [ -f "${exact}" ]; then
+        [ ! -L "${exact}" ] ||
+            die "Refusing symlinked recovery archive: ${exact}"
+        printf '%s\n' "${exact}"
+        return 0
+    fi
+
+    while IFS= read -r -d '' candidate; do
+        candidates+=("${candidate}")
+    done < <(find "${DROP_ROOT}" -maxdepth 1 -type f \
+        \( -iname '*.zip' -o -iname '*.bin' \) -print0)
+
+    case "${#candidates[@]}" in
+        0)
+            die "No recovery ZIP or BIN found in ${DROP_ROOT}. Use 'batocera-waydroid-arm download' or place the official zork recovery there."
+            ;;
+        1)
+            printf '%s\n' "${candidates[0]}"
+            ;;
+        *)
+            die "More than one recovery ZIP/BIN is present in ${DROP_ROOT}. Keep only the zork source you want to use."
+            ;;
+    esac
+}
+
+run_7z() {
+    local executable executable_dir
+
+    executable="$(command -v 7z)" || return 127
+    executable_dir="$(dirname "${executable}")"
+
+    # Batocera installs p7zip's 7z and 7z.so together in /usr/bin. This
+    # p7zip build otherwise searches the caller's current directory for
+    # 7z.so and fails outside /usr/bin. Standalone 7z builds need no hint.
+    if [ -f "${executable_dir}/7z.so" ]; then
+        P7ZIP_HOME_DIR="${executable_dir}/" "${executable}" "$@"
+    else
+        "${executable}" "$@"
+    fi
+}
+
+write_ndk_init_rule() {
+    local output="$1"
+
+    mkdir -p "$(dirname "${output}")"
+    cat > "${output}" <<'EOF'
+# Enable native bridge for target executables
+on early-init && property:ro.enable.native.bridge.exec=1
+    mount binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
+
+on property:ro.enable.native.bridge.exec=1 && property:ro.dalvik.vm.isa.arm=x86
+    copy /system/etc/binfmt_misc/arm_exe /proc/sys/fs/binfmt_misc/register
+    copy /system/etc/binfmt_misc/arm_dyn /proc/sys/fs/binfmt_misc/register
+
+on property:ro.enable.native.bridge.exec=1 && property:ro.dalvik.vm.isa.arm64=x86_64
+    copy /system/etc/binfmt_misc/arm64_exe /proc/sys/fs/binfmt_misc/register
+    copy /system/etc/binfmt_misc/arm64_dyn /proc/sys/fs/binfmt_misc/register
+EOF
+    chmod 0644 "${output}"
+}
+
+is_mounted() {
+    local mountpoint_path="$1"
+    awk -v wanted="${mountpoint_path}" '$2 == wanted { found = 1 } END { exit !found }' /proc/mounts
+}
+
+cleanup_extract() {
+    local can_remove_work=1
+
+    set +e
+    if [ -n "${CLEANUP_SYSTEM_MOUNT}" ] && is_mounted "${CLEANUP_SYSTEM_MOUNT}"; then
+        if ! umount "${CLEANUP_SYSTEM_MOUNT}"; then
+            log_msg "Could not unmount ${CLEANUP_SYSTEM_MOUNT}; preserving extraction work directory."
+            can_remove_work=0
+        fi
+    fi
+    if [ -n "${CLEANUP_ROOT_MOUNT}" ] && is_mounted "${CLEANUP_ROOT_MOUNT}"; then
+        if ! umount "${CLEANUP_ROOT_MOUNT}"; then
+            log_msg "Could not unmount ${CLEANUP_ROOT_MOUNT}; preserving extraction work directory."
+            can_remove_work=0
+        fi
+    fi
+    if [ -n "${CLEANUP_STAGE}" ] && [ -e "${CLEANUP_STAGE}" ]; then
+        remove_tree "${CLEANUP_STAGE}"
+    fi
+    if [ "${can_remove_work}" -eq 1 ] &&
+       [ -n "${CLEANUP_WORK}" ] && [ -e "${CLEANUP_WORK}" ]; then
+        case "${CLEANUP_WORK}" in
+            "${CACHE_ROOT}"/extract.*) remove_tree "${CLEANUP_WORK}" ;;
+            *) log_msg "Refusing unexpected extraction cleanup path: ${CLEANUP_WORK}" ;;
+        esac
+    fi
+    CLEANUP_SYSTEM_MOUNT=""
+    CLEANUP_ROOT_MOUNT=""
+    CLEANUP_STAGE=""
+    CLEANUP_WORK=""
+    set -e
+}
+
+promote_directory() {
+    local new_root="$1" destination="$2" old_root
+
+    old_root="${destination}.old.$$"
+
+    [ -d "${new_root}" ] || return 1
+    if [ -e "${old_root}" ]; then
+        remove_tree "${old_root}"
+    fi
+    if [ -e "${destination}" ]; then
+        mv "${destination}" "${old_root}" || return 1
+    fi
+    if ! mv "${new_root}" "${destination}"; then
+        [ -e "${old_root}" ] && mv "${old_root}" "${destination}" || true
+        return 1
+    fi
+    [ -e "${old_root}" ] && remove_tree "${old_root}"
+    return 0
+}
+
+write_source_metadata() {
+    local archive="$1" archive_sha256="$2" output="${BIOS_ROOT}/source.json"
+    local temporary
+
+    temporary="$(mktemp "${output}.tmp.XXXXXX")"
+
+    python3 - "${temporary}" "${archive}" "${archive_sha256}" \
+        "${OFFICIAL_URL}" "${OFFICIAL_FILENAME}" "${RECOVERY_BUILD}" \
+        "${EXPECTED_PAYLOAD_SHA256}" "${EXPECTED_PAYLOAD_SIZE}" <<'PY'
+import datetime
+import json
+import os
+import sys
+
+(output, archive, archive_sha256, official_url, official_filename,
+ recovery_build, payload_sha256, payload_size) = sys.argv[1:]
+metadata = {
+    "archive_path": os.path.realpath(archive),
+    "archive_sha256": archive_sha256,
+    "expected_official_filename": official_filename,
+    "extracted_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    "google_url": official_url,
+    "license_file": "ARM_TO_AMD_DBT_LICENSE.txt",
+    "payload_file_count": 177,
+    "payload_sha256": payload_sha256,
+    "payload_size": int(payload_size),
+    "recovery_build": recovery_build,
+    "source": "Official Google ChromeOS zork recovery",
+}
+with open(output, "w", encoding="utf-8") as handle:
+    json.dump(metadata, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+PY
+    chmod 0644 "${temporary}"
+    mv "${temporary}" "${output}"
+}
+
+extract_payload() {
+    local requested="${1:-}" archive archive_lower archive_size archive_sha256
+    local recovery_dir partitions_dir bin_image root_image system_image license_source
+    local stage_parent stage_new rel mode
+    local bin_candidates=() root_candidates=()
+
+    ensure_layout
+    require_supported_host
+    require_standard_profile
+    validate_manifest || die "The packaged libndk manifest is invalid."
+    require_root "Recovery extraction"
+    for command_name in 7z fsck.erofs mount umount sha256sum; do
+        command -v "${command_name}" >/dev/null 2>&1 ||
+            die "Required extraction command is missing: ${command_name}"
+    done
+
+    archive="$(resolve_archive "${requested}")"
+    archive_lower="${archive,,}"
+    case "${archive_lower}" in
+        *.zip)
+            archive_size="$(stat -c '%s' "${archive}")"
+            [ "${archive_size}" -eq "${OFFICIAL_ARCHIVE_SIZE}" ] ||
+                die "The ZIP is ${archive_size} bytes; the pinned official zork ZIP must be ${OFFICIAL_ARCHIVE_SIZE} bytes."
+            ;;
+        *.bin) ;;
+        *) die "Expected a .zip or extracted .bin recovery image: ${archive}" ;;
+    esac
+
+    require_free_space "${CACHE_ROOT}" 14680064 "Recovery extraction"
+    CLEANUP_WORK="$(mktemp -d "${CACHE_ROOT}/extract.XXXXXX")"
+    recovery_dir="${CLEANUP_WORK}/recovery"
+    partitions_dir="${CLEANUP_WORK}/partitions"
+    CLEANUP_ROOT_MOUNT="${CLEANUP_WORK}/mnt-root-a"
+    CLEANUP_SYSTEM_MOUNT="${CLEANUP_WORK}/mnt-android-system"
+    mkdir -p "${recovery_dir}" "${partitions_dir}" \
+        "${CLEANUP_ROOT_MOUNT}" "${CLEANUP_SYSTEM_MOUNT}"
+    trap cleanup_extract EXIT
+    trap 'cleanup_extract; exit 130' INT TERM
+
+    if [[ "${archive_lower}" = *.zip ]]; then
+        log_msg "Extracting the ChromeOS recovery BIN from $(basename "${archive}")"
+        run_7z x -y "-o${recovery_dir}" "${archive}" >>"${LOG_FILE}" 2>&1 ||
+            die "7z could not extract the Google recovery ZIP."
+        while IFS= read -r -d '' candidate; do
+            bin_candidates+=("${candidate}")
+        done < <(find "${recovery_dir}" -type f -iname '*.bin' -print0)
+        [ "${#bin_candidates[@]}" -eq 1 ] ||
+            die "Expected exactly one recovery BIN inside the ZIP; found ${#bin_candidates[@]}."
+        bin_image="${bin_candidates[0]}"
+    else
+        bin_image="${archive}"
+    fi
+
+    log_msg "Extracting the ROOT-A partition from the ChromeOS recovery image"
+    run_7z e -y "-o${partitions_dir}" "${bin_image}" '*ROOT-A.img' >>"${LOG_FILE}" 2>&1 ||
+        die "7z could not extract ROOT-A from the recovery image."
+    while IFS= read -r -d '' candidate; do
+        root_candidates+=("${candidate}")
+    done < <(find "${partitions_dir}" -maxdepth 1 -type f -name '*ROOT-A.img' -print0)
+    [ "${#root_candidates[@]}" -eq 1 ] ||
+        die "Expected exactly one ROOT-A image; found ${#root_candidates[@]}."
+    root_image="${root_candidates[0]}"
+
+    log_msg "Mounting ROOT-A read-only"
+    mount -o loop,ro "${root_image}" "${CLEANUP_ROOT_MOUNT}" ||
+        die "Could not mount the ChromeOS ROOT-A image."
+    system_image="${CLEANUP_ROOT_MOUNT}/opt/google/vms/android/system.raw.img"
+    license_source="${CLEANUP_ROOT_MOUNT}/opt/google/vms/android/ARM_TO_AMD_DBT_LICENSE.txt"
+    [ -f "${system_image}" ] ||
+        die "This recovery does not contain the expected Android system.raw.img."
+    [ -f "${license_source}" ] ||
+        die "This recovery does not contain Google's ARM_TO_AMD_DBT_LICENSE.txt."
+
+    # Current ChromeOS zork recoveries use EROFS for system.raw.img. Batocera's
+    # kernel does not need EROFS support: extract it in userspace so this
+    # provisioning path stays independent of the running kernel configuration.
+    log_msg "Extracting the embedded Android EROFS image in userspace"
+    fsck.erofs --extract="${CLEANUP_SYSTEM_MOUNT}" "${system_image}" \
+        >>"${LOG_FILE}" 2>&1 ||
+        die "Could not extract Android system.raw.img with fsck.erofs."
+    [ -d "${CLEANUP_SYSTEM_MOUNT}/system" ] ||
+        die "The extracted Android image does not contain the expected system directory."
+    # Newer zork images omit this Waydroid-facing init integration rule even
+    # though the bridge executables and binfmt registrations are unchanged.
+    write_ndk_init_rule \
+        "${CLEANUP_SYSTEM_MOUNT}/system/etc/init/ndk_translation.rc"
+
+    stage_parent="$(dirname "${STAGED_ROOT}")"
+    mkdir -p "${stage_parent}"
+    CLEANUP_STAGE="$(mktemp -d "${STAGED_ROOT}.new.XXXXXX")"
+    log_msg "Copying the pinned ${EXPECTED_FILE_COUNT}-file libndk payload"
+    while IFS= read -r rel; do
+        [ -f "${CLEANUP_SYSTEM_MOUNT}/${rel}" ] ||
+            die "Recovery is missing required native-bridge file: ${rel}"
+        mode="$(file_mode_for_path "${rel}")"
+        install -D -m "${mode}" \
+            "${CLEANUP_SYSTEM_MOUNT}/${rel}" "${CLEANUP_STAGE}/${rel}"
+    done < "${MANIFEST}"
+
+    validate_payload "${CLEANUP_STAGE}" ||
+        die "Extracted files do not match the pinned zork libndk payload."
+
+    archive_sha256="$(sha256sum "${archive}" | awk '{print $1}')"
+    install -D -m 0644 "${license_source}" "${BIOS_ROOT}/ARM_TO_AMD_DBT_LICENSE.txt"
+    promote_directory "${CLEANUP_STAGE}" "${STAGED_ROOT}" ||
+        die "Could not promote the verified payload to ${STAGED_ROOT}."
+    CLEANUP_STAGE=""
+    write_source_metadata "${archive}" "${archive_sha256}"
+
+    cleanup_extract
+    trap - EXIT INT TERM
+    log_msg "Verified libndk payload staged at ${STAGED_ROOT}"
+    log_msg "Staging does not enable ARM translation; run 'batocera-waydroid-arm install' to opt in."
+}
+
+ensure_private_payload() {
+    local requested="${1:-}" new_root
+
+    if payload_valid_quiet "${PRIVATE_ROOT}"; then
+        return 0
+    fi
+
+    if ! payload_valid_quiet "${STAGED_ROOT}"; then
+        extract_payload "${requested}"
+    fi
+    validate_payload "${STAGED_ROOT}" ||
+        die "The BIOS staging payload is invalid."
+
+    mkdir -p "${STATE_ROOT}"
+    chmod 0700 "${STATE_ROOT}"
+    new_root="$(mktemp -d "${PRIVATE_ROOT}.new.XXXXXX")"
+    copy_payload "${STAGED_ROOT}" "${new_root}" || {
+        remove_tree "${new_root}"
+        die "Could not create the protected persistent payload copy."
+    }
+    validate_payload "${new_root}" || {
+        remove_tree "${new_root}"
+        die "Protected payload validation failed."
+    }
+    promote_directory "${new_root}" "${PRIVATE_ROOT}" ||
+        die "Could not promote the protected payload copy."
+}
+
+is_runtime_running() {
+    local status
+    status="$(waydroid status 2>/dev/null || true)"
+    printf '%s\n' "${status}" | grep -Eq '^(Session|Container):[[:space:]]*RUNNING'
+}
+
+stop_runtime() {
+    local attempt
+
+    command -v waydroid >/dev/null 2>&1 || return 0
+    timeout 20 waydroid session stop >>"${LOG_FILE}" 2>&1 || true
+    timeout 20 waydroid container stop >>"${LOG_FILE}" 2>&1 || true
+
+    for attempt in $(seq 1 15); do
+        if ! is_runtime_running; then
+            return 0
+        fi
+        sleep 1
+    done
+    log_msg "Waydroid is still running; refusing to modify its overlay."
+    return 1
+}
+
+safe_live_target() {
+    local rel="$1" current="${OVERLAY_ROOT}" component
+    local components=()
+
+    if [ -L "${OVERLAY_ROOT}" ]; then
+        log_msg "Refusing symlinked Waydroid overlay root: ${OVERLAY_ROOT}"
+        return 1
+    fi
+    IFS='/' read -r -a components <<< "${rel}"
+    for component in "${components[@]}"; do
+        current="${current}/${component}"
+        if [ -L "${current}" ]; then
+            log_msg "Refusing symlink in live overlay path: ${current}"
+            return 1
+        fi
+    done
+}
+
+validate_live_paths() {
+    local rel
+
+    while IFS= read -r rel; do
+        safe_live_target "${rel}" || return 1
+    done < "${MANIFEST}"
+}
+
+snapshot_properties() {
+    local output="$1"
+
+    python3 - "${WAYDROID_CFG}" "${output}" "${PROP_KEYS[@]}" <<'PY'
+import configparser
+import json
+import sys
+
+cfg_path, output, *keys = sys.argv[1:]
+cfg = configparser.RawConfigParser()
+cfg.read(cfg_path)
+props = cfg["properties"] if cfg.has_section("properties") else {}
+snapshot = {key: props.get(key) if key in props else None for key in keys}
+with open(output, "w", encoding="utf-8") as handle:
+    json.dump(snapshot, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+PY
+    chmod 0600 "${output}"
+}
+
+set_bridge_properties() {
+    local arguments=() index
+
+    for index in "${!PROP_KEYS[@]}"; do
+        arguments+=("${PROP_KEYS[$index]}=${PROP_VALUES[$index]}")
+    done
+
+    python3 - "${WAYDROID_CFG}" "${arguments[@]}" <<'PY'
+import configparser
+import os
+import sys
+import tempfile
+
+cfg_path, *pairs = sys.argv[1:]
+cfg = configparser.RawConfigParser()
+cfg.read(cfg_path)
+if not cfg.has_section("properties"):
+    cfg.add_section("properties")
+for pair in pairs:
+    key, value = pair.split("=", 1)
+    cfg.set("properties", key, value)
+directory = os.path.dirname(cfg_path)
+fd, temporary = tempfile.mkstemp(prefix=".waydroid.cfg.", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        cfg.write(handle)
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, cfg_path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+}
+
+restore_properties() {
+    local snapshot="$1"
+
+    [ -f "${snapshot}" ] || return 1
+    python3 - "${WAYDROID_CFG}" "${snapshot}" <<'PY'
+import configparser
+import json
+import os
+import sys
+import tempfile
+
+cfg_path, snapshot_path = sys.argv[1:]
+cfg = configparser.RawConfigParser()
+cfg.read(cfg_path)
+if not cfg.has_section("properties"):
+    cfg.add_section("properties")
+with open(snapshot_path, encoding="utf-8") as handle:
+    snapshot = json.load(handle)
+for key, value in snapshot.items():
+    if value is None:
+        cfg.remove_option("properties", key)
+    else:
+        cfg.set("properties", key, value)
+directory = os.path.dirname(cfg_path)
+fd, temporary = tempfile.mkstemp(prefix=".waydroid.cfg.", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        cfg.write(handle)
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, cfg_path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+}
+
+remove_exact_bridge_properties() {
+    local arguments=() index
+
+    for index in "${!PROP_KEYS[@]}"; do
+        arguments+=("${PROP_KEYS[$index]}=${PROP_VALUES[$index]}")
+    done
+
+    python3 - "${WAYDROID_CFG}" "${arguments[@]}" <<'PY'
+import configparser
+import os
+import sys
+import tempfile
+
+cfg_path, *pairs = sys.argv[1:]
+cfg = configparser.RawConfigParser()
+cfg.read(cfg_path)
+if cfg.has_section("properties"):
+    for pair in pairs:
+        key, expected = pair.split("=", 1)
+        if cfg.get("properties", key, fallback=None) == expected:
+            cfg.remove_option("properties", key)
+directory = os.path.dirname(cfg_path)
+fd, temporary = tempfile.mkstemp(prefix=".waydroid.cfg.", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        cfg.write(handle)
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, cfg_path)
+finally:
+    if os.path.exists(temporary):
+        os.unlink(temporary)
+PY
+}
+
+bridge_properties_match() {
+    local arguments=() index
+
+    for index in "${!PROP_KEYS[@]}"; do
+        arguments+=("${PROP_KEYS[$index]}=${PROP_VALUES[$index]}")
+    done
+
+    python3 - "${WAYDROID_CFG}" "${arguments[@]}" <<'PY'
+import configparser
+import sys
+
+cfg_path, *pairs = sys.argv[1:]
+cfg = configparser.RawConfigParser()
+cfg.read(cfg_path)
+if not cfg.has_section("properties"):
+    raise SystemExit(1)
+for pair in pairs:
+    key, expected = pair.split("=", 1)
+    if cfg.get("properties", key, fallback=None) != expected:
+        raise SystemExit(1)
+PY
+}
+
+legacy_bridge_configured() {
+    python3 - "${WAYDROID_CFG}" <<'PY'
+import configparser
+import sys
+
+cfg = configparser.RawConfigParser()
+cfg.read(sys.argv[1])
+if cfg.get(
+    "properties", "ro.dalvik.vm.native.bridge", fallback=""
+) != "libndk_translation.so":
+    raise SystemExit(1)
+PY
 }
 
 rebuild_base_props() {
-    python3 - <<'PY'
+    if [ "${BATOCERA_WAYDROID_ARM_SKIP_REBUILD:-0}" = "1" ]; then
+        return 0
+    fi
+
+    python3 - "${WAYDROID_CFG}" "${WAYDROID_ROOT}" <<'PY'
 import argparse
 import sys
 
+cfg_path, work = sys.argv[1:]
 sys.path.insert(0, "/usr/lib/waydroid")
-
 import tools.config
 from tools.helpers import lxc
 
 args = argparse.Namespace()
-args.config = "/var/lib/waydroid/waydroid.cfg"
-args.work = "/var/lib/waydroid"
+args.config = cfg_path
+args.work = work
 args.log = None
 args.details_to_stdout = False
 args.verbose = False
@@ -37,77 +845,469 @@ args.images_path = cfg["waydroid"]["images_path"]
 args.vendor_type = cfg["waydroid"]["vendor_type"]
 args.system_ota = cfg["waydroid"].get("system_ota", "None")
 args.vendor_ota = cfg["waydroid"].get("vendor_ota", "None")
-
 lxc.make_base_props(args)
 PY
 }
 
-ensure_prop() {
-    local key="$1"
-    local value="$2"
+base_props_match() {
+    local index base_props="${WAYDROID_ROOT}/waydroid_base.prop"
 
-    python3 - "${WAYDROID_CFG}" "${key}" "${value}" <<'PY'
-import configparser
-import sys
-
-cfg_path, key, value = sys.argv[1:]
-cfg = configparser.ConfigParser()
-cfg.read(cfg_path)
-if "properties" not in cfg:
-    cfg["properties"] = {}
-cfg["properties"][key] = value
-with open(cfg_path, "w") as handle:
-    cfg.write(handle)
-PY
+    [ "${BATOCERA_WAYDROID_ARM_SKIP_REBUILD:-0}" = "1" ] && return 0
+    [ -f "${base_props}" ] || return 1
+    for index in "${!PROP_KEYS[@]}"; do
+        grep -Fqx "${PROP_KEYS[$index]}=${PROP_VALUES[$index]}" "${base_props}" || return 1
+    done
 }
 
-if [ ! -f "${WAYDROID_CFG}" ]; then
-    log_msg "Skipping ARM translation seed: ${WAYDROID_CFG} not initialized yet"
-    exit 0
-fi
+backup_live_payload() {
+    local backup="$1" rel target
 
-if [ ! -d "${PAYLOAD_ROOT}" ]; then
-    log_msg "Skipping ARM translation seed: ${PAYLOAD_ROOT} not present"
-    exit 0
-fi
+    mkdir -p "${backup}"
+    while IFS= read -r rel; do
+        safe_live_target "${rel}" || return 1
+        target="${OVERLAY_ROOT}/${rel}"
+        if [ -e "${target}" ]; then
+            [ -f "${target}" ] && [ ! -L "${target}" ] || {
+                log_msg "Refusing non-regular existing overlay target: ${target}"
+                return 1
+            }
+            mkdir -p "${backup}/$(dirname "${rel}")"
+            cp -a "${target}" "${backup}/${rel}" || return 1
+        fi
+    done < "${MANIFEST}"
+}
 
-if [ -d "${PAYLOAD_ROOT}/system" ]; then
-    mkdir -p "${OVERLAY_ROOT}/system"
-    cp -a "${PAYLOAD_ROOT}/system/." "${OVERLAY_ROOT}/system/"
-fi
+restore_live_payload() {
+    local backup="$1" rel target
 
-if [ -d "${PAYLOAD_ROOT}/vendor" ]; then
-    mkdir -p "${OVERLAY_ROOT}/vendor"
-    cp -a "${PAYLOAD_ROOT}/vendor/." "${OVERLAY_ROOT}/vendor/"
-fi
+    while IFS= read -r rel; do
+        safe_live_target "${rel}" || return 1
+        target="${OVERLAY_ROOT}/${rel}"
+        if [ -f "${backup}/${rel}" ]; then
+            mkdir -p "$(dirname "${target}")"
+            cp -a "${backup}/${rel}" "${target}" || return 1
+        else
+            rm -f -- "${target}" || return 1
+        fi
+    done < "${MANIFEST}"
+}
 
-required_files=(
-    "${OVERLAY_ROOT}/system/lib64/libndk_translation.so"
-    "${OVERLAY_ROOT}/system/lib/libndk_translation.so"
-    "${OVERLAY_ROOT}/system/lib64/libndk_translation_exec_region.so"
-    "${OVERLAY_ROOT}/system/lib/libndk_translation_exec_region.so"
-    "${OVERLAY_ROOT}/system/etc/ld.config.arm64.txt"
-    "${OVERLAY_ROOT}/system/etc/ld.config.arm.txt"
-)
+verify_live_bridge() {
+    validate_live_paths || return 1
+    validate_payload "${OVERLAY_ROOT}" || return 1
+    bridge_properties_match || {
+        log_msg "Waydroid config does not contain the expected native-bridge properties."
+        return 1
+    }
+    base_props_match || {
+        log_msg "waydroid_base.prop does not contain the expected native-bridge properties."
+        return 1
+    }
+}
 
-for required_file in "${required_files[@]}"; do
-    if [ ! -e "${required_file}" ]; then
-        log_msg "Skipping ARM translation seed: incomplete payload under ${PAYLOAD_ROOT}"
-        log_msg "Missing required bridge file: ${required_file}"
-        exit 0
+install_state_valid() {
+    [ -f "${INSTALL_MARKER}" ] &&
+        [ -d "${BACKUP_ROOT}" ] &&
+        [ -f "${PROPS_BACKUP}" ] &&
+        payload_valid_quiet "${PRIVATE_ROOT}"
+}
+
+write_install_marker() {
+    local temporary="${INSTALL_MARKER}.tmp.$$"
+
+    python3 - "${temporary}" "$(read_profile)" "${EXPECTED_PAYLOAD_SHA256}" \
+        "${BIOS_ROOT}/source.json" <<'PY'
+import datetime
+import json
+import os
+import sys
+
+output, profile, payload_sha256, source_metadata = sys.argv[1:]
+marker = {
+    "installed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    "payload_sha256": payload_sha256,
+    "profile": profile,
+    "source_metadata": source_metadata if os.path.isfile(source_metadata) else None,
+    "version": 1,
+}
+with open(output, "w", encoding="utf-8") as handle:
+    json.dump(marker, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+PY
+    chmod 0600 "${temporary}"
+    mv "${temporary}" "${INSTALL_MARKER}"
+}
+
+rollback_new_install() {
+    local backup="${INSTALL_TXN}/backup" snapshot="${INSTALL_TXN}/properties.before.json"
+
+    set +e
+    log_msg "Rolling back incomplete native-bridge installation."
+    [ -d "${backup}" ] || backup="${BACKUP_ROOT}"
+    [ -f "${snapshot}" ] || snapshot="${PROPS_BACKUP}"
+    [ -d "${backup}" ] && restore_live_payload "${backup}"
+    [ -f "${snapshot}" ] && restore_properties "${snapshot}"
+    [ -f "${WAYDROID_CFG}" ] && rebuild_base_props
+    [ -n "${INSTALL_TXN}" ] && [ -e "${INSTALL_TXN}" ] && remove_tree "${INSTALL_TXN}"
+    [ -e "${BACKUP_ROOT}" ] && remove_tree "${BACKUP_ROOT}"
+    rm -f -- "${PROPS_BACKUP}" "${INSTALL_MARKER}"
+    set -e
+}
+
+install_exit_trap() {
+    local rc=$?
+    trap - EXIT
+    if [ "${INSTALL_COMMITTED}" -ne 1 ] && [ -n "${INSTALL_TXN}" ]; then
+        rollback_new_install
     fi
-done
+    exit "${rc}"
+}
 
-ensure_prop "ro.product.cpu.abilist" "x86_64,x86,arm64-v8a,armeabi-v7a,armeabi"
-ensure_prop "ro.product.cpu.abilist32" "x86,armeabi-v7a,armeabi"
-ensure_prop "ro.product.cpu.abilist64" "x86_64,arm64-v8a"
-ensure_prop "ro.dalvik.vm.native.bridge" "libndk_translation.so"
-ensure_prop "ro.enable.native.bridge.exec" "1"
-ensure_prop "ro.vendor.enable.native.bridge.exec" "1"
-ensure_prop "ro.vendor.enable.native.bridge.exec64" "1"
-ensure_prop "ro.ndk_translation.version" "0.2.3"
-ensure_prop "ro.dalvik.vm.isa.arm" "x86"
-ensure_prop "ro.dalvik.vm.isa.arm64" "x86_64"
-rebuild_base_props
+migrate_legacy_auto_seed() {
+    local rel
 
-log_msg "Applied Waydroid ARM translation overlay from ${PAYLOAD_ROOT}"
+    [ -f "${MIGRATION_STAMP}" ] && return 0
+    [ ! -f "${INSTALL_MARKER}" ] || return 0
+    [ -f "${WAYDROID_CFG}" ] || return 0
+    legacy_bridge_configured || return 0
+
+    log_msg "Disabling the legacy image-vendored libndk auto-seed; ARM support is opt-in now."
+    stop_runtime || return 1
+    if payload_valid_quiet "${OVERLAY_ROOT}"; then
+        validate_live_paths || return 1
+        while IFS= read -r rel; do
+            rm -f -- "${OVERLAY_ROOT}/${rel}"
+        done < "${MANIFEST}"
+        log_msg "Removed the exact legacy ${EXPECTED_PAYLOAD_SHA256} payload from the live overlay."
+    else
+        log_msg "Legacy payload is partial or modified; leaving its files inert and removing only matching auto-seed properties."
+    fi
+    remove_exact_bridge_properties
+    rebuild_base_props
+    mkdir -p "$(dirname "${MIGRATION_STAMP}")"
+    : > "${MIGRATION_STAMP}"
+}
+
+install_bridge() {
+    local requested="${1:-}" first_install=0
+
+    ensure_layout
+    require_supported_host
+    require_standard_profile
+    require_root "Native-bridge installation"
+    [ -f "${WAYDROID_CFG}" ] ||
+        die "Waydroid is not initialized. Select an image profile, launch Waydroid once, then retry."
+
+    migrate_legacy_auto_seed
+    ensure_private_payload "${requested}"
+    stop_runtime || die "Stop Waydroid before installing the native bridge."
+    mkdir -p "${OVERLAY_ROOT}"
+
+    if [ ! -f "${INSTALL_MARKER}" ]; then
+        first_install=1
+        INSTALL_TXN="${STATE_ROOT}/.install.$$"
+        mkdir -p "${INSTALL_TXN}/backup"
+        snapshot_properties "${INSTALL_TXN}/properties.before.json"
+        backup_live_payload "${INSTALL_TXN}/backup" ||
+            die "Could not safely back up existing overlay files."
+        trap install_exit_trap EXIT
+    elif ! install_state_valid; then
+        die "The installed ARM marker has incomplete rollback/payload state; refusing to overwrite it."
+    fi
+
+    log_msg "Installing the verified libndk payload into the stopped Waydroid overlay."
+    validate_live_paths || die "The live Waydroid overlay contains an unsafe symlink."
+    copy_payload "${PRIVATE_ROOT}" "${OVERLAY_ROOT}"
+    set_bridge_properties
+    rebuild_base_props
+    verify_live_bridge || die "Offline validation failed after installing the native bridge."
+
+    if [ "${first_install}" -eq 1 ]; then
+        [ -e "${BACKUP_ROOT}" ] && remove_tree "${BACKUP_ROOT}"
+        mv "${INSTALL_TXN}/backup" "${BACKUP_ROOT}"
+        mv "${INSTALL_TXN}/properties.before.json" "${PROPS_BACKUP}"
+        rmdir "${INSTALL_TXN}"
+    fi
+
+    write_install_marker
+    INSTALL_COMMITTED=1
+    INSTALL_TXN=""
+    trap - EXIT
+    log_msg "Waydroid ARM translation installed and validated offline."
+    log_msg "It activates on the next Waydroid start. Without this marker, Waydroid remains x86/x86_64-only."
+}
+
+remove_bridge() {
+    local rel
+
+    ensure_layout
+    require_root "Native-bridge removal"
+
+    if [ ! -f "${INSTALL_MARKER}" ]; then
+        migrate_legacy_auto_seed
+        log_msg "ARM translation is not installed."
+        return 0
+    fi
+
+    [ -f "${WAYDROID_CFG}" ] || die "Waydroid config is missing; use Waydroid Tools container reset instead."
+    [ -d "${BACKUP_ROOT}" ] && [ -f "${PROPS_BACKUP}" ] ||
+        die "The ARM translation rollback state is incomplete; refusing a destructive removal."
+    stop_runtime || die "Stop Waydroid before removing the native bridge."
+    validate_live_paths ||
+        die "The live Waydroid overlay contains an unsafe symlink; no bridge files were removed."
+
+    restore_live_payload "${BACKUP_ROOT}" ||
+        die "Could not restore the pre-install overlay state."
+    restore_properties "${PROPS_BACKUP}" ||
+        die "Could not restore the pre-install Waydroid properties."
+    rebuild_base_props
+    remove_tree "${STATE_ROOT}"
+    log_msg "Waydroid ARM translation removed. The verified BIOS staging copy was preserved."
+    log_msg "Google Play will again expose only compatible x86/x86_64 applications."
+}
+
+cleanup_source_files() {
+    local candidate archive_count=0 archive_bytes=0 size staged_removed=0
+
+    ensure_layout
+    require_root "Native-bridge installer cleanup"
+    [ -f "${INSTALL_MARKER}" ] ||
+        die "ARM translation must be installed before deleting its recovery source."
+    install_state_valid ||
+        die "The installed native-bridge rollback/payload state is incomplete; keeping all recovery files."
+    verify_live_bridge ||
+        die "Installed native-bridge validation failed; keeping all recovery files."
+
+    while IFS= read -r -d '' candidate; do
+        size="$(stat -c '%s' "${candidate}")" ||
+            die "Could not inspect recovery source: ${candidate}"
+        rm -f -- "${candidate}" ||
+            die "Could not remove recovery source: ${candidate}"
+        archive_count=$((archive_count + 1))
+        archive_bytes=$((archive_bytes + size))
+    done < <(
+        find "${DROP_ROOT}" -maxdepth 1 -type f \
+            \( -iname '*.zip' -o -iname '*.bin' \
+               -o -iname '*.zip.part' -o -iname '*.bin.part' \) \
+            -print0
+    )
+
+    if [ -e "${STAGED_ROOT}" ] || [ -L "${STAGED_ROOT}" ]; then
+        remove_tree "${STAGED_ROOT}" ||
+            die "Could not remove the redundant BIOS staging payload."
+        staged_removed=1
+    fi
+    mkdir -p "${STAGED_ROOT}"
+    chmod 0755 "${STAGED_ROOT}" 2>/dev/null || true
+
+    log_msg "Removed ${archive_count} recovery archive(s) (${archive_bytes} bytes)."
+    if [ "${staged_removed}" -eq 1 ]; then
+        log_msg "Removed the redundant BIOS staging payload."
+    else
+        log_msg "The redundant BIOS staging payload was already absent."
+    fi
+    log_msg "Kept the verified protected payload at ${PRIVATE_ROOT} for Waydroid reconciliation."
+    log_msg "Temporary BIN, ROOT-A, and extracted EROFS work images are removed automatically after extraction."
+}
+
+verify_bridge() {
+    local status
+
+    [ -f "${INSTALL_MARKER}" ] || die "ARM translation is not installed."
+    install_state_valid || die "The installed native-bridge rollback/payload state is incomplete."
+    verify_live_bridge || die "Installed native-bridge validation failed."
+
+    status="$(waydroid status 2>/dev/null || true)"
+    if printf '%s\n' "${status}" | grep -Eq '^Container:[[:space:]]*RUNNING'; then
+        if [ "$(waydroid shell -- getprop ro.dalvik.vm.native.bridge 2>/dev/null | tr -d '\r')" = "libndk_translation.so" ]; then
+            log_msg "Validation successful: payload, config, generated properties, and running Android agree."
+        else
+            die "Offline validation passed, but running Android does not report libndk_translation.so."
+        fi
+    else
+        log_msg "Validation successful offline. Runtime activation will be checked after the next Waydroid start."
+    fi
+}
+
+reconcile_bridge() {
+    ensure_layout
+
+    if [ ! -f "${INSTALL_MARKER}" ]; then
+        migrate_legacy_auto_seed
+        log_msg "ARM translation is not provisioned; keeping Waydroid x86/x86_64-only."
+        return 0
+    fi
+
+    require_supported_host
+    if [[ "$(read_profile)" = android-tv-* ]]; then
+        log_msg "Android TV profile selected; removing the separately provisioned zork bridge."
+        remove_bridge
+        return 0
+    fi
+    [ -f "${WAYDROID_CFG}" ] || die "Installed ARM marker exists, but Waydroid is not initialized."
+    ensure_private_payload
+    install_state_valid || die "Installed ARM marker has incomplete rollback/payload state."
+    stop_runtime || die "Could not stop Waydroid while reconciling its native bridge."
+    validate_live_paths || die "The live Waydroid overlay contains an unsafe symlink."
+    copy_payload "${PRIVATE_ROOT}" "${OVERLAY_ROOT}"
+    set_bridge_properties
+    rebuild_base_props
+    verify_live_bridge || die "Native-bridge reconciliation validation failed."
+    log_msg "Reconciled the explicitly provisioned native bridge after Waydroid initialization."
+}
+
+show_status() {
+    local profile archive_count=0 runtime_status="" atv_bridge=""
+
+    profile="$(read_profile)"
+    printf 'Waydroid image profile: %s\n' "${profile}"
+    if [ -f "${WAYDROID_CFG}" ]; then
+        printf 'Waydroid initialized: yes\n'
+    else
+        printf 'Waydroid initialized: no\n'
+    fi
+
+    if grep -Eqm1 '^vendor_id[[:space:]]*:[[:space:]]*AuthenticAMD$' /proc/cpuinfo 2>/dev/null; then
+        printf 'Pinned zork libndk host support: AMD x86_64\n'
+    else
+        printf 'Pinned zork libndk host support: unavailable on this CPU\n'
+    fi
+
+    if payload_valid_quiet "${STAGED_ROOT}"; then
+        case "${profile}" in
+            android-tv-*)
+                printf 'Separate zork payload staging: verified but unused by Android TV\n'
+                ;;
+            *)
+                printf 'BIOS payload staging: verified\n'
+                ;;
+        esac
+    else
+        while IFS= read -r -d '' _candidate; do
+            archive_count=$((archive_count + 1))
+        done < <(find "${DROP_ROOT}" -maxdepth 1 -type f \
+            \( -iname '*.zip' -o -iname '*.bin' \) -print0 2>/dev/null || true)
+        case "${profile}" in
+            android-tv-*)
+                printf 'Separate zork payload staging: not required by Android TV (%s source archive(s) found)\n' "${archive_count}"
+                ;;
+            *)
+                if [ -f "${INSTALL_MARKER}" ] &&
+                   payload_valid_quiet "${PRIVATE_ROOT}" &&
+                   [ "${archive_count}" -eq 0 ]; then
+                    printf 'BIOS payload staging: cleaned after install (protected payload verified)\n'
+                else
+                    printf 'BIOS payload staging: not ready (%s source archive(s) found)\n' "${archive_count}"
+                fi
+                ;;
+        esac
+    fi
+
+    case "${profile}" in
+        android-tv-*)
+            runtime_status="$(waydroid status 2>/dev/null || true)"
+            if printf '%s\n' "${runtime_status}" |
+               grep -Eq '^Container:[[:space:]]*RUNNING'; then
+                atv_bridge="$(
+                    timeout 5 waydroid shell -- getprop ro.dalvik.vm.native.bridge \
+                        2>/dev/null | tr -d '\r' || true
+                )"
+            fi
+            if [ -n "${atv_bridge}" ] && [ "${atv_bridge}" != "0" ]; then
+                printf 'ARM translation: built into WayDroid-ATV (%s reported by running Android)\n' "${atv_bridge}"
+            elif [ -f "${WAYDROID_CFG}" ]; then
+                printf 'ARM translation: supplied by the WayDroid-ATV system image (bridge type checked at runtime)\n'
+            else
+                printf 'ARM translation: included in the selected WayDroid-ATV image (available after initialization)\n'
+            fi
+            [ ! -f "${INSTALL_MARKER}" ] ||
+                printf 'Separate zork libndk marker: still present; initialization will remove it\n'
+            ;;
+        *)
+            if [ -f "${INSTALL_MARKER}" ]; then
+                if install_state_valid && verify_live_bridge >/dev/null 2>&1; then
+                    printf 'ARM translation: installed and valid\n'
+                else
+                    printf 'ARM translation: installed marker present, validation FAILED\n'
+                fi
+            else
+                printf 'ARM translation: not installed (native x86/x86_64 fallback)\n'
+            fi
+            ;;
+    esac
+
+    case "${profile}" in
+        *-vanilla)
+            printf 'Google Play registration: not applicable (no Google apps profile)\n'
+            ;;
+        *)
+            printf 'Google Play registration: use "Show Google Play registration ID" after first Play Store launch\n'
+            ;;
+    esac
+
+    printf 'Official recovery URL:\n%s\n' "${OFFICIAL_URL}"
+    printf 'Manual drop folder:\n%s\n' "${DROP_ROOT}"
+}
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") COMMAND [ARG]
+
+Commands:
+  status                    show image/native-bridge provisioning state
+  download                  download the pinned recovery directly from Google
+  extract [recovery]        extract and verify into the BIOS staging overlay
+  install [recovery]        opt in; stage if needed, install, and validate
+  verify                    validate the installed bridge offline/runtime
+  remove                    remove the bridge and restore x86-only behavior
+  cleanup-source            remove recovery archives and redundant staging
+  reconcile                 reapply only when an explicit install marker exists
+  validate-payload DIR      validate a staged payload against the pinned digest
+EOF
+}
+
+command_name="${1:-reconcile}"
+shift || true
+
+case "${command_name}" in
+    status)
+        show_status
+        ;;
+    download)
+        download_archive
+        ;;
+    extract)
+        extract_payload "${1:-}"
+        ;;
+    install)
+        if [ "${1:-}" = "--download" ]; then
+            download_archive >/dev/null
+            shift
+        fi
+        install_bridge "${1:-}"
+        ;;
+    verify)
+        verify_bridge
+        ;;
+    remove)
+        remove_bridge
+        ;;
+    cleanup-source)
+        cleanup_source_files
+        ;;
+    reconcile)
+        reconcile_bridge
+        ;;
+    validate-payload)
+        [ $# -eq 1 ] || die "validate-payload requires exactly one directory."
+        validate_payload "$1"
+        log_msg "Payload validation successful: $1"
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

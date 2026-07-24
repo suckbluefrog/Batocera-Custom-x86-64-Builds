@@ -1,6 +1,6 @@
 [Desktop Entry]
 Version=1.0
-Icon=applications-system
+Icon=/usr/share/icons/batocera/ubukde.png
 Exec=/usr/bin/batocera-ubuntu-plasma-lxc
 Terminal=false
 Type=Application

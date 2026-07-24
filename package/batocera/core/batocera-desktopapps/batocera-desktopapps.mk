@@ -289,6 +289,23 @@ endif
 # Ubuntu Plasma LXC
 ifeq ($(BR2_PACKAGE_BATOCERA_UBUNTU_PLASMA_LXC),y)
   BATOCERA_DESKTOPAPPS_APPS    += ubuntu-plasma-lxc.desktop
+
+define BATOCERA_DESKTOPAPPS_INSTALL_UBUNTU_PLASMA_LXC_ICON
+	$(INSTALL) -D -m 0644 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulationstation/batocera-es-system/roms/emulator/images/ubukde.png \
+		$(TARGET_DIR)/usr/share/icons/batocera/ubukde.png
+endef
+endif
+
+# Arch Plasma LXC
+ifeq ($(BR2_PACKAGE_BATOCERA_ARCH_PLASMA_LXC),y)
+  BATOCERA_DESKTOPAPPS_APPS    += arch-plasma-lxc.desktop
+
+define BATOCERA_DESKTOPAPPS_INSTALL_ARCH_PLASMA_LXC_ICON
+	$(INSTALL) -D -m 0644 \
+		$(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulationstation/batocera-es-system/roms/emulator/images/archkde.png \
+		$(TARGET_DIR)/usr/share/icons/batocera/archkde.png
+endef
 endif
 
 ## Context Menu Actions
@@ -324,6 +341,8 @@ define BATOCERA_DESKTOPAPPS_INSTALL_TARGET_CMDS
 	$(foreach f,$(BATOCERA_DESKTOPAPPS_ICONS),\
 		$(INSTALL) -D -m 0644 $(BATOCERA_DESKTOPAPPS_PKGDIR)/icons/$(f) \
 			$(TARGET_DIR)/usr/share/icons/batocera/$(f)$(sep))
+	$(BATOCERA_DESKTOPAPPS_INSTALL_UBUNTU_PLASMA_LXC_ICON)
+	$(BATOCERA_DESKTOPAPPS_INSTALL_ARCH_PLASMA_LXC_ICON)
 
 	# context menu actions
 	$(foreach f,$(BATOCERA_DESKTOPAPPS_ACTIONS),\

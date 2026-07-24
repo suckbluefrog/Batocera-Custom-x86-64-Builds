@@ -18,6 +18,33 @@ WAYDROID_DEPENDENCIES = \
 	python-gobject \
 	python3
 
+ifeq ($(BR2_x86_64),y)
+WAYDROID_DEPENDENCIES += dialog erofs-utils libcurl p7zip sqlite xterm
+
+define WAYDROID_INSTALL_X86_64_TOOLS
+	rm -rf $(TARGET_DIR)/usr/share/batocera/waydroid/libndk
+	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-arm \
+		$(TARGET_DIR)/usr/bin/batocera-waydroid-arm
+	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-tools \
+		$(TARGET_DIR)/usr/bin/batocera-waydroid-tools
+	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-tools-launcher \
+		$(TARGET_DIR)/usr/bin/batocera-waydroid-tools-launcher
+	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/waydroid-get-android-id \
+		$(TARGET_DIR)/usr/bin/waydroid-get-android-id
+	$(INSTALL) -D -m 0644 $(WAYDROID_PKGDIR)/libndk-files.list \
+		$(TARGET_DIR)/usr/share/batocera/waydroid/libndk-files.list
+	$(INSTALL) -D -m 0644 $(WAYDROID_PKGDIR)/datainit/bios/waydroid/README.txt \
+		$(TARGET_DIR)/usr/share/batocera/waydroid/README.libndk
+	$(INSTALL) -D -m 0644 $(WAYDROID_PKGDIR)/datainit/bios/waydroid/README.txt \
+		$(TARGET_DIR)/usr/share/batocera/datainit/bios/waydroid/README.txt
+	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/datainit/bios/waydroid/extract.sh \
+		$(TARGET_DIR)/usr/share/batocera/datainit/bios/waydroid/extract.sh
+	mkdir -p \
+		$(TARGET_DIR)/usr/share/batocera/datainit/bios/waydroid/dump_here \
+		$(TARGET_DIR)/usr/share/batocera/datainit/bios/waydroid/overlay
+endef
+endif
+
 define WAYDROID_BUILD_CMDS
 	true
 endef
@@ -34,8 +61,6 @@ define WAYDROID_INSTALL_TARGET_CMDS
 
 	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-init \
 		$(TARGET_DIR)/usr/bin/batocera-waydroid-init
-	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-arm \
-		$(TARGET_DIR)/usr/bin/batocera-waydroid-arm
 	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-session \
 		$(TARGET_DIR)/usr/bin/batocera-waydroid-session
 	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-postboot \
@@ -48,8 +73,6 @@ define WAYDROID_INSTALL_TARGET_CMDS
 		$(TARGET_DIR)/usr/bin/batocera-waydroid-platform-launch
 	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/batocera-waydroid-update \
 		$(TARGET_DIR)/usr/bin/batocera-waydroid-update
-	$(INSTALL) -D -m 0755 $(WAYDROID_PKGDIR)/waydroid-get-android-id \
-		$(TARGET_DIR)/usr/bin/waydroid-get-android-id
 	rm -f $(TARGET_DIR)/usr/share/batocera/services/waydroid
 	rm -f $(TARGET_DIR)/usr/share/emulationstation/hooks/preupdate-gamelists-waydroid
 	mkdir -p $(TARGET_DIR)/usr/share/emulationstation/hooks
@@ -68,13 +91,7 @@ define WAYDROID_INSTALL_TARGET_CMDS
 	$(INSTALL) -D -m 0644 $(WAYDROID_PKGDIR)/android.keys \
 		$(TARGET_DIR)/usr/share/evmapy/android.keys
 	ln -sf android.keys $(TARGET_DIR)/usr/share/evmapy/waydroid.keys
-	$(INSTALL) -D -m 0644 $(WAYDROID_PKGDIR)/files/usr/share/batocera/waydroid/README.libndk \
-		$(TARGET_DIR)/usr/share/batocera/waydroid/README.libndk
-	if test -d $(WAYDROID_PKGDIR)/files/usr/share/batocera/waydroid/libndk; then \
-		mkdir -p $(TARGET_DIR)/usr/share/batocera/waydroid; \
-		cp -a $(WAYDROID_PKGDIR)/files/usr/share/batocera/waydroid/libndk \
-			$(TARGET_DIR)/usr/share/batocera/waydroid/; \
-	fi
+	$(WAYDROID_INSTALL_X86_64_TOOLS)
 endef
 
 $(eval $(generic-package))

@@ -188,17 +188,37 @@ else
             printf "export DBUS_SESSION_BUS_PID=%s\n" "${DBUS_SESSION_BUS_PID}"
         } > "${DBUS_ENV_FILE}"
 
+        ui_pid=""
+        cleanup_full_ui() {
+            if [ -n "${ui_pid}" ] && kill -0 "${ui_pid}" 2>/dev/null; then
+                kill "${ui_pid}" 2>/dev/null || true
+                wait "${ui_pid}" 2>/dev/null || true
+            fi
+        }
+        trap cleanup_full_ui EXIT INT TERM
+
         /usr/bin/waydroid show-full-ui >>"'"${LOG_FILE}"'" 2>&1 &
+        ui_pid=$!
         if [ -x /usr/bin/batocera-waydroid-postboot ]; then
             /usr/bin/batocera-waydroid-postboot >>"'"${LOG_FILE}"'" 2>&1 &
         fi
 
-        while :; do
+        session_started=0
+        while kill -0 "${ui_pid}" 2>/dev/null; do
             status="$(/usr/bin/waydroid status 2>/dev/null || true)"
+            if printf "%s\n" "${status}" | grep -Eq "^Session:[[:space:]]+RUNNING|^Container:[[:space:]]+(RUNNING|FROZEN)"; then
+                session_started=1
+            fi
             if printf "%s\n" "${status}" | grep -q "^Container:[[:space:]]\+STOPPED"; then
+                exit 0
+            fi
+            if [ "${session_started}" -eq 1 ] &&
+               printf "%s\n" "${status}" | grep -q "^Session:[[:space:]]\+STOPPED"; then
                 exit 0
             fi
             sleep 1
         done
+
+        wait "${ui_pid}" 2>/dev/null || true
     '
 fi
