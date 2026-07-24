@@ -2,6 +2,8 @@
 set -euo pipefail
 
 LOG_FILE="${LOG_FILE:-/userdata/system/logs/waydroid-session.log}"
+LXC_PATH="/var/lib/waydroid/lxc"
+LXC_NAME="waydroid"
 
 log_msg() {
     printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >>"${LOG_FILE}"
@@ -22,11 +24,19 @@ container_running() {
 wait_for_boot() {
     local boot_completed=""
     local attempt
+    local container_seen=0
 
-    for attempt in $(seq 1 45); do
-        if ! container_running; then
+    for attempt in $(seq 1 60); do
+        if container_running; then
+            container_seen=1
+        elif [ "${container_seen}" -eq 1 ]; then
             log_msg "Post-boot hook exiting because Waydroid container is no longer running"
             return 1
+        else
+            # The hook is launched alongside show-full-ui and can win the
+            # startup race against `waydroid container start`.
+            sleep 1
+            continue
         fi
 
         boot_completed="$(waydroid_shell_quiet getprop sys.boot_completed | tr -d '\r\n')"
@@ -35,11 +45,102 @@ wait_for_boot() {
             return 0
         fi
 
-        sleep 2
+        sleep 1
     done
 
     log_msg "Post-boot hook timed out waiting for Android boot completion"
     return 1
+}
+
+bind_controller_nodes() {
+    local link
+    local devnode
+    local host_node
+    local guest_node
+    local major_hex
+    local minor_hex
+    local major_num
+    local minor_num
+    local registered
+    local seen_nodes=""
+    local bound=0
+
+    if ! command -v lxc-attach >/dev/null 2>&1; then
+        log_msg "Post-boot hook cannot bind controllers because lxc-attach is unavailable"
+        return 0
+    fi
+
+    for link in /dev/input/by-path/*-event-joystick /dev/input/by-id/*-event-joystick; do
+        [ -e "${link}" ] || continue
+
+        devnode="$(basename "$(readlink -f "${link}")")"
+        case "${devnode}" in
+            event[0-9]*) ;;
+            *) continue ;;
+        esac
+        case "${devnode#event}" in
+            ""|*[!0-9]*) continue ;;
+        esac
+        case " ${seen_nodes} " in
+            *" ${devnode} "*) continue ;;
+        esac
+        seen_nodes="${seen_nodes} ${devnode}"
+
+        host_node="/dev/input/${devnode}"
+        [ -c "${host_node}" ] || continue
+
+        guest_node="/dev/input/${devnode}"
+        if lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- test -c "${guest_node}" >/dev/null 2>&1; then
+            if waydroid_shell_quiet dumpsys input | grep -Fq "Path: ${guest_node}"; then
+                lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- chown 0:1004 "${guest_node}" >/dev/null 2>&1 || true
+                lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- chmod 0660 "${guest_node}" >/dev/null 2>&1 || true
+                log_msg "Post-boot hook found registered Android controller node ${guest_node}"
+                bound=1
+                continue
+            fi
+            lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- rm -f "${guest_node}" >/dev/null 2>&1 || true
+        fi
+
+        major_hex="$(stat -c '%t' "${host_node}" 2>/dev/null || true)"
+        minor_hex="$(stat -c '%T' "${host_node}" 2>/dev/null || true)"
+        case "${major_hex}:${minor_hex}" in
+            *[!0-9a-fA-F:]*|:|*:) continue ;;
+        esac
+        major_num=$((16#${major_hex}))
+        minor_num=$((16#${minor_hex}))
+
+        # EventHub opens controller nodes with credentials that reject the
+        # normal root:input 0660 mode on this image. Expose the node briefly as
+        # 0666, wait for EventHub to hold its descriptor, then tighten it.
+        # Create it directly in /dev/input: EventHub does not treat a node
+        # moved into that directory as a new-device event.
+        if lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- mknod -m 0666 "${guest_node}" c "${major_num}" "${minor_num}" >/dev/null 2>&1; then
+            registered=0
+            for _ in $(seq 1 10); do
+                if waydroid_shell_quiet dumpsys input | grep -Fq "Path: ${guest_node}"; then
+                    registered=1
+                    break
+                fi
+                sleep 1
+            done
+
+            if [ "${registered}" -eq 1 ]; then
+                lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- chown 0:1004 "${guest_node}" >/dev/null 2>&1 || true
+                lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- chmod 0660 "${guest_node}" >/dev/null 2>&1 || true
+                log_msg "Post-boot hook bound host controller ${host_node} as Android ${guest_node}"
+                bound=1
+            else
+                lxc-attach -P "${LXC_PATH}" -n "${LXC_NAME}" -- rm -f "${guest_node}" >/dev/null 2>&1 || true
+                log_msg "Post-boot hook created ${guest_node}, but Android InputManager did not register it"
+            fi
+        else
+            log_msg "Post-boot hook failed to bind host controller ${host_node}"
+        fi
+    done
+
+    if [ "${bound}" -eq 0 ]; then
+        log_msg "Post-boot hook found no host controller event nodes to bind"
+    fi
 }
 
 trigger_controller_uevents() {
@@ -87,7 +188,7 @@ log_android_input_summary() {
             log_msg "  ${line}"
         done <<< "${summary}"
     else
-        summary="$(waydroid_shell_quiet cat /proc/bus/input/devices | grep -E 'Name=\"(Microsoft X-Box 360 pad|Xbox|Controller|ROG Ally|ASUS ROG Ally)' -A 8 || true)"
+        summary="$(waydroid_shell_quiet cat /proc/bus/input/devices | grep -E 'Name="(Microsoft X-Box 360 pad|Xbox|Controller|ROG Ally|ASUS ROG Ally)' -A 8 || true)"
         if [ -n "${summary}" ]; then
             log_msg "Post-boot hook Android /proc/bus/input/devices summary:"
             while IFS= read -r line; do
@@ -107,6 +208,7 @@ main() {
         exit 0
     fi
 
+    bind_controller_nodes
     trigger_controller_uevents
     sleep 2
     log_android_input_summary

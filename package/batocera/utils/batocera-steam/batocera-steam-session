@@ -32,7 +32,7 @@ STEAM_FIRST_RUN_PENDING=0
 STEAM_INSTALL_CALLOUT_PID=""
 STEAMOS_MANAGER_PID=""
 STEAM_CHILD_LSFG_ENV=()
-STEAM_CHILD_ENV_CLEAN=(env -u MANGOHUD -u MANGOHUD_CONFIG -u MANGOHUD_CONFIGFILE -u MANGOHUD_DLSYM -u MANGOAPP_CONFIG)
+STEAM_CHILD_ENV_CLEAN=(env -u MANGOHUD -u MANGOHUD_CONFIG -u MANGOHUD_DLSYM -u MANGOAPP_CONFIG)
 ALLY_HOTKEY_DIR="/userdata/system/configs/hotkeygen"
 ALLY_ACTIVE_MAP="${ALLY_HOTKEY_DIR}/ASUS_ROG_Ally_Config-b05-1abe.mapping"
 ALLY_COMMON_CONTEXT="${ALLY_HOTKEY_DIR}/common_context.ally.conf"
@@ -1000,6 +1000,15 @@ if command -v gamescope >/dev/null 2>&1 && [[ "${BATOCERA_STEAM_USE_GAMESCOPE:-1
     mangoapp_requested=0
     if [[ "${BATOCERA_STEAM_GS_MANGOAPP:-0}" != "0" || -n "${MANGOHUD_CONFIGFILE:-}" || "${MANGOHUD:-0}" == "1" ]]; then
         mangoapp_requested=1
+        # Gamescope replaces any inherited path with its private
+        # gamescope-mangoapp-* file before it starts this child. Steam's
+        # performance manager must inherit that path so QAM edits the live
+        # MangoApp configuration rather than its inactive fallback file.
+        echo "Steam gamescope: preserving MangoApp config path for QAM" >> "${log}"
+    else
+        # No Gamescope MangoApp is active, so discard a stale configgen
+        # MangoHud path along with the other generic overlay state.
+        STEAM_CHILD_ENV_CLEAN+=(-u MANGOHUD_CONFIGFILE)
     fi
 
     if [[ "${BATOCERA_STEAM_GS_DISABLE_HW_COMPOSITION:-0}" != "0" ]]; then
