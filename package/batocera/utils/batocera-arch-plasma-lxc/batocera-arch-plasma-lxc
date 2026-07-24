@@ -23,7 +23,24 @@ LEGACY_PORTS_LAUNCHER="${LEGACY_PORTS_DIR}/Arch Plasma LXC.sh"
 LEGACY_PORTS_GAMELIST="${LEGACY_PORTS_DIR}/gamelist.xml"
 DEFAULT_USER="batocera"
 DEFAULT_PASSWORD="linux"
-ARCH_IMAGE_ARCH="${BATOCERA_ARCH_PLASMA_IMAGE_ARCH:-arm64}"
+case "$(uname -m)" in
+    x86_64)
+        ARCH_IMAGE_ARCH_DEFAULT="amd64"
+        ;;
+    aarch64|arm64)
+        ARCH_IMAGE_ARCH_DEFAULT="arm64"
+        ;;
+    armv7l|armv7*)
+        ARCH_IMAGE_ARCH_DEFAULT="armhf"
+        ;;
+    i?86)
+        ARCH_IMAGE_ARCH_DEFAULT="i386"
+        ;;
+    *)
+        ARCH_IMAGE_ARCH_DEFAULT="$(uname -m)"
+        ;;
+esac
+ARCH_IMAGE_ARCH="${BATOCERA_ARCH_PLASMA_IMAGE_ARCH:-${ARCH_IMAGE_ARCH_DEFAULT}}"
 ARCH_IMAGE_RELEASE="${BATOCERA_ARCH_PLASMA_IMAGE_RELEASE:-current}"
 PLASMA_DIST="${BATOCERA_PLASMA_DIST:-archlinux}"
 PLASMA_LABEL="${BATOCERA_PLASMA_LABEL:-Arch Plasma}"
@@ -1307,7 +1324,38 @@ enable_arch_multilib() {
 
 enable_arch_multilib
 
+container_package_arch="$(uname -m)"
+case "${container_package_arch}" in
+    x86_64)
+        pacman_keyrings=(archlinux)
+        pacman_keyring_packages=(archlinux-keyring)
+        ;;
+    aarch64|armv7l|armv7*)
+        pacman_keyrings=(archlinux archlinuxarm)
+        pacman_keyring_packages=(archlinux-keyring archlinuxarm-keyring)
+        ;;
+    *)
+        printf 'unsupported Arch container architecture: %s\n' "${container_package_arch}" >&2
+        exit 1
+        ;;
+esac
+
+if [ -f /etc/pacman.d/mirrorlist ] &&
+   [ ! -f /etc/pacman.d/mirrorlist.batocera-bak ]; then
+    cp -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.batocera-bak || true
+fi
+
 write_pacman_mirrorlist() {
+    if [ "${container_package_arch}" = "x86_64" ]; then
+        cat > /etc/pacman.d/mirrorlist <<'MIRRORS'
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://mirror.leaseweb.com/archlinux/$repo/os/$arch
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+MIRRORS
+        return 0
+    fi
+
     case "${1:-1}" in
         1)
             cat > /etc/pacman.d/mirrorlist <<'MIRRORS'
@@ -1354,20 +1402,20 @@ pacman_retry() {
 if ! pacman-key --list-keys >/dev/null 2>&1; then
     pacman-key --init
 fi
-pacman-key --populate archlinux archlinuxarm >/dev/null 2>&1 || true
-if ! pacman_retry -Sy --noconfirm --needed archlinux-keyring archlinuxarm-keyring; then
+pacman-key --populate "${pacman_keyrings[@]}" >/dev/null 2>&1 || true
+if ! pacman_retry -Sy --noconfirm --needed "${pacman_keyring_packages[@]}"; then
     # An old downloaded rootfs can have a keyring that predates the current
-    # Arch or Arch Linux ARM signing keys. Bootstrap only those keyrings, then
-    # return to normal signature verification for every other package.
-    printf '%s\n' 'pacman keyring refresh failed; bootstrapping Arch and Arch Linux ARM keyrings once'
+    # architecture's signing keys. Bootstrap only those keyrings, then return
+    # to normal signature verification for every other package.
+    printf 'pacman keyring refresh failed; bootstrapping %s once\n' "${pacman_keyring_packages[*]}"
     cp /etc/pacman.conf /tmp/batocera-pacman-keyring.conf
     sed -i -E 's/^[[:space:]]*SigLevel[[:space:]]*=.*/SigLevel = Never/' /tmp/batocera-pacman-keyring.conf
     if ! grep -q '^[[:space:]]*SigLevel[[:space:]]*=[[:space:]]*Never' /tmp/batocera-pacman-keyring.conf; then
         sed -i '/^\[options\]$/a SigLevel = Never' /tmp/batocera-pacman-keyring.conf
     fi
-    pacman_retry -Sy --noconfirm --needed --config /tmp/batocera-pacman-keyring.conf archlinux-keyring archlinuxarm-keyring
+    pacman_retry -Sy --noconfirm --needed --config /tmp/batocera-pacman-keyring.conf "${pacman_keyring_packages[@]}"
     rm -f /tmp/batocera-pacman-keyring.conf
-    pacman-key --populate archlinux archlinuxarm
+    pacman-key --populate "${pacman_keyrings[@]}"
 fi
 required_packages=(
     bash sudo shadow procps-ng iproute2 openssh dbus dbus-broker polkit polkit-kde-agent xorg-xwayland
