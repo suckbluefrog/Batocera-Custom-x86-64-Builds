@@ -42,7 +42,7 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
 
 ## ⚠️ Target Audience
 
-This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland or Xorg support.  Wayland works Works Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer. NVIDIA users should stick to Xorg.
+This build is intended for **advanced users** running x86-64-v3 class  AMD excavator (2015) / Intel 4th gen haswell (2013) and above hardware and handheld devices with Wayland or Xorg support.  Wayland builds work Best with AMD Radeon iGPUs and dGPUs from Polaris (around 2018) and Intel Skylake iGPUs / Arc dGPUs and newer. NVIDIA users should stick to Xorg for better performance.
 
 - NVIDIA Proprietary driver support has been added with 580 and 590 drivers. Limited testing has reported success. Maxwell (9xx/750ti) and higher boards are supported
 - Gamescope compatibility and performance on Nvidia boards may vary. Direct DRM/KMS gamescope sessions on nvidia devices are not validated. 
