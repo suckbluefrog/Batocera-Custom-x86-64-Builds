@@ -20367,9 +20367,9 @@ lindbergh-loader:
     lindbergh_controller:
       prompt: CONTROLLER MODE
       description: Choose the controller configuration. EVDEV for a wide range of
-        controllers, lightguns & steering wheels. SDL3 for gamepads only.
+        controllers, lightguns & steering wheels. SDL2 for gamepads only.
       choices:
-        SDL3: 1
+        SDL2: 1
         EVDEV (Default): 2
     lindbergh_hummer:
       group: GAME OPTIONS

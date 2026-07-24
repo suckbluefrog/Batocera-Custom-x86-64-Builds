@@ -27,7 +27,6 @@ https://youtu.be/26Kkne6lT0s  -- Note, Steam was launched without gamescope so B
 - Improved controller input handling, Batocera Control Center reopening, Steam update/preflight behavior, and Wine Tools integration.
 - Added additional **MangoHud presets** and fixed firmware detection for supported emulators.
 - Fixed System Night Mode handling and improved gamma behavior.
-- Added complete **Lindbergh SDL3/i386 integration**, including the required 32-bit runtime libraries and updated configgen support.
 - Refreshed Amiberry, Azahar, BigPEmu, Cemu, FS-UAE, Play!, PPSSPP, Ruffle, Solarus, X16, several native ports, and other emulator/configgen components.
 - Improved Arch and Ubuntu Plasma LXC provisioning, desktop integration, Sunshine capture support, and related runtime tools.
 - Added a controller-friendly **Waydroid Tools** interface for image/profile management, Google Play device registration, and installing or removing ARM translation without bundling proprietary translation files in the image.

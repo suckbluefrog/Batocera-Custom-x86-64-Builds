@@ -241,10 +241,6 @@ BR2_PACKAGE_SDL2_MIXER=y
 BR2_PACKAGE_SDL2_NET=y
 BR2_PACKAGE_SDL2_TTF=y
 
-# Build the complete 32-bit Lindbergh payload in this tree. Its Kconfig
-# selection owns the SDL3, X11, audio, and compatibility dependency closure.
-BR2_PACKAGE_LINDBERGH_LOADER=y
-
 # Wayland stack required by SDL2 wayland backend in 32-bit runtime.
 BR2_PACKAGE_WAYLAND=y
 

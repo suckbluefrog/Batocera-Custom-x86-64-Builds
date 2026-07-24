@@ -127,6 +127,17 @@ done
 
 echo "Injecting locally built i386 Lindbergh payload from ${I386_LINDBERGH_DIR}"
 mkdir -p "${TARGET_LINDBERGH_DIR}" || exit 1
+
+# Do not retain the mutually incompatible configuration format from an
+# earlier loader version in incremental target trees.
+if [ -f "${I386_LINDBERGH_DIR}/lindbergh.conf" ] &&
+   [ ! -f "${I386_LINDBERGH_DIR}/lindbergh.ini" ]; then
+    rm -f "${TARGET_LINDBERGH_DIR}/lindbergh.ini" || exit 1
+elif [ -f "${I386_LINDBERGH_DIR}/lindbergh.ini" ] &&
+     [ ! -f "${I386_LINDBERGH_DIR}/lindbergh.conf" ]; then
+    rm -f "${TARGET_LINDBERGH_DIR}/lindbergh.conf" || exit 1
+fi
+
 rsync -a "${I386_LINDBERGH_DIR}/" "${TARGET_LINDBERGH_DIR}/" || exit 1
 
 if ! cmp -s \
