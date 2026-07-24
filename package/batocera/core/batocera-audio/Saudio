@@ -27,6 +27,25 @@ ensure_pulse_compat_socket() {
     ln -snf "${host_socket}" "${compat_socket}"
 }
 
+ensure_pipewire_compat_sockets() {
+    local compat_dir="${XDG_RUNTIME_DIR}/user/$(id -u)"
+    local socket_name
+    local host_socket
+    local compat_socket
+
+    mkdir -p "${compat_dir}"
+
+    for socket_name in pipewire-0 pipewire-0-manager; do
+        host_socket="${XDG_RUNTIME_DIR}/${socket_name}"
+        compat_socket="${compat_dir}/${socket_name}"
+
+        [ -S "${host_socket}" ] || continue
+        if [ -L "${compat_socket}" ] || [ ! -e "${compat_socket}" ]; then
+            ln -snf "${host_socket}" "${compat_socket}"
+        fi
+    done
+}
+
 start_pipewire() {
     log "info" "Starting audio service sequence..."
     rm -f /var/run/pipewire-0 /var/run/pipewire-0.lock
@@ -51,6 +70,7 @@ start_pipewire() {
             REASON="Hardware discovery in progress (Sinks found: $(echo $sinks | awk '{print $2}' | xargs || echo 'none'))"
         else
             ensure_pulse_compat_socket
+            ensure_pipewire_compat_sockets
             log "info" "Hardware sinks discovered: $(echo "$sinks" | grep -E 'alsa|pci|usb' | awk '{print $2}' | xargs)"
             echo "OK"
             return 0
